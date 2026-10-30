@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using TextRun.Audio;
 using TextRun.KeyboardTest;
 using TextRun.Typing;
 using UnityEditor;
@@ -65,10 +66,63 @@ namespace TextRun.EditorTools
             Check(s.CurrentIndex == 1 && s.StateAt(0) == WordState.Correct && s.StateAt(1) == WordState.Pending, "SyncTo sunucu sirasina esitler");
 
             TestWordInput(Check);
+            TestAudio(Check);
             TestWordDatabase(Check);
 
             Debug.Log(failures == 0 ? "TUM TESTLER GECTI" : failures + " TEST BASARISIZ");
             EditorApplication.Exit(failures == 0 ? 0 : 1);
+        }
+
+        // Sentezlenen seslerin teknik doğruluğu: bozuk/sessiz mi, tavan değeri aşılıyor mu, frekans doğru mu, döngü pürüzsüz mü.
+        // (Sesin kulağa nasıl geldiği ölçülemez; bunu oyuncu/geliştirici dinleyerek karar verir.)
+        static void TestAudio(Action<bool, string> check)
+        {
+            void Common(string name, float[] data, float expectedSeconds)
+            {
+                float peak = 0f, sumSquares = 0f;
+                bool finite = true;
+                foreach (var v in data)
+                {
+                    if (float.IsNaN(v) || float.IsInfinity(v)) finite = false;
+                    peak = Mathf.Max(peak, Mathf.Abs(v));
+                    sumSquares += v * v;
+                }
+                float rms = Mathf.Sqrt(sumSquares / data.Length);
+                float seconds = data.Length / (float)SoundSynth.SampleRate;
+
+                check(finite, "ses " + name + ": gecerli sayilar (NaN yok)");
+                check(peak <= 1.0f && peak > 0.3f, "ses " + name + ": tepe seviye 0.3-1.0 arasi (" + peak.ToString("0.00") + ")");
+                check(rms > 0.02f, "ses " + name + ": sessiz degil (rms " + rms.ToString("0.000") + ")");
+                check(Mathf.Abs(seconds - expectedSeconds) < 0.05f, "ses " + name + ": sure ~" + expectedSeconds + " sn (" + seconds.ToString("0.00") + ")");
+            }
+
+            // Sıfır geçiş sayısından kabaca baskın frekans
+            float Frequency(float[] data)
+            {
+                int crossings = 0;
+                for (int i = 1; i < data.Length; i++)
+                    if ((data[i - 1] < 0f) != (data[i] < 0f)) crossings++;
+                return crossings / 2f / (data.Length / (float)SoundSynth.SampleRate);
+            }
+
+            var tick = SoundSynth.TickSamples(660f);
+            Common("tik", tick, 0.22f);
+            float tickHz = Frequency(tick);
+            check(tickHz > 560f && tickHz < 1500f, "ses tik: temel frekans yuksek bip araliginda (" + tickHz.ToString("0") + " Hz)");
+
+            var whistle = SoundSynth.WhistleSamples();
+            Common("duduk", whistle, 0.9f);
+            float whistleHz = Frequency(whistle);
+            check(whistleHz > 2400f && whistleHz < 3800f, "ses duduk: ~2.9 kHz civarinda (" + whistleHz.ToString("0") + " Hz)");
+
+            var loop = SoundSynth.RaceLoopSamples();
+            Common("yaris muzigi", loop, 16f * 60f / 128f);
+            check(Mathf.Abs(loop[0]) < 0.02f && Mathf.Abs(loop[loop.Length - 1]) < 0.02f, "ses yaris muzigi: dongu basi/sonu sessiz (tiklama yok)");
+            check(Mathf.Abs(loop[0] - loop[loop.Length - 1]) < 0.02f, "ses yaris muzigi: dongu sicramasi yok");
+
+            var applause = SoundSynth.ApplauseSamples();
+            Common("alkis", applause, 3.8f);
+            check(Mathf.Abs(applause[0]) < 0.02f && Mathf.Abs(applause[applause.Length - 1]) < 0.02f, "ses alkis: basi/sonu sessiz");
         }
 
         // Harf süzgeci: yanlış tuşlar yok sayılır, kelime doğru harfi bekler

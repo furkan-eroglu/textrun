@@ -39,6 +39,7 @@ namespace TextRun.Race
         Camera cam;
         RaceCamera raceCamera;
         GUIStyle nameStyle;
+        GUIStyle finishStyle;
 
         public Camera Cam => cam;
 
@@ -140,6 +141,7 @@ namespace TextRun.Race
         public void SetRacing(bool value)
         {
             racing = value;
+            CrowdBob.Intensity = value ? 1f : 0.35f; // yarış sırasında seyirciler daha coşkulu zıplar
         }
 
         void Update()
@@ -176,10 +178,21 @@ namespace TextRun.Race
         }
 
         // Karakterlerin üstüne isim etiketi çizer. guiScale: arayüz ölçeği, you/bot: çevrilmiş etiketler.
-        public void DrawLabels(float guiScale, string youLabel, string botLabel)
+        public void DrawLabels(float guiScale, string youLabel, string botLabel, string finishLabel)
         {
             if (cam == null || runners == null) return;
             if (nameStyle == null) nameStyle = new GUIStyle(GUI.skin.label) { fontSize = 13, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+
+            if (finishStyle == null)
+                finishStyle = new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+
+            // Bitiş kapısındaki pano yazısı (kameraya yakınsa büyür, uzaksa küçülür; çok uzaksa çizilmez)
+            Vector3 finishScreen = cam.WorldToScreenPoint(TrackBuilder.FinishLabelPosition(trackLength));
+            if (finishScreen.z > 3f && finishScreen.z < 140f)
+            {
+                finishStyle.fontSize = Mathf.RoundToInt(Mathf.Clamp(420f / finishScreen.z, 9f, 28f));
+                DrawOutlined(new Rect(finishScreen.x / guiScale - 80f, (Screen.height - finishScreen.y) / guiScale - 14f, 160f, 28f), finishLabel, Color.white, finishStyle);
+            }
 
             for (int i = 0; i < laneCount; i++)
             {
@@ -194,7 +207,7 @@ namespace TextRun.Race
                 Color fill = i == localSlot ? new Color(1f, 0.92f, 0.4f) : Color.white;
                 float x = screen.x / guiScale;
                 float y = (Screen.height - screen.y) / guiScale;
-                DrawOutlined(new Rect(x - 50f, y - 10f, 100f, 20f), label, fill);
+                DrawOutlined(new Rect(x - 50f, y - 10f, 100f, 20f), label, fill, nameStyle);
             }
         }
 
@@ -205,14 +218,14 @@ namespace TextRun.Race
             new Vector2(-1f, -1f), new Vector2(1f, -1f), new Vector2(-1f, 1f), new Vector2(1f, 1f)
         };
 
-        void DrawOutlined(Rect rect, string text, Color fill)
+        void DrawOutlined(Rect rect, string text, Color fill, GUIStyle style)
         {
-            nameStyle.normal.textColor = Color.black;
+            style.normal.textColor = Color.black;
             foreach (var offset in OutlineOffsets)
-                GUI.Label(new Rect(rect.x + offset.x, rect.y + offset.y, rect.width, rect.height), text, nameStyle);
+                GUI.Label(new Rect(rect.x + offset.x, rect.y + offset.y, rect.width, rect.height), text, style);
 
-            nameStyle.normal.textColor = fill;
-            GUI.Label(rect, text, nameStyle);
+            style.normal.textColor = fill;
+            GUI.Label(rect, text, style);
         }
 
         // Ekran görüntüsü/test için: karakterleri doğrudan verilen konumlara koyar.

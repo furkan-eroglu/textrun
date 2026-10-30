@@ -24,6 +24,7 @@ namespace TextRun.Game
                 return;
             }
 
+            AudioListener.volume = 0f; // otomatik testte hoparlörden ses çıkmasın
             dir = args[shots + 1];
             Directory.CreateDirectory(dir);
             controller = GetComponent<OnlineGameController>();

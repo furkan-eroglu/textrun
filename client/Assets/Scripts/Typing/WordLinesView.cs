@@ -6,9 +6,9 @@ namespace TextRun.Typing
     // Aktif kelime vurgulanır: yazılan kısım doğru gidiyorsa mavi, hata varsa kırmızı.
     public class WordLinesView
     {
-        public const float LineHeight = 40f;
-        public const float BoxHeight = LineHeight * 2f + 20f;
-        const float WordGap = 14f;
+        public const float LineHeight = 32f;
+        public const float BoxHeight = LineHeight * 2f + 16f;
+        const float WordGap = 11f;
 
         static readonly Color CorrectColor = new Color(0.4f, 0.85f, 0.5f);   // doğru yazılan: yeşil
         static readonly Color WrongColor = new Color(0.95f, 0.4f, 0.4f);     // yanlış: kırmızı
@@ -37,7 +37,7 @@ namespace TextRun.Typing
         public bool Draw(Rect box, TypingSession session, string liveText)
         {
             // Boşluk (padding) sıfır: bir kelime birkaç renkli parça olarak çizildiğinde parçalar arasında aralık oluşmasın.
-            if (style == null) style = new GUIStyle(GUI.skin.label) { fontSize = 26, wordWrap = false, padding = new RectOffset(0, 0, 0, 0) };
+            if (style == null) style = new GUIStyle(GUI.skin.label) { fontSize = 20, wordWrap = false, padding = new RectOffset(0, 0, 0, 0) };
 
             GUI.color = new Color(0.1f, 0.12f, 0.18f, 1f);
             GUI.DrawTexture(box, Texture2D.whiteTexture);
@@ -54,8 +54,8 @@ namespace TextRun.Typing
             }
             int secondLine = FitCount(session, lineStart + firstLine, maxWidth);
 
-            DrawLine(session, liveText, lineStart, firstLine, box.x + 8f, box.y + 10f);
-            DrawLine(session, liveText, lineStart + firstLine, secondLine, box.x + 8f, box.y + 10f + LineHeight);
+            DrawLine(session, liveText, lineStart, firstLine, box.x + 8f, box.y + 8f);
+            DrawLine(session, liveText, lineStart + firstLine, secondLine, box.x + 8f, box.y + 8f + LineHeight);
             return tapped;
         }
 

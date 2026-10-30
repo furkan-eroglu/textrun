@@ -12,6 +12,12 @@ namespace TextRun.Race
         static readonly Color White = new Color(0.97f, 0.97f, 0.97f);
         static readonly Color Black = new Color(0.12f, 0.12f, 0.14f);
 
+        // "BİTİŞ" panosunun merkezi (dünya konumu); yazı arayüzde bu noktaya hizalanarak çizilir.
+        public static Vector3 FinishLabelPosition(float trackLength)
+        {
+            return new Vector3(0f, 3.6f, trackLength);
+        }
+
         public static float LaneX(int lane, int laneCount, float laneWidth)
         {
             return (lane - (laneCount - 1) / 2f) * laneWidth;
@@ -41,6 +47,7 @@ namespace TextRun.Race
 
             Mats.Primitive("StartLine", PrimitiveType.Cube, root, new Vector3(0f, 0.014f, 0f), new Vector3(width, 0.01f, 0.25f), White);
             BuildFinishLine(root, width, trackLength);
+            StandsBuilder.Build(root, laneCount, laneWidth, trackLength);
             return root;
         }
 
@@ -61,10 +68,10 @@ namespace TextRun.Race
                 }
             }
 
-            // Bitiş kapısı
-            Mats.Primitive("GatePostL", PrimitiveType.Cube, root, new Vector3(-width / 2f - 0.2f, 1.6f, z), new Vector3(0.25f, 3.2f, 0.25f), White);
-            Mats.Primitive("GatePostR", PrimitiveType.Cube, root, new Vector3(width / 2f + 0.2f, 1.6f, z), new Vector3(0.25f, 3.2f, 0.25f), White);
-            Mats.Primitive("GateBar", PrimitiveType.Cube, root, new Vector3(0f, 3.2f, z), new Vector3(width + 0.65f, 0.4f, 0.25f), Black);
+            // Bitiş kapısı: iki direk ve üstte "BİTİŞ" yazısının (ekranda çizilir) duracağı koyu pano
+            Mats.Primitive("GatePostL", PrimitiveType.Cube, root, new Vector3(-width / 2f - 0.2f, 2f, z), new Vector3(0.25f, 4f, 0.25f), White);
+            Mats.Primitive("GatePostR", PrimitiveType.Cube, root, new Vector3(width / 2f + 0.2f, 2f, z), new Vector3(0.25f, 4f, 0.25f), White);
+            Mats.Primitive("GateBanner", PrimitiveType.Cube, root, FinishLabelPosition(z), new Vector3(width + 0.65f, 1.1f, 0.3f), new Color(0.1f, 0.12f, 0.2f));
         }
     }
 }

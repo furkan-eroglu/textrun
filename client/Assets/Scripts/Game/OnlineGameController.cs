@@ -1,4 +1,5 @@
 using System;
+using TextRun.Audio;
 using TextRun.Common;
 using TextRun.Online;
 using TextRun.Race;
@@ -22,6 +23,8 @@ namespace TextRun.Game
 
         OnlineRaceClient net;
         OnlineRaceView view;
+        RaceAudio sound;
+        int lastTickSecond = int.MinValue;
         GameLanguage language;
         Page screen = Page.Connecting;
         string errorText = "";
@@ -47,6 +50,7 @@ namespace TextRun.Game
             language = (GameLanguage)PlayerPrefs.GetInt(LanguageKey, (int)GameLanguage.Turkish);
             hostInput = ServerSettings.Host;
 
+            sound = gameObject.AddComponent<RaceAudio>();
             gameObject.AddComponent<DevHarness>(); // komut satırında -devharness yoksa kendini kaldırır
             view = gameObject.AddComponent<OnlineRaceView>();
             view.Build();
@@ -104,6 +108,7 @@ namespace TextRun.Game
         void OnClosed(string reason)
         {
             if (screen == Page.Menu || screen == Page.Connecting || screen == Page.Error) return;
+            sound.StopMusic();
             errorText = T("connectionLost");
             screen = Page.Error;
         }
@@ -144,6 +149,7 @@ namespace TextRun.Game
 
         async void CancelSearch()
         {
+            sound.StopMusic();
             await net.LeaveAsync();
             screen = Page.Menu;
         }
@@ -169,6 +175,7 @@ namespace TextRun.Game
                 case Phase.Countdown:
                     PrepareTyping(s);
                     countdownEndsLocal = now + (s.startAt - s.serverNow) / 1000f;
+                    lastTickSecond = int.MinValue;
                     screen = Page.Countdown;
                     break;
 
@@ -222,6 +229,7 @@ namespace TextRun.Game
             view.SetRacing(true);
             keyboard.Open(KeyboardKind.Default);
             BeginInput();
+            sound.Go();
         }
 
         void OnProgress(ProgressDto progress)
@@ -246,6 +254,23 @@ namespace TextRun.Game
             results = r.results ?? new ResultDto[0];
             view.SetRacing(false);
             screen = Page.Results;
+
+            bool onPodium = false;
+            foreach (var result in results)
+                if (result.userId == net.UserId) onPodium = result.rank <= 3 && result.status == "finished";
+            sound.Finish(onPodium);
+        }
+
+        // Geri sayımda saniye değiştikçe tik sesi (3, 2, 1)
+        void TickCountdownSound()
+        {
+            if (screen != Page.Countdown) return;
+
+            int seconds = Mathf.CeilToInt(countdownEndsLocal - Time.realtimeSinceStartup);
+            if (seconds == lastTickSecond || seconds < 1 || seconds > 3) return;
+
+            lastTickSecond = seconds;
+            sound.Tick();
         }
 
         // ---------- Yazma girişi ----------
@@ -253,6 +278,7 @@ namespace TextRun.Game
         void Update()
         {
             net?.Pump();
+            TickCountdownSound();
 
             if (screen != Page.Racing || typing == null || input == null) return;
             PollTyping();
@@ -386,6 +412,9 @@ namespace TextRun.Game
 
             GUI.Label(new Rect(0f, top + 20f, width, 60f), "TextRun", titleStyle);
 
+            if (GUI.Button(new Rect(width - 118f, top + 4f, 110f, 28f), T(sound.Enabled ? "soundOn" : "soundOff")))
+                sound.Enabled = !sound.Enabled;
+
             float y = top + 100f;
             GUI.Label(new Rect(20f, y, width - 40f, 26f), T("language"), labelStyle);
             y += 30f;
@@ -460,7 +489,7 @@ namespace TextRun.Game
         {
             // Üstte 3D pist, altta kelimeler (yarıştaki düzenin aynısı; yazmak için henüz erken)
             LayoutRaceArea(width, height, scale, out var box, out float devButtonY);
-            view.DrawLabels(scale, T("you"), T("bot"));
+            view.DrawLabels(scale, T("you"), T("bot"), T("finishLine"));
             progressStrip.Draw(new Rect(8f, top + 8f, width - 16f, 26f), players, wordCount, net.UserId, 0f);
 
             int seconds = Mathf.Max(0, Mathf.CeilToInt(countdownEndsLocal - Time.realtimeSinceStartup));
@@ -489,7 +518,7 @@ namespace TextRun.Game
         void DrawRacing(float width, float height, float top, float scale)
         {
             LayoutRaceArea(width, height, scale, out var box, out float devButtonY);
-            view.DrawLabels(scale, T("you"), T("bot"));
+            view.DrawLabels(scale, T("you"), T("bot"), T("finishLine"));
             // Kendi ilerlemen sunucu cevabını beklemeden yerel durumdan gösterilir
             progressStrip.Draw(new Rect(8f, top + 8f, width - 16f, 26f), players, wordCount, net.UserId, (float)typing.CurrentIndex / Mathf.Max(1, wordCount));
 
@@ -555,6 +584,7 @@ namespace TextRun.Game
 
         async void BackToMenu()
         {
+            sound.StopMusic();
             await net.LeaveAsync();
             view.ResetToStart();
             screen = Page.Menu;
