@@ -39,7 +39,7 @@ namespace TextRun.Game
         float lobbyEndsLocal;
         float countdownEndsLocal;
 
-        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, statsStyle;
+        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle;
 
         void Start()
         {
@@ -322,7 +322,6 @@ namespace TextRun.Game
             labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 18 };
             centerStyle = new GUIStyle(GUI.skin.label) { fontSize = 20, alignment = TextAnchor.MiddleCenter, wordWrap = true };
             smallStyle = new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true };
-            statsStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = false, fontStyle = FontStyle.Bold };
         }
 
         void OnGUI()
@@ -460,7 +459,7 @@ namespace TextRun.Game
         void DrawCountdown(float width, float height, float top, float scale)
         {
             // Üstte 3D pist, altta kelimeler (yarıştaki düzenin aynısı; yazmak için henüz erken)
-            LayoutRaceArea(width, height, scale, out var box, out float statsY);
+            LayoutRaceArea(width, height, scale, out var box, out float devButtonY);
             view.DrawLabels(scale, T("you"), T("bot"));
             progressStrip.Draw(new Rect(8f, top + 8f, width - 16f, 26f), players, wordCount, net.UserId, 0f);
 
@@ -469,16 +468,16 @@ namespace TextRun.Game
             GUI.Label(new Rect(width / 2f - 90f, top + 46f, 180f, 90f), seconds > 0 ? seconds.ToString() : T("getReady"), titleStyle);
 
             if (typing != null) wordView.Draw(box, typing, "");
-            DrawSimulatedKeyboard(width, height, scale, statsY);
+            DrawSimulatedKeyboard(width, height, scale, devButtonY);
         }
 
         // Yalnızca editörde: telefon klavyesinin kaplayacağı alanı gri bir blokla gösterir, düzeni PC'de telefondaki gibi görmek için.
-        void DrawSimulatedKeyboard(float width, float height, float scale, float statsY)
+        void DrawSimulatedKeyboard(float width, float height, float scale, float devButtonY)
         {
             if (!Application.isEditor) return;
 
             // İstatistik satırının sağında (ilerleme şeridiyle çakışmasın)
-            if (GUI.Button(new Rect(width - 118f, statsY - 2f, 112f, 24f), KeyboardInput.SimulateInEditor ? "Klavye: AÇIK" : "Klavye: KAPALI"))
+            if (GUI.Button(new Rect(width - 118f, devButtonY, 112f, 24f), KeyboardInput.SimulateInEditor ? "Klavye: AÇIK" : "Klavye: KAPALI"))
                 KeyboardInput.SimulateInEditor = !KeyboardInput.SimulateInEditor;
 
             float keyboardH = keyboard.AreaHeight / scale;
@@ -489,20 +488,17 @@ namespace TextRun.Game
 
         void DrawRacing(float width, float height, float top, float scale)
         {
-            LayoutRaceArea(width, height, scale, out var box, out float statsY);
+            LayoutRaceArea(width, height, scale, out var box, out float devButtonY);
             view.DrawLabels(scale, T("you"), T("bot"));
             // Kendi ilerlemen sunucu cevabını beklemeden yerel durumdan gösterilir
             progressStrip.Draw(new Rect(8f, top + 8f, width - 16f, 26f), players, wordCount, net.UserId, (float)typing.CurrentIndex / Mathf.Max(1, wordCount));
 
-            // Tek satır: ikinci satıra kayarsa kelime kutusunun arkasında kalır
-            string stats = T("wpm") + " " + typing.Wpm(Time.realtimeSinceStartup).ToString("0")
-                + "  |  %" + (typing.Accuracy * 100f).ToString("0")
-                + "  |  " + typing.CurrentIndex + "/" + typing.Count;
-            GUI.Label(new Rect(8f, statsY, width - 16f, 24f), stats, statsStyle);
+            // Yarış sırasında istatistik (WPM, doğruluk, kelime sayısı) gösterilmez; oyuncu yalnızca birinci olmaya odaklanır.
+            // İstatistikler yarış sonunda sonuç tablosunda görünür.
 
             // Kelime kutusunda yalnızca doğru harfler (yeşil) görünür. Klavye kapanırsa kutuya dokunmak yeniden açar.
             if (wordView.Draw(box, typing, input.Entered)) keyboard.Open(KeyboardKind.Default);
-            DrawSimulatedKeyboard(width, height, scale, statsY);
+            DrawSimulatedKeyboard(width, height, scale, devButtonY);
 
             if (noticeText.Length > 0)
             {
@@ -511,16 +507,17 @@ namespace TextRun.Game
             }
         }
 
-        // Alttan yukarı: klavye, kelime kutusu, istatistik satırı; kalan üst bölge 3D pist.
-        void LayoutRaceArea(float width, float height, float scale, out Rect box, out float statsY)
+        // Alttan yukarı: klavye, kelime kutusu; kalan üst bölge 3D pist.
+        // devButtonY: editördeki klavye simülasyonu düğmesinin yeri (pistin alt kenarı, kelime kutusunun hemen üstü).
+        void LayoutRaceArea(float width, float height, float scale, out Rect box, out float devButtonY)
         {
             float keyboardH = keyboard.AreaHeight / scale;
             float bottomEdge = height - keyboardH - 8f;
 
             box = new Rect(8f, bottomEdge - WordLinesView.BoxHeight, width - 16f, WordLinesView.BoxHeight);
-            statsY = box.y - 26f;
+            devButtonY = box.y - 30f;
 
-            float trackBottomPx = (height - statsY + 4f) * scale; // ekranın altından piksel olarak
+            float trackBottomPx = (height - box.y + 6f) * scale; // ekranın altından piksel olarak
             view.SetViewport(new Rect(0f, trackBottomPx, UnityEngine.Screen.width, UnityEngine.Screen.height - trackBottomPx));
         }
 

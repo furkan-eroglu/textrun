@@ -23,7 +23,6 @@ namespace TextRun.Common
             { "typed", new[] { "Yazılan", "Typed" } },
             { "wpm", new[] { "WPM", "WPM" } },
             { "accuracy", new[] { "Doğruluk", "Accuracy" } },
-            { "word", new[] { "Kelime", "Word" } },
             { "results", new[] { "Sonuçlar", "Results" } },
             { "playAgain", new[] { "Tekrar oyna", "Play again" } },
             { "menu", new[] { "Menü", "Menu" } },
