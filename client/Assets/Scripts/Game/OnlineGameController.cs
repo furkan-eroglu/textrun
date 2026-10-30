@@ -20,6 +20,7 @@ namespace TextRun.Game
         readonly KeyboardInput keyboard = new KeyboardInput();
         readonly WordLinesView wordView = new WordLinesView();
         readonly RaceProgressStrip progressStrip = new RaceProgressStrip();
+        readonly LetterBackdrop backdrop = new LetterBackdrop();
 
         OnlineRaceClient net;
         OnlineRaceView view;
@@ -60,6 +61,7 @@ namespace TextRun.Game
             view.Build();
             Debug.Log("[basla] pist ve arena kuruldu: " + timer.ElapsedMilliseconds + " ms");
             view.SetAllActive(new[] { "", "", "", "", "" }, 2);
+            view.SetVisible(false); // menü ve eşleşme ekranlarında pist görünmez; yalnızca arka plan ve arayüz vardır
             view.ResetToStart();
 
             Connect();
@@ -285,6 +287,10 @@ namespace TextRun.Game
             net?.Pump();
             TickCountdownSound();
 
+            // Pist ve karakterler yalnızca geri sayım ve yarışta görünür
+            bool wantTrack = screen == Page.Countdown || screen == Page.Racing;
+            if (view.IsVisible != wantTrack) view.SetVisible(wantTrack);
+
             if (screen != Page.Racing || typing == null || input == null) return;
             PollTyping();
         }
@@ -367,6 +373,9 @@ namespace TextRun.Game
             float height = UnityEngine.Screen.height / scale;
             float top = (UnityEngine.Screen.height - UnityEngine.Screen.safeArea.yMax) / scale + 6f;
 
+            if (screen == Page.Connecting || screen == Page.Menu || screen == Page.Searching || screen == Page.Error)
+                backdrop.Draw(width, height, language);
+
             switch (screen)
             {
                 case Page.Connecting: DrawCenterMessage(width, height, T("connecting")); break;
@@ -413,7 +422,6 @@ namespace TextRun.Game
         void DrawMenu(float width, float height, float top)
         {
             FullViewport();
-            DrawPanel(new Rect(0f, 0f, width, height), 0.55f);
 
             GUI.Label(new Rect(0f, top + 20f, width, 60f), "TextRun", titleStyle);
 
@@ -477,22 +485,29 @@ namespace TextRun.Game
             PlayerPrefs.Save();
         }
 
+        // Eşleşme ekranı: yalnızca arka plan ve ortada arama penceresi (piste yerleşmek yok)
         void DrawSearching(float width, float height, float top)
         {
             FullViewport();
-            DrawPanel(new Rect(10f, top + 10f, width - 20f, 230f));
 
-            GUI.Label(new Rect(10f, top + 20f, width - 20f, 36f), T("searching"), centerStyle);
-            GUI.Label(new Rect(10f, top + 60f, width - 20f, 30f), T("playersFound") + ": " + HumanCount() + " / 5", centerStyle);
+            float panelHeight = 270f;
+            var panel = new Rect(20f, height / 2f - panelHeight / 2f, width - 40f, panelHeight);
+            DrawPanel(panel, 0.72f);
+
+            // Animasyonlu noktalar: arama sürdüğünü gösterir
+            int dots = 1 + (int)(Time.realtimeSinceStartup * 2.5f) % 3;
+            GUI.Label(new Rect(panel.x, panel.y + 18f, panel.width, 36f), T("searching").TrimEnd('.') + new string('.', dots), centerStyle);
+
+            GUI.Label(new Rect(panel.x, panel.y + 66f, panel.width, 30f), T("playersFound") + ": " + HumanCount() + " / 5", centerStyle);
 
             if (lobbyEndsLocal > 0f)
             {
                 int seconds = Mathf.Max(0, Mathf.CeilToInt(lobbyEndsLocal - Time.realtimeSinceStartup));
-                GUI.Label(new Rect(10f, top + 95f, width - 20f, 30f), T("botsJoinIn") + " " + seconds, centerStyle);
+                GUI.Label(new Rect(panel.x, panel.y + 104f, panel.width, 30f), T("botsJoinIn") + " " + seconds, centerStyle);
             }
-            if (noticeText.Length > 0) GUI.Label(new Rect(10f, top + 130f, width - 20f, 30f), noticeText, centerStyle);
+            if (noticeText.Length > 0) GUI.Label(new Rect(panel.x, panel.y + 140f, panel.width, 30f), noticeText, centerStyle);
 
-            if (GUI.Button(new Rect(40f, top + 175f, width - 80f, 46f), T("cancel"), bigButton)) CancelSearch();
+            if (GUI.Button(new Rect(panel.x + 30f, panel.yMax - 66f, panel.width - 60f, 46f), T("cancel"), bigButton)) CancelSearch();
         }
 
         int HumanCount()

@@ -34,11 +34,18 @@ namespace TextRun.Audio
             music.loop = true;
             music.volume = MusicVolume;
 
-            tick = SoundSynth.ToClip("tick", SoundSynth.TickSamples());
-            whistle = SoundSynth.ToClip("whistle", SoundSynth.WhistleSamples());
-            loop = SoundSynth.ToClip("raceLoop", SoundSynth.RaceLoopSamples());
-            fanfarePodium = SoundSynth.ToClip("fanfarePodium", SoundSynth.FanfareSamples(true));
-            fanfareDone = SoundSynth.ToClip("fanfareDone", SoundSynth.FanfareSamples(false));
+            // Assets/Resources/Audio içine aynı adla bir ses dosyası (.ogg/.wav/.mp3) konursa o kullanılır;
+            // yoksa kodla üretilen geçici ses çalar. Dosya adları: tick, whistle, race_loop, finish_win, finish_done
+            tick = Custom("tick") ?? SoundSynth.ToClip("tick", SoundSynth.TickSamples());
+            whistle = Custom("whistle") ?? SoundSynth.ToClip("whistle", SoundSynth.WhistleSamples());
+            loop = Custom("race_loop") ?? SoundSynth.ToClip("raceLoop", SoundSynth.RaceLoopSamples());
+            fanfarePodium = Custom("finish_win") ?? SoundSynth.ToClip("fanfarePodium", SoundSynth.FanfareSamples(true));
+            fanfareDone = Custom("finish_done") ?? SoundSynth.ToClip("fanfareDone", SoundSynth.FanfareSamples(false));
+        }
+
+        static AudioClip Custom(string name)
+        {
+            return Resources.Load<AudioClip>("Audio/" + name);
         }
 
         public void Tick()

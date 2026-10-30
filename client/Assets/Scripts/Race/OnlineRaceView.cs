@@ -36,6 +36,10 @@ namespace TextRun.Race
         bool racing;
         int localSlot = 2;
         float cameraX;
+        Transform trackRoot;
+
+        // Menü ve eşleşme ekranlarında pist, tribün ve karakterler gizlenir
+        public bool IsVisible { get; private set; } = true;
         Camera cam;
         RaceCamera raceCamera;
         GUIStyle nameStyle;
@@ -44,7 +48,7 @@ namespace TextRun.Race
 
         public void Build()
         {
-            TrackBuilder.Build(laneCount, laneWidth, trackLength);
+            trackRoot = TrackBuilder.Build(laneCount, laneWidth, trackLength);
 
             runners = new CharacterAnimator[laneCount];
             currentZ = new float[laneCount];
@@ -122,7 +126,15 @@ namespace TextRun.Race
                 isBot[p.slot] = p.isBot;
                 if (p.id == localId) localSlot = p.slot;
             }
-            for (int i = 0; i < laneCount; i++) runners[i].gameObject.SetActive(active[i]);
+            for (int i = 0; i < laneCount; i++) runners[i].gameObject.SetActive(active[i] && IsVisible);
+        }
+
+        public void SetVisible(bool visible)
+        {
+            IsVisible = visible;
+            if (trackRoot != null) trackRoot.gameObject.SetActive(visible);
+            if (cam != null) cam.enabled = visible;
+            for (int i = 0; i < laneCount; i++) runners[i].gameObject.SetActive(visible && active[i]);
         }
 
         public void SetProgress(PlayerDto[] players, int wordCount)

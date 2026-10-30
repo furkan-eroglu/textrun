@@ -49,3 +49,9 @@ client/Builds/Win/TextRun.exe -devharness -shots <klasör> -screen-width 450 -sc
 ```
 
 `DevHarness` yalnızca `-devharness` verilirse çalışır; normal oyunda kendini kaldırır.
+
+## Sesler
+
+Sesler varsayılan olarak kodla üretilir (`SoundSynth`). `client/Assets/Resources/Audio/` klasörüne
+`tick`, `whistle`, `race_loop`, `finish_win`, `finish_done` adlı ses dosyaları konursa onlar kullanılır
+(bkz. oradaki README.txt). Yalnızca telif sorunu olmayan (ör. CC0) dosyalar kullanılmalıdır.

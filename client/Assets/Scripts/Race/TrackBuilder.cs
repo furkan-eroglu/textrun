@@ -7,9 +7,10 @@ namespace TextRun.Race
     // Pist kapalı bir arenanın içindedir (bkz. StandsBuilder); bitiş kapısı FinishGateBuilder'dadır.
     public static class TrackBuilder
     {
-        static readonly Color ArenaFloor = new Color(0.30f, 0.32f, 0.41f);
-        static readonly Color LaneA = new Color(0.86f, 0.58f, 0.46f);
-        static readonly Color LaneB = new Color(0.80f, 0.52f, 0.41f);
+        // Pist koyu mavi: karakterin ten rengi mavinin karşısında belirgin durur. Zemin pistten ve karakterden ayrışan koyu kömür-lacivert.
+        static readonly Color ArenaFloor = new Color(0.13f, 0.14f, 0.19f);
+        static readonly Color LaneA = new Color(0.14f, 0.38f, 0.80f);
+        static readonly Color LaneB = new Color(0.11f, 0.32f, 0.70f);
         static readonly Color White = new Color(0.97f, 0.97f, 0.97f);
         static readonly Color Black = new Color(0.12f, 0.12f, 0.14f);
 

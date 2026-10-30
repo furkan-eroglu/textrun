@@ -180,17 +180,29 @@ namespace TextRun.EditorTools
             // Bitişe yaklaşırken: kapı, FINISH yazısı ve arka tribün yakından
             view.SnapPositions(new[] { 53f, 50f, 52f, 49f, 54f }, true);
             Render(view.Cam, 540, 520, Path.ChangeExtension(path, null) + "-finish.png");
+
+            // Tribünlerde yakın plan: seyirci tiplerini (kilolu/zayıf/çocuk/kadın/erkek, telefon, flaş) değerlendirmek için
+            var camT = view.Cam.transform;
+            camT.position = new Vector3(0.5f, 2.4f, 17f);
+            camT.LookAt(new Vector3(-9.5f, 3.4f, 23f));
+            view.Cam.fieldOfView = 48f;
+            Render(view.Cam, 540, 520, Path.ChangeExtension(path, null) + "-crowd1.png", false);
+
+            camT.position = new Vector3(-3f, 3.2f, 52f);
+            camT.LookAt(new Vector3(8f, 4.4f, 60f));
+            view.Cam.fieldOfView = 55f;
+            Render(view.Cam, 540, 520, Path.ChangeExtension(path, null) + "-crowd2.png", false);
             Debug.Log("Goruntu kaydedildi.");
         }
 
-        static void Render(Camera cam, int width, int height, string path)
+        static void Render(Camera cam, int width, int height, string path, bool frameRace = true)
         {
             var rt = new RenderTexture(width, height, 24);
             cam.targetTexture = rt;
 
             // Görüş açısı çizim boyutunun oranına göre hesaplanır; boyut belli olduktan sonra kamerayı yeniden konumlandır.
             var raceCamera = cam.GetComponent<RaceCamera>();
-            raceCamera.Frame(raceCamera.transform.position.z - raceCamera.offset.z, raceCamera.transform.position.x - raceCamera.offset.x);
+            if (frameRace) raceCamera.Frame(raceCamera.transform.position.z - raceCamera.offset.z, raceCamera.transform.position.x - raceCamera.offset.x);
             cam.Render();
             RenderTexture.active = rt;
             var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
