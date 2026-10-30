@@ -21,7 +21,7 @@ namespace TextRun.Race
         // Tam takipte kenar kulvarda ekranın yarısı boş çimen kalır; kısmi takip oyuncuyu merkeze yaklaştırır, pisti de yayar.
         const float CameraFollowFactor = 0.6f;
 
-        static readonly Color[] LaneColors =
+        public static readonly Color[] LaneColors =
         {
             new Color(0.90f, 0.30f, 0.30f), new Color(0.95f, 0.70f, 0.20f), new Color(0.30f, 0.70f, 0.40f),
             new Color(0.30f, 0.55f, 0.90f), new Color(0.65f, 0.40f, 0.85f)
@@ -191,11 +191,28 @@ namespace TextRun.Race
                 if (i == localSlot) label = youLabel;
                 else if (isBot[i]) label = botLabel;
 
-                nameStyle.normal.textColor = i == localSlot ? new Color(1f, 0.92f, 0.4f) : Color.white;
+                Color fill = i == localSlot ? new Color(1f, 0.92f, 0.4f) : Color.white;
                 float x = screen.x / guiScale;
                 float y = (Screen.height - screen.y) / guiScale;
-                GUI.Label(new Rect(x - 50f, y - 10f, 100f, 20f), label, nameStyle);
+                DrawOutlined(new Rect(x - 50f, y - 10f, 100f, 20f), label, fill);
             }
+        }
+
+        // Yazı: istenen renkte, etrafında siyah çerçeve (kenarlık). Çerçeve, yazının siyah kopyalarını çevresine kaydırarak çizilir.
+        static readonly Vector2[] OutlineOffsets =
+        {
+            new Vector2(-1f, 0f), new Vector2(1f, 0f), new Vector2(0f, -1f), new Vector2(0f, 1f),
+            new Vector2(-1f, -1f), new Vector2(1f, -1f), new Vector2(-1f, 1f), new Vector2(1f, 1f)
+        };
+
+        void DrawOutlined(Rect rect, string text, Color fill)
+        {
+            nameStyle.normal.textColor = Color.black;
+            foreach (var offset in OutlineOffsets)
+                GUI.Label(new Rect(rect.x + offset.x, rect.y + offset.y, rect.width, rect.height), text, nameStyle);
+
+            nameStyle.normal.textColor = fill;
+            GUI.Label(rect, text, nameStyle);
         }
 
         // Ekran görüntüsü/test için: karakterleri doğrudan verilen konumlara koyar.

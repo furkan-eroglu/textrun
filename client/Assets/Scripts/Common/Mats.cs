@@ -6,14 +6,23 @@ namespace TextRun.Common
     // Prototip için basit renkli malzeme önbelleği. Gerçek modellerle birlikte kaldırılacak.
     public static class Mats
     {
+        // Shader.Find("Standard") derlenmiş uygulamada (telefon/PC) boş dönebilir, çünkü shader derlemeye dahil edilmez.
+        // Bunun yerine Resources içindeki bir malzeme dosyası kullanılır: Unity bu dosyanın shader'ını derlemeye dahil eder.
+        const string BaseMaterialPath = "Materials/Base";
+
         static readonly Dictionary<Color, Material> cache = new Dictionary<Color, Material>();
+        static Material baseMaterial;
 
         public static Material Get(Color color, float smoothness = 0.1f)
         {
             if (cache.TryGetValue(color, out var existing) && existing != null)
                 return existing;
 
-            var mat = new Material(Shader.Find("Standard")) { color = color };
+            if (baseMaterial == null) baseMaterial = Resources.Load<Material>(BaseMaterialPath);
+            if (baseMaterial == null)
+                throw new System.InvalidOperationException("Assets/Resources/Materials/Base.mat bulunamadi (menu: TextRun > Create Online Game Scene bunu olusturur).");
+
+            var mat = new Material(baseMaterial) { color = color };
             mat.SetFloat("_Glossiness", smoothness);
             cache[color] = mat;
             return mat;

@@ -37,3 +37,15 @@ docker compose restart nakama   # kodu değiştirip derledikten sonra
 - API: http://127.0.0.1:7350 , Yönetim paneli: http://127.0.0.1:7351
 - Sunucu kodu `server/src/main.ts`. Nakama, kaydedilen fonksiyonları kodu statik okuyarak bulur;
   `InitModule` ve RPC fonksiyonları dosyada en üst seviyede durmalıdır (bkz. `server/build.mjs`).
+
+## Arayüzü bilgisayarda otomatik doğrulama
+
+Windows derlemesi alınıp kendi kendine menüden yarışa girip ekran görüntüsü alabilir
+(sunucu çalışıyor olmalı). Elle oynamadan arayüz kontrolü içindir:
+
+```
+Unity -batchmode -nographics -projectPath client -buildTarget Win64 -executeMethod TextRun.EditorTools.OnlineTools.BuildWindows
+client/Builds/Win/TextRun.exe -devharness -shots <klasör> -screen-width 450 -screen-height 800 -screen-fullscreen 0
+```
+
+`DevHarness` yalnızca `-devharness` verilirse çalışır; normal oyunda kendini kaldırır.

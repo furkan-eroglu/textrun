@@ -1,0 +1,83 @@
+using System;
+using System.Collections;
+using System.IO;
+using TextRun.Typing;
+using UnityEngine;
+
+namespace TextRun.Game
+{
+    // Geliştirme aracı: oyun komut satırında "-devharness -shots <klasör>" ile açılırsa kendi kendine menüden yarışa girer
+    // ve belirli anlarda ekran görüntüsü alıp kapanır. Normal oyunda hiçbir şey yapmaz (kendini kaldırır).
+    // Amaç: arayüzü bilgisayarda gerçek bir derlemede, elle oynamadan doğrulamak.
+    public class DevHarness : MonoBehaviour
+    {
+        OnlineGameController controller;
+        string dir;
+
+        void Start()
+        {
+            var args = Environment.GetCommandLineArgs();
+            int shots = Array.IndexOf(args, "-shots");
+            if (Array.IndexOf(args, "-devharness") < 0 || shots < 0 || shots + 1 >= args.Length)
+            {
+                Destroy(this);
+                return;
+            }
+
+            dir = args[shots + 1];
+            Directory.CreateDirectory(dir);
+            controller = GetComponent<OnlineGameController>();
+            StartCoroutine(Run());
+        }
+
+        IEnumerator WaitForPage(string page, float timeoutSeconds)
+        {
+            float started = Time.realtimeSinceStartup;
+            while (controller.DevPageName != page)
+            {
+                if (Time.realtimeSinceStartup - started > timeoutSeconds)
+                {
+                    File.WriteAllText(Path.Combine(dir, "FAILED.txt"), "Sayfa gelmedi: " + page + " (son sayfa: " + controller.DevPageName + ")");
+                    Application.Quit();
+                    yield break;
+                }
+                yield return null;
+            }
+        }
+
+        IEnumerator Shot(string name)
+        {
+            yield return new WaitForEndOfFrame();
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, name + ".png"));
+            yield return null;
+            yield return null;
+        }
+
+        IEnumerator Run()
+        {
+            yield return WaitForPage("Menu", 30f);
+            yield return new WaitForSeconds(1f);
+            yield return Shot("1-menu");
+
+            controller.DevStartSearch();
+            yield return WaitForPage("Searching", 15f);
+            yield return new WaitForSeconds(2f);
+            yield return Shot("2-searching");
+
+            yield return WaitForPage("Countdown", 40f);
+            yield return new WaitForSeconds(1.2f);
+            yield return Shot("3-countdown");
+
+            yield return WaitForPage("Racing", 15f);
+            yield return new WaitForSeconds(14f);
+            yield return Shot("4-racing");
+
+            KeyboardInput.SimulateInEditor = true; // telefon klavyesinin kaplayacağı yeri taklit eder
+            yield return new WaitForSeconds(1f);
+            yield return Shot("5-racing-keyboard");
+
+            File.WriteAllText(Path.Combine(dir, "done.txt"), "tamam");
+            Application.Quit();
+        }
+    }
+}

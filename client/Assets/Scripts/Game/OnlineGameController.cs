@@ -18,6 +18,7 @@ namespace TextRun.Game
 
         readonly KeyboardInput keyboard = new KeyboardInput();
         readonly WordLinesView wordView = new WordLinesView();
+        readonly RaceProgressStrip progressStrip = new RaceProgressStrip();
 
         OnlineRaceClient net;
         OnlineRaceView view;
@@ -46,6 +47,7 @@ namespace TextRun.Game
             language = (GameLanguage)PlayerPrefs.GetInt(LanguageKey, (int)GameLanguage.Turkish);
             hostInput = ServerSettings.Host;
 
+            gameObject.AddComponent<DevHarness>(); // komut satırında -devharness yoksa kendini kaldırır
             view = gameObject.AddComponent<OnlineRaceView>();
             view.Build();
             view.SetAllActive(new[] { "", "", "", "", "" }, 2);
@@ -55,6 +57,14 @@ namespace TextRun.Game
         }
 
         string T(string key) => Loc.T(key, language);
+
+        // --- Geliştirme araçları: yalnızca DevHarness (-devharness komut satırı seçeneği) kullanır ---
+        public string DevPageName => screen.ToString();
+
+        public void DevStartSearch()
+        {
+            if (screen == Page.Menu) StartSearch();
+        }
 
         // ---------- Bağlantı ----------
 
@@ -450,23 +460,25 @@ namespace TextRun.Game
         void DrawCountdown(float width, float height, float top, float scale)
         {
             // Üstte 3D pist, altta kelimeler (yarıştaki düzenin aynısı; yazmak için henüz erken)
-            LayoutRaceArea(width, height, scale, out var box, out _);
+            LayoutRaceArea(width, height, scale, out var box, out float statsY);
             view.DrawLabels(scale, T("you"), T("bot"));
+            progressStrip.Draw(new Rect(8f, top + 8f, width - 16f, 26f), players, wordCount, net.UserId, 0f);
 
             int seconds = Mathf.Max(0, Mathf.CeilToInt(countdownEndsLocal - Time.realtimeSinceStartup));
-            DrawPanel(new Rect(width / 2f - 90f, top + 30f, 180f, 90f), 0.6f);
-            GUI.Label(new Rect(width / 2f - 90f, top + 30f, 180f, 90f), seconds > 0 ? seconds.ToString() : T("getReady"), titleStyle);
+            DrawPanel(new Rect(width / 2f - 90f, top + 46f, 180f, 90f), 0.6f);
+            GUI.Label(new Rect(width / 2f - 90f, top + 46f, 180f, 90f), seconds > 0 ? seconds.ToString() : T("getReady"), titleStyle);
 
             if (typing != null) wordView.Draw(box, typing, "");
-            DrawSimulatedKeyboard(width, height, scale);
+            DrawSimulatedKeyboard(width, height, scale, statsY);
         }
 
         // Yalnızca editörde: telefon klavyesinin kaplayacağı alanı gri bir blokla gösterir, düzeni PC'de telefondaki gibi görmek için.
-        void DrawSimulatedKeyboard(float width, float height, float scale)
+        void DrawSimulatedKeyboard(float width, float height, float scale, float statsY)
         {
             if (!Application.isEditor) return;
 
-            if (GUI.Button(new Rect(width - 118f, 4f, 112f, 26f), KeyboardInput.SimulateInEditor ? "Klavye: AÇIK" : "Klavye: KAPALI"))
+            // İstatistik satırının sağında (ilerleme şeridiyle çakışmasın)
+            if (GUI.Button(new Rect(width - 118f, statsY - 2f, 112f, 24f), KeyboardInput.SimulateInEditor ? "Klavye: AÇIK" : "Klavye: KAPALI"))
                 KeyboardInput.SimulateInEditor = !KeyboardInput.SimulateInEditor;
 
             float keyboardH = keyboard.AreaHeight / scale;
@@ -479,6 +491,8 @@ namespace TextRun.Game
         {
             LayoutRaceArea(width, height, scale, out var box, out float statsY);
             view.DrawLabels(scale, T("you"), T("bot"));
+            // Kendi ilerlemen sunucu cevabını beklemeden yerel durumdan gösterilir
+            progressStrip.Draw(new Rect(8f, top + 8f, width - 16f, 26f), players, wordCount, net.UserId, (float)typing.CurrentIndex / Mathf.Max(1, wordCount));
 
             // Tek satır: ikinci satıra kayarsa kelime kutusunun arkasında kalır
             string stats = T("wpm") + " " + typing.Wpm(Time.realtimeSinceStartup).ToString("0")
@@ -488,12 +502,12 @@ namespace TextRun.Game
 
             // Kelime kutusunda yalnızca doğru harfler (yeşil) görünür. Klavye kapanırsa kutuya dokunmak yeniden açar.
             if (wordView.Draw(box, typing, input.Entered)) keyboard.Open(KeyboardKind.Default);
-            DrawSimulatedKeyboard(width, height, scale);
+            DrawSimulatedKeyboard(width, height, scale, statsY);
 
             if (noticeText.Length > 0)
             {
-                DrawPanel(new Rect(10f, top + 10f, width - 20f, 56f), 0.85f);
-                GUI.Label(new Rect(10f, top + 10f, width - 20f, 56f), noticeText, centerStyle);
+                DrawPanel(new Rect(10f, top + 42f, width - 20f, 56f), 0.85f);
+                GUI.Label(new Rect(10f, top + 42f, width - 20f, 56f), noticeText, centerStyle);
             }
         }
 

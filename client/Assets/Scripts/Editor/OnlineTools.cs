@@ -19,9 +19,22 @@ namespace TextRun.EditorTools
         const string ScenePath = "Assets/Scenes/OnlineGame.unity";
         const string ApkPath = "Builds/Android/TextRun.apk";
 
+        const string BaseMaterialPath = "Assets/Resources/Materials/Base.mat";
+
+        // Oyun, renkli nesneleri bu malzemeden kopyalayarak üretir. Dosya Resources içinde olduğu için shader'ı derlemeye dahil edilir.
+        static void EnsureBaseMaterial()
+        {
+            if (AssetDatabase.LoadAssetAtPath<Material>(BaseMaterialPath) != null) return;
+
+            Directory.CreateDirectory(Path.GetDirectoryName(BaseMaterialPath));
+            AssetDatabase.CreateAsset(new Material(Shader.Find("Standard")), BaseMaterialPath);
+            AssetDatabase.SaveAssets();
+        }
+
         [MenuItem("TextRun/Create Online Game Scene")]
         public static void CreateScene()
         {
+            EnsureBaseMaterial();
             var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             new GameObject("OnlineGame").AddComponent<OnlineGameController>();
 
@@ -182,6 +195,27 @@ namespace TextRun.EditorTools
             RenderTexture.active = null;
             cam.targetTexture = null;
             File.WriteAllBytes(path, tex.EncodeToPNG());
+        }
+
+        // ---------- Windows derlemesi (geliştirme: arayüzü gerçek bir derlemede doğrulamak için) ----------
+        // Komut satırı: -buildTarget Win64 -executeMethod TextRun.EditorTools.OnlineTools.BuildWindows
+        public static void BuildWindows()
+        {
+            CreateScene();
+            PlayerSettings.productName = "TextRun";
+            PlayerSettings.insecureHttpOption = InsecureHttpOption.AlwaysAllowed;
+
+            Directory.CreateDirectory("Builds/Win");
+            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+            {
+                scenes = new[] { ScenePath },
+                locationPathName = "Builds/Win/TextRun.exe",
+                target = BuildTarget.StandaloneWindows64,
+                options = BuildOptions.None
+            });
+            var summary = report.summary;
+            Debug.Log("Derleme sonucu: " + summary.result + ", sure: " + summary.totalTime);
+            EditorApplication.Exit(summary.result == BuildResult.Succeeded ? 0 : 1);
         }
 
         // ---------- Android derlemesi ----------
