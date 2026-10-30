@@ -21,3 +21,19 @@ node tools/words/sync.mjs       # Unity'ye (client/Assets/Resources/Words) kopya
 ```
 
 Listeleri değiştirdikten sonra önce `validate`, sonra `sync` çalıştırılır.
+
+## Sunucu (Nakama)
+
+Yerel geliştirme sunucusu Docker ile çalışır (Docker Desktop açık olmalı):
+
+```
+cd server
+npm install          # ilk seferde
+npm run build        # src/main.ts -> build/index.js
+docker compose up -d # Nakama + PostgreSQL (yalnızca 127.0.0.1'den erişilir)
+docker compose restart nakama   # kodu değiştirip derledikten sonra
+```
+
+- API: http://127.0.0.1:7350 , Yönetim paneli: http://127.0.0.1:7351
+- Sunucu kodu `server/src/main.ts`. Nakama, kaydedilen fonksiyonları kodu statik okuyarak bulur;
+  `InitModule` ve RPC fonksiyonları dosyada en üst seviyede durmalıdır (bkz. `server/build.mjs`).
