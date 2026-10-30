@@ -120,9 +120,13 @@ namespace TextRun.EditorTools
             check(Mathf.Abs(loop[0]) < 0.02f && Mathf.Abs(loop[loop.Length - 1]) < 0.02f, "ses yaris muzigi: dongu basi/sonu sessiz (tiklama yok)");
             check(Mathf.Abs(loop[0] - loop[loop.Length - 1]) < 0.02f, "ses yaris muzigi: dongu sicramasi yok");
 
-            var applause = SoundSynth.ApplauseSamples();
-            Common("alkis", applause, 3.8f);
-            check(Mathf.Abs(applause[0]) < 0.02f && Mathf.Abs(applause[applause.Length - 1]) < 0.02f, "ses alkis: basi/sonu sessiz");
+            var podium = SoundSynth.FanfareSamples(true);
+            Common("fanfar (podyum)", podium, 2.1f);
+            check(Mathf.Abs(podium[0]) < 0.02f && Mathf.Abs(podium[podium.Length - 1]) < 0.02f, "ses fanfar (podyum): basi/sonu sessiz");
+
+            var done = SoundSynth.FanfareSamples(false);
+            Common("bitti sesi", done, 1.2f);
+            check(Mathf.Abs(done[0]) < 0.02f && Mathf.Abs(done[done.Length - 1]) < 0.02f, "ses bitti sesi: basi/sonu sessiz");
         }
 
         // Harf süzgeci: yanlış tuşlar yok sayılır, kelime doğru harfi bekler

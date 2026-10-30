@@ -2,16 +2,16 @@ using UnityEngine;
 
 namespace TextRun.Audio
 {
-    // Yarış sesleri: geri sayım tikleri, başlangıç düdüğü, yarış müziği ve bitiş alkışı.
+    // Yarış sesleri: geri sayım tikleri, başlangıç düdüğü, yarış müziği ve bitiş jingle'ı.
     // Sesler SoundSynth ile kodla üretilir. Açık/kapalı ayarı cihazda saklanır.
     public class RaceAudio : MonoBehaviour
     {
         const string SoundKey = "textrun.sound";
-        const float MusicVolume = 0.32f;
+        const float MusicVolume = 0.22f;
 
         AudioSource sfx;
         AudioSource music;
-        AudioClip tick, whistle, loop, applause;
+        AudioClip tick, whistle, loop, fanfarePodium, fanfareDone;
 
         public bool Enabled
         {
@@ -37,7 +37,8 @@ namespace TextRun.Audio
             tick = SoundSynth.ToClip("tick", SoundSynth.TickSamples());
             whistle = SoundSynth.ToClip("whistle", SoundSynth.WhistleSamples());
             loop = SoundSynth.ToClip("raceLoop", SoundSynth.RaceLoopSamples());
-            applause = SoundSynth.ToClip("applause", SoundSynth.ApplauseSamples());
+            fanfarePodium = SoundSynth.ToClip("fanfarePodium", SoundSynth.FanfareSamples(true));
+            fanfareDone = SoundSynth.ToClip("fanfareDone", SoundSynth.FanfareSamples(false));
         }
 
         public void Tick()
@@ -59,11 +60,11 @@ namespace TextRun.Audio
             if (music != null) music.Stop();
         }
 
-        // Yarış bitişi: müzik durur, alkış çalar. İlk üçe girenler için daha coşkulu.
+        // Yarış bitişi: müzik durur, jingle çalar. İlk üçe girenler için zafer fanfarı, diğerleri için kısa "bitti" sesi.
         public void Finish(bool onPodium)
         {
             StopMusic();
-            if (Enabled) sfx.PlayOneShot(applause, onPodium ? 1f : 0.55f);
+            if (Enabled) sfx.PlayOneShot(onPodium ? fanfarePodium : fanfareDone, 0.9f);
         }
     }
 }

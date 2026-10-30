@@ -50,10 +50,15 @@ namespace TextRun.Game
             language = (GameLanguage)PlayerPrefs.GetInt(LanguageKey, (int)GameLanguage.Turkish);
             hostInput = ServerSettings.Host;
 
+            var timer = System.Diagnostics.Stopwatch.StartNew();
             sound = gameObject.AddComponent<RaceAudio>();
+            Debug.Log("[basla] sesler hazirlandi: " + timer.ElapsedMilliseconds + " ms");
+
             gameObject.AddComponent<DevHarness>(); // komut satırında -devharness yoksa kendini kaldırır
+            timer.Restart();
             view = gameObject.AddComponent<OnlineRaceView>();
             view.Build();
+            Debug.Log("[basla] pist ve arena kuruldu: " + timer.ElapsedMilliseconds + " ms");
             view.SetAllActive(new[] { "", "", "", "", "" }, 2);
             view.ResetToStart();
 
@@ -412,8 +417,7 @@ namespace TextRun.Game
 
             GUI.Label(new Rect(0f, top + 20f, width, 60f), "TextRun", titleStyle);
 
-            if (GUI.Button(new Rect(width - 118f, top + 4f, 110f, 28f), T(sound.Enabled ? "soundOn" : "soundOff")))
-                sound.Enabled = !sound.Enabled;
+            DrawSoundButton(new Rect(width - 54f, top + 8f, 42f, 42f));
 
             float y = top + 100f;
             GUI.Label(new Rect(20f, y, width - 40f, 26f), T("language"), labelStyle);
@@ -453,6 +457,19 @@ namespace TextRun.Game
             return clicked;
         }
 
+        // Hoparlör simgesi: dokununca ses açılır/kapanır; kapalıyken simgenin üstünde kırmızı çarpı görünür.
+        void DrawSoundButton(Rect rect)
+        {
+            GUI.color = new Color(0f, 0f, 0f, 0.45f);
+            GUI.DrawTexture(rect, SoundIcon.Disc());
+            GUI.color = Color.white;
+
+            var icon = new Rect(rect.x + 7f, rect.y + 7f, rect.width - 14f, rect.height - 14f);
+            GUI.DrawTexture(icon, SoundIcon.Get(sound.Enabled));
+
+            if (GUI.Button(rect, GUIContent.none, GUIStyle.none)) sound.Enabled = !sound.Enabled;
+        }
+
         void SetLanguage(GameLanguage value)
         {
             language = value;
@@ -489,7 +506,7 @@ namespace TextRun.Game
         {
             // Üstte 3D pist, altta kelimeler (yarıştaki düzenin aynısı; yazmak için henüz erken)
             LayoutRaceArea(width, height, scale, out var box, out float devButtonY);
-            view.DrawLabels(scale, T("you"), T("bot"), T("finishLine"));
+            view.DrawLabels(scale, T("you"), T("bot"));
             progressStrip.Draw(new Rect(8f, top + 8f, width - 16f, 26f), players, wordCount, net.UserId, 0f);
 
             int seconds = Mathf.Max(0, Mathf.CeilToInt(countdownEndsLocal - Time.realtimeSinceStartup));
@@ -518,7 +535,7 @@ namespace TextRun.Game
         void DrawRacing(float width, float height, float top, float scale)
         {
             LayoutRaceArea(width, height, scale, out var box, out float devButtonY);
-            view.DrawLabels(scale, T("you"), T("bot"), T("finishLine"));
+            view.DrawLabels(scale, T("you"), T("bot"));
             // Kendi ilerlemen sunucu cevabını beklemeden yerel durumdan gösterilir
             progressStrip.Draw(new Rect(8f, top + 8f, width - 16f, 26f), players, wordCount, net.UserId, (float)typing.CurrentIndex / Mathf.Max(1, wordCount));
 

@@ -103,52 +103,49 @@ namespace TextRun.Audio
             return data;
         }
 
-        // Alkış: çok sayıda kısa, filtreli gürültü patlaması. Yükselir, sürer, azalır.
-        public static float[] ApplauseSamples()
+        // Bitiş jingle'ı. Podyum (ilk 3): C majör arpej + parlak final akoru. Diğerleri: iki notalık yumuşak "bitti" sesi.
+        // Gerçek alkış kaydı kodla inandırıcı üretilemediği için müzikal bir ses seçildi.
+        public static float[] FanfareSamples(bool podium)
         {
-            float duration = 3.8f;
+            float duration = podium ? 2.1f : 1.2f;
             int n = (int)(duration * SampleRate);
             var data = new float[n];
-            var rng = new System.Random(23);
 
-            float Envelope(float t)
-            {
-                float rise = Mathf.Min(1f, t / 0.35f);
-                float fall = Mathf.Min(1f, (duration - t) / 1.3f);
-                return rise * fall;
-            }
-
-            // Hafif zemin gürültüsü (kalabalık uğultusu)
-            float low = 0f;
-            for (int i = 0; i < n; i++)
-            {
-                float t = i / (float)SampleRate;
-                low += (((float)rng.NextDouble() - 0.5f) - low) * 0.25f;
-                data[i] = low * 0.35f * Envelope(t);
-            }
-
-            // Tek tek el çırpmaları
-            int clapCount = 520;
-            for (int c = 0; c < clapCount; c++)
-            {
-                float time = (float)rng.NextDouble() * duration;
-                if (rng.NextDouble() > Envelope(time)) continue;
-
-                int start = (int)(time * SampleRate);
-                int length = (int)((0.012f + (float)rng.NextDouble() * 0.02f) * SampleRate);
-                float amp = 0.3f + (float)rng.NextDouble() * 0.7f;
-                float lp = 0f;
-                for (int i = 0; i < length && start + i < n; i++)
+            // Notalar: başlangıç (sn), frekans, süre (sn), ses
+            float[][] notes = podium
+                ? new[]
                 {
-                    float t = i / (float)SampleRate;
-                    float noise = (float)rng.NextDouble() - 0.5f;
-                    lp += (noise - lp) * 0.6f;
-                    data[start + i] += lp * Mathf.Exp(-t * 130f) * amp;
+                    new[] { 0.00f, 523.25f, 0.30f, 0.8f },  // C5
+                    new[] { 0.14f, 659.25f, 0.30f, 0.8f },  // E5
+                    new[] { 0.28f, 783.99f, 0.30f, 0.8f },  // G5
+                    new[] { 0.42f, 1046.5f, 1.55f, 0.9f },  // C6 (uzun)
+                    new[] { 0.42f, 659.25f, 1.55f, 0.45f }, // akor: E5
+                    new[] { 0.42f, 783.99f, 1.55f, 0.45f }, // akor: G5
+                    new[] { 0.42f, 130.81f, 1.55f, 0.5f },  // bas: C3
                 }
+                : new[]
+                {
+                    new[] { 0.00f, 392.00f, 0.35f, 0.7f },  // G4
+                    new[] { 0.28f, 523.25f, 0.90f, 0.8f },  // C5
+                };
+
+            foreach (var note in notes)
+            {
+                float start = note[0], frequency = note[1], length = note[2], volume = note[3];
+                AddNote(data, (int)(start * SampleRate), (int)(length * SampleRate), (t) =>
+                {
+                    float attack = Mathf.Min(1f, t / 0.008f);
+                    float release = Mathf.Clamp01((length - t) / 0.28f);
+                    float decay = 0.62f + 0.38f * Mathf.Exp(-t * 5f);
+                    float vibrato = 1f + 0.004f * Mathf.Sin(TwoPi * 5.5f * t);
+                    float p = TwoPi * frequency * vibrato * t;
+                    float tone = Mathf.Sin(p) + 0.5f * Mathf.Sin(2f * p) + 0.22f * Mathf.Sin(3f * p);
+                    return tone * attack * release * decay * volume * 0.35f;
+                });
             }
 
-            Normalize(data, 0.8f);
-            FadeEdges(data, 0.01f);
+            Normalize(data, 0.75f);
+            FadeEdges(data, 0.004f);
             return data;
         }
 

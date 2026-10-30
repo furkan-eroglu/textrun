@@ -39,7 +39,6 @@ namespace TextRun.Race
         Camera cam;
         RaceCamera raceCamera;
         GUIStyle nameStyle;
-        GUIStyle finishStyle;
 
         public Camera Cam => cam;
 
@@ -68,7 +67,7 @@ namespace TextRun.Race
                 cam = camObject.AddComponent<Camera>();
             }
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.62f, 0.82f, 0.95f);
+            cam.backgroundColor = new Color(0.10f, 0.11f, 0.18f);
             raceCamera = cam.GetComponent<RaceCamera>();
             if (raceCamera == null) raceCamera = cam.gameObject.AddComponent<RaceCamera>();
             raceCamera.enabled = false; // kamerayı bu sınıf kendisi hareket ettirir
@@ -178,21 +177,10 @@ namespace TextRun.Race
         }
 
         // Karakterlerin üstüne isim etiketi çizer. guiScale: arayüz ölçeği, you/bot: çevrilmiş etiketler.
-        public void DrawLabels(float guiScale, string youLabel, string botLabel, string finishLabel)
+        public void DrawLabels(float guiScale, string youLabel, string botLabel)
         {
             if (cam == null || runners == null) return;
             if (nameStyle == null) nameStyle = new GUIStyle(GUI.skin.label) { fontSize = 13, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
-
-            if (finishStyle == null)
-                finishStyle = new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
-
-            // Bitiş kapısındaki pano yazısı (kameraya yakınsa büyür, uzaksa küçülür; çok uzaksa çizilmez)
-            Vector3 finishScreen = cam.WorldToScreenPoint(TrackBuilder.FinishLabelPosition(trackLength));
-            if (finishScreen.z > 3f && finishScreen.z < 140f)
-            {
-                finishStyle.fontSize = Mathf.RoundToInt(Mathf.Clamp(420f / finishScreen.z, 9f, 28f));
-                DrawOutlined(new Rect(finishScreen.x / guiScale - 80f, (Screen.height - finishScreen.y) / guiScale - 14f, 160f, 28f), finishLabel, Color.white, finishStyle);
-            }
 
             for (int i = 0; i < laneCount; i++)
             {

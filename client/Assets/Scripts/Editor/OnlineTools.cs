@@ -176,6 +176,10 @@ namespace TextRun.EditorTools
             Render(view.Cam, 540, 960, Path.ChangeExtension(path, null) + "-portrait.png");
             // Klavye açıkken küçük telefonda (ör. 375x667 pt) 3D alana kalan yer: yaklaşık 375x217 pt
             Render(view.Cam, 540, 312, Path.ChangeExtension(path, null) + "-small.png");
+
+            // Bitişe yaklaşırken: kapı, FINISH yazısı ve arka tribün yakından
+            view.SnapPositions(new[] { 53f, 50f, 52f, 49f, 54f }, true);
+            Render(view.Cam, 540, 520, Path.ChangeExtension(path, null) + "-finish.png");
             Debug.Log("Goruntu kaydedildi.");
         }
 

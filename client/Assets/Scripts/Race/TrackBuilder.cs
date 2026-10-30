@@ -4,19 +4,14 @@ using UnityEngine;
 namespace TextRun.Race
 {
     // Beş kulvarlı düz pisti kurar. Başlangıç z=0, bitiş z=trackLength.
+    // Pist kapalı bir arenanın içindedir (bkz. StandsBuilder); bitiş kapısı FinishGateBuilder'dadır.
     public static class TrackBuilder
     {
-        static readonly Color Grass = new Color(0.42f, 0.74f, 0.38f);
+        static readonly Color ArenaFloor = new Color(0.30f, 0.32f, 0.41f);
         static readonly Color LaneA = new Color(0.86f, 0.58f, 0.46f);
         static readonly Color LaneB = new Color(0.80f, 0.52f, 0.41f);
         static readonly Color White = new Color(0.97f, 0.97f, 0.97f);
         static readonly Color Black = new Color(0.12f, 0.12f, 0.14f);
-
-        // "BİTİŞ" panosunun merkezi (dünya konumu); yazı arayüzde bu noktaya hizalanarak çizilir.
-        public static Vector3 FinishLabelPosition(float trackLength)
-        {
-            return new Vector3(0f, 3.6f, trackLength);
-        }
 
         public static float LaneX(int lane, int laneCount, float laneWidth)
         {
@@ -29,7 +24,8 @@ namespace TextRun.Race
             float width = laneCount * laneWidth;
             float centerZ = trackLength / 2f;
 
-            Mats.Primitive("Grass", PrimitiveType.Cube, root, new Vector3(0f, -0.06f, centerZ), new Vector3(120f, 0.1f, trackLength + 120f), Grass);
+            // Arena zemini (tribünlerin altına kadar uzanır; duvarların dışı zaten görünmez)
+            Mats.Primitive("Floor", PrimitiveType.Cube, root, new Vector3(0f, -0.06f, centerZ), new Vector3(60f, 0.1f, trackLength + 60f), ArenaFloor);
 
             for (int i = 0; i < laneCount; i++)
             {
@@ -46,12 +42,14 @@ namespace TextRun.Race
             }
 
             Mats.Primitive("StartLine", PrimitiveType.Cube, root, new Vector3(0f, 0.014f, 0f), new Vector3(width, 0.01f, 0.25f), White);
-            BuildFinishLine(root, width, trackLength);
+            BuildFinishStripe(root, width, trackLength);
+            FinishGateBuilder.Build(root, width, trackLength);
             StandsBuilder.Build(root, laneCount, laneWidth, trackLength);
             return root;
         }
 
-        static void BuildFinishLine(Transform root, float width, float z)
+        // Yerdeki kareli bitiş çizgisi
+        static void BuildFinishStripe(Transform root, float width, float z)
         {
             const float cell = 0.35f;
             int columns = Mathf.CeilToInt(width / cell);
@@ -67,11 +65,6 @@ namespace TextRun.Race
                         (row + col) % 2 == 0 ? White : Black);
                 }
             }
-
-            // Bitiş kapısı: iki direk ve üstte "BİTİŞ" yazısının (ekranda çizilir) duracağı koyu pano
-            Mats.Primitive("GatePostL", PrimitiveType.Cube, root, new Vector3(-width / 2f - 0.2f, 2f, z), new Vector3(0.25f, 4f, 0.25f), White);
-            Mats.Primitive("GatePostR", PrimitiveType.Cube, root, new Vector3(width / 2f + 0.2f, 2f, z), new Vector3(0.25f, 4f, 0.25f), White);
-            Mats.Primitive("GateBanner", PrimitiveType.Cube, root, FinishLabelPosition(z), new Vector3(width + 0.65f, 1.1f, 0.3f), new Color(0.1f, 0.12f, 0.2f));
         }
     }
 }

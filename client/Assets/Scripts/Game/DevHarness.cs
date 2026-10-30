@@ -25,6 +25,7 @@ namespace TextRun.Game
             }
 
             AudioListener.volume = 0f; // otomatik testte hoparlörden ses çıkmasın
+            Application.runInBackground = true; // pencere odağı kaybedince oyun durmasın
             dir = args[shots + 1];
             Directory.CreateDirectory(dir);
             controller = GetComponent<OnlineGameController>();
@@ -56,9 +57,18 @@ namespace TextRun.Game
 
         IEnumerator Run()
         {
+            var audio = GetComponent<TextRun.Audio.RaceAudio>();
+            audio.Enabled = true; // önceki yarım kalan çalıştırmadan kalan ayar sonucu bozmasın
+
             yield return WaitForPage("Menu", 30f);
             yield return new WaitForSeconds(1f);
             yield return Shot("1-menu");
+
+            // Ses simgesinin "kapalı" (çarpılı) görünümü
+            audio.Enabled = false;
+            yield return new WaitForSeconds(0.3f);
+            yield return Shot("1b-menu-muted");
+            audio.Enabled = true;
 
             controller.DevStartSearch();
             yield return WaitForPage("Searching", 15f);
