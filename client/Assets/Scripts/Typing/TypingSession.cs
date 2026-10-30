@@ -70,6 +70,12 @@ namespace TextRun.Typing
             return true;
         }
 
+        // Harf harf girişte reddedilen yanlış tuşlar doğruluğa yansır.
+        public void RegisterMistakes(int count)
+        {
+            wrongChars += Math.Max(0, count);
+        }
+
         // Sunucu farklı bir sıra bildirirse (ör. yeniden bağlanma) yerel durumu ona eşitler.
         public void SyncTo(int serverIndex)
         {

@@ -148,10 +148,10 @@ namespace TextRun.Online
             throw last ?? new Exception("yarış bulunamadı");
         }
 
-        public void SubmitWord(string word)
+        public void SubmitWord(string word, int mistakes = 0)
         {
             if (socket == null || matchId == null || string.IsNullOrEmpty(word)) return;
-            _ = SendAsync(Op.Submit, JsonUtility.ToJson(new SubmitDto { w = word }));
+            _ = SendAsync(Op.Submit, JsonUtility.ToJson(new SubmitDto { w = word, e = mistakes }));
         }
 
         async Task SendAsync(long opCode, string json)

@@ -15,12 +15,22 @@ namespace TextRun.Typing
         static readonly Color RemainingColor = new Color(0.78f, 0.8f, 0.85f); // aktif kelimede sırada bekleyen harfler: açık gri
         static readonly Color UpcomingColor = new Color(0.55f, 0.57f, 0.65f); // sıradaki kelimeler: gri
 
+        const float MistakeFlashSeconds = 0.15f;
+
         GUIStyle style;
         int lineStart;
+        float flashUntil;
 
         public void Reset()
         {
             lineStart = 0;
+            flashUntil = 0f;
+        }
+
+        // Yanlış tuşa basıldığında aktif kelimenin zemini kısa süre kırmızıya döner (harfler değişmez).
+        public void FlashMistake()
+        {
+            flashUntil = Time.realtimeSinceStartup + MistakeFlashSeconds;
         }
 
         // Kutuya dokunulduysa true döner (klavyeyi açmak için).
@@ -77,7 +87,8 @@ namespace TextRun.Typing
                     string typed = liveText ?? "";
                     CountMatch(session, word, typed, out int match, out int wrong);
 
-                    GUI.color = wrong > 0 ? new Color(0.38f, 0.18f, 0.2f, 1f) : new Color(0.2f, 0.26f, 0.42f, 1f);
+                    bool flashing = Time.realtimeSinceStartup < flashUntil;
+                    GUI.color = wrong > 0 || flashing ? new Color(0.38f, 0.18f, 0.2f, 1f) : new Color(0.2f, 0.26f, 0.42f, 1f);
                     GUI.DrawTexture(new Rect(rect.x - 4f, rect.y, rect.width + 8f, rect.height), Texture2D.whiteTexture);
                     GUI.color = Color.white;
 

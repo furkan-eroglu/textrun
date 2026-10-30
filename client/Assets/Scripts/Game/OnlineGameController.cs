@@ -27,10 +27,10 @@ namespace TextRun.Game
         string noticeText = "";
 
         TypingSession typing;
+        WordInput input;
         PlayerDto[] players = new PlayerDto[0];
         ResultDto[] results = new ResultDto[0];
         int wordCount;
-        string prevText = "";
         string hostInput;
         bool searchBusy;
 
@@ -112,7 +112,6 @@ namespace TextRun.Game
             view.SetRacing(false);
             wordView.Reset();
             keyboard.Text = "";
-            prevText = "";
 
             try
             {
@@ -186,12 +185,23 @@ namespace TextRun.Game
             typing = new TypingSession(s.words, language);
             wordCount = s.words.Length;
             wordView.Reset();
+            input = new WordInput(language);
+            BeginInput();
+        }
+
+        // Giriş süzgecini şu anki aktif kelimeye ayarlar ve klavye metnini temizler.
+        void BeginInput()
+        {
+            if (input == null || typing == null) return;
+            input.Begin(typing.Finished ? "" : typing.WordAt(typing.CurrentIndex));
+            keyboard.Text = "";
         }
 
         void SyncLocalIndex()
         {
             foreach (var p in players)
                 if (p.id == net.UserId) typing.SyncTo(p.index);
+            BeginInput();
         }
 
         void OnGo(GoDto go)
@@ -201,8 +211,7 @@ namespace TextRun.Game
             typing.MarkStarted(Time.realtimeSinceStartup);
             view.SetRacing(true);
             keyboard.Open(KeyboardKind.Default);
-            keyboard.Text = "";
-            prevText = "";
+            BeginInput();
         }
 
         void OnProgress(ProgressDto progress)
@@ -215,7 +224,11 @@ namespace TextRun.Game
         {
             if (typing == null) return;
             if (ack.kind == AckKind.Disqualified) noticeText = T("disqualifiedNotice");
-            if (ack.index != typing.CurrentIndex) typing.SyncTo(ack.index);
+            if (ack.index != typing.CurrentIndex)
+            {
+                typing.SyncTo(ack.index);
+                BeginInput();
+            }
         }
 
         void OnResults(ResultsDto r)
@@ -231,29 +244,62 @@ namespace TextRun.Game
         {
             net?.Pump();
 
-            if (screen != Page.Racing || typing == null) return;
-
-            string text = keyboard.Text ?? "";
-            int space = text.IndexOf(' ');
-            if (space >= 0)
-            {
-                string typed = text.Substring(0, space);
-                string rest = text.Substring(space + 1).TrimStart();
-                SubmitTyped(typed);
-                keyboard.Text = rest;
-                text = rest;
-            }
-            prevText = text;
+            if (screen != Page.Racing || typing == null || input == null) return;
+            PollTyping();
         }
 
-        void SubmitTyped(string typed)
+        // Klavyeden gelen yeni harfleri sırayla süzgeçten geçirir. Klavye metni her zaman "yalnızca doğru harfler" haline geri alınır,
+        // böylece yanlış harfler, otomatik düzeltmeler ya da klavyenin kendi eklemeleri girişi bozamaz.
+        void PollTyping()
         {
-            if (typed.Length == 0 || typing.Finished) return;
+            string raw = keyboard.Text ?? "";
+            if (raw == input.Entered) return;
 
-            // Kelime doğruysa hemen yerelde ilerletiriz (gecikme hissedilmesin); sunucu cevabı (ACK) gerekirse düzeltir.
-            // Yanlışsa da sunucuya göndeririz, hata sayısı sunucuda tutulur.
-            typing.Submit(typed, Time.realtimeSinceStartup);
-            net.SubmitWord(typed);
+            if (raw.Length > input.Entered.Length && StartsWithIgnoreCase(raw, input.Entered))
+            {
+                for (int i = input.Entered.Length; i < raw.Length && !typing.Finished; i++) HandleKey(raw[i]);
+            }
+            else if (raw.Length < input.Entered.Length && StartsWithIgnoreCase(input.Entered, raw))
+            {
+                input.TrimTo(raw.Length); // silme tuşu
+            }
+
+            if (keyboard.Text != input.Entered) keyboard.Text = input.Entered;
+        }
+
+        bool StartsWithIgnoreCase(string text, string prefix)
+        {
+            if (text.Length < prefix.Length) return false;
+            for (int i = 0; i < prefix.Length; i++)
+                if (TextNormalizer.ToLower(text[i], language) != prefix[i]) return false;
+            return true;
+        }
+
+        void HandleKey(char c)
+        {
+            switch (input.Press(c))
+            {
+                case KeyResult.Rejected:
+                    wordView.FlashMistake();
+                    break;
+
+                case KeyResult.Submit:
+                    SubmitCurrentWord();
+                    break;
+            }
+        }
+
+        void SubmitCurrentWord()
+        {
+            string word = input.Entered;
+            int mistakes = input.MistakesThisWord;
+
+            // Yerelde hemen ilerletiriz (gecikme hissedilmesin); sunucu cevabı (ACK) gerekirse düzeltir.
+            typing.Submit(word, Time.realtimeSinceStartup);
+            typing.RegisterMistakes(mistakes);
+            net.SubmitWord(word, mistakes);
+
+            input.Begin(typing.Finished ? "" : typing.WordAt(typing.CurrentIndex));
         }
 
         // ---------- Arayüz ----------
@@ -426,10 +472,11 @@ namespace TextRun.Game
                 + "  |  " + typing.CurrentIndex + "/" + typing.Count;
             GUI.Label(new Rect(8f, statsY, width - 16f, 24f), stats, statsStyle);
 
-            string live = keyboard.Text ?? "";
-            if (wordView.Draw(box, typing, live)) keyboard.Open(KeyboardKind.Default);
+            // Kelime kutusunda yalnızca doğru harfler (yeşil) görünür. Altta kısa bir ipucu satırı var.
+            if (wordView.Draw(box, typing, input.Entered)) keyboard.Open(KeyboardKind.Default);
 
-            GUI.Label(new Rect(8f, box.yMax + 4f, width - 16f, 34f), live.Length == 0 ? T("tapToType") : live, typedStyle);
+            string hint = input.Complete ? T("pressSpace") : input.Entered.Length == 0 ? T("tapToType") : "";
+            GUI.Label(new Rect(8f, box.yMax + 4f, width - 16f, 34f), hint, typedStyle);
 
             if (noticeText.Length > 0)
             {
@@ -455,7 +502,7 @@ namespace TextRun.Game
         void DrawResults(float width, float height, float top)
         {
             FullViewport();
-            DrawPanel(new Rect(0f, 0f, width, height), 0.7f);
+            DrawPanel(new Rect(0f, 0f, width, height), 0.96f);
             GUI.Label(new Rect(0f, top + 10f, width, 50f), T("results"), titleStyle);
 
             float y = top + 70f;

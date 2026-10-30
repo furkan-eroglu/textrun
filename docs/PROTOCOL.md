@@ -24,7 +24,7 @@ Veri, UTF-8 JSON metnidir.
 
 | Op | Yön | Ad | Gövde |
 |---|---|---|---|
-| 1 | istemci → sunucu | `SUBMIT` | `{ "w": "kelime" }` — oyuncu boşluğa basınca yazdığı kelime |
+| 1 | istemci → sunucu | `SUBMIT` | `{ "w": "kelime", "e": 0 }` — kelime tamamlanıp boşluğa basılınca gönderilir. `e`: bu kelimede basılan yanlış tuş sayısı (yalnızca doğruluk istatistiği için, 0-50 arası kabul edilir) |
 | 100 | sunucu → istemci | `SNAPSHOT` | Odaya girene mevcut durum (yeniden bağlanana da gider) |
 | 101 | sunucu → hepsi | `ROSTER` | Lobide oyuncu listesi değişti |
 | 102 | sunucu → hepsi | `COUNTDOWN` | Geri sayım başladı. **Kelime listesi burada gelir** |
@@ -62,6 +62,8 @@ Veri, UTF-8 JSON metnidir.
 { "ok": true, "kind": "correct | wrong | finished | disqualified", "index": 12 }
 ```
 
+- **Harf harf giriş (istemci kuralı):** İstemci yalnızca sıradaki doğru harfi kabul eder, yanlış tuşları yok sayar (oyuncu silmek zorunda kalmaz). Kelime tamamlanınca boşlukla gönderilir. Sunucu yine de kelimeyi doğrular.
+- **Doğruluk** tuş düzeyindedir: doğru tuşlar / (doğru tuşlar + bildirilen yanlış tuşlar ve yanlış kelimeler).
 - **Yanlış kelime ilerletmez.** `ok:false` gelirse `index` değişmez; oyuncu aynı kelimeyi doğru yazana kadar ilerleyemez. İstemci kelimeyi kırmızı gösterip girişi temizlemelidir.
 - Yarış başlamadan gönderilen kelimeler sessizce yok sayılır (ACK gelmez).
 

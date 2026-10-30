@@ -64,10 +64,51 @@ namespace TextRun.EditorTools
             s.SyncTo(1);
             Check(s.CurrentIndex == 1 && s.StateAt(0) == WordState.Correct && s.StateAt(1) == WordState.Pending, "SyncTo sunucu sirasina esitler");
 
+            TestWordInput(Check);
             TestWordDatabase(Check);
 
             Debug.Log(failures == 0 ? "TUM TESTLER GECTI" : failures + " TEST BASARISIZ");
             EditorApplication.Exit(failures == 0 ? 0 : 1);
+        }
+
+        // Harf süzgeci: yanlış tuşlar yok sayılır, kelime doğru harfi bekler
+        static void TestWordInput(Action<bool, string> check)
+        {
+            var input = new WordInput(GameLanguage.Turkish);
+            input.Begin("kalem");
+
+            foreach (char c in "kal") input.Press(c);
+            check(input.Entered == "kal" && input.MistakesThisWord == 0, "giris: kal dogru kabul");
+
+            foreach (char c in "asdf") check(input.Press(c) == KeyResult.Rejected, "giris: '" + c + "' yok sayildi");
+            check(input.Entered == "kal", "giris: yanlis harflerden sonra kal ayni kalir (silmeye gerek yok)");
+            check(input.MistakesThisWord == 4, "giris: 4 hata sayildi");
+
+            check(input.Press(' ') == KeyResult.Ignored, "giris: kelime bitmeden bosluk yok sayilir");
+            check(input.Press('E') == KeyResult.Accepted, "giris: buyuk harf de kabul");
+            check(input.Press('m') == KeyResult.Accepted && input.Complete, "giris: kelime tamamlandi");
+            check(input.Press('x') == KeyResult.Rejected, "giris: kelime bittikten sonra fazla harf yok sayilir");
+            check(input.Press(' ') == KeyResult.Submit, "giris: tamam kelime + bosluk = gonder");
+
+            input.Begin("ısı"); // ısı
+            check(input.Press('i') == KeyResult.Rejected, "giris: Turkce i, ı yerine gecmez");
+            check(input.Press('I') == KeyResult.Accepted, "giris: buyuk I, Turkcede ı olur");
+            check(input.Press('S') == KeyResult.Accepted, "giris: S -> s");
+            check(input.Press('I') == KeyResult.Accepted && input.Entered == "ısı", "giris: Turkce kelime tamam");
+
+            input.Begin("ilac");
+            check(input.Press('İ') == KeyResult.Accepted, "giris: İ (noktali buyuk) -> i");
+
+            input.Begin("kalem");
+            foreach (char c in "kale") input.Press(c);
+            input.TrimTo(2);
+            check(input.Entered == "ka", "giris: silme tusu girisi kisaltir");
+            input.TrimTo(-5);
+            check(input.Entered == "", "giris: silme sinirda kalir");
+
+            var english = new WordInput(GameLanguage.English);
+            english.Begin("window");
+            check(english.Press('W') == KeyResult.Accepted, "giris (EN): buyuk harf kabul");
         }
 
         static void TestWordDatabase(Action<bool, string> check)

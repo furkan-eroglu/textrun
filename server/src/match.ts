@@ -10,6 +10,7 @@ import {
   playerList,
   publicPlayers,
   removeHuman,
+  reserveSeat,
   shouldStartCountdown,
   startCountdown,
   stepBots,
@@ -69,9 +70,10 @@ export function matchJoinAttempt(
   if (!metadata || metadata.lang !== state.lang) {
     return { state, accept: false, rejectMessage: REJECT.LANGUAGE_MISMATCH };
   }
-  const outcome = canJoin(state, presence.userId);
+  const outcome = canJoin(state, presence.userId, Date.now());
   if (outcome === "full") return { state, accept: false, rejectMessage: REJECT.ROOM_FULL };
   if (outcome === "closed") return { state, accept: false, rejectMessage: REJECT.ROOM_CLOSED };
+  if (outcome === "joined") reserveSeat(state, presence.userId, Date.now());
   return { state, accept: true };
 }
 
@@ -124,12 +126,15 @@ export function matchLoop(
     if (message.opCode !== OP.SUBMIT) continue;
 
     let word = "";
+    let mistakes = 0;
     try {
-      word = JSON.parse(nk.binaryToString(message.data)).w;
+      const body = JSON.parse(nk.binaryToString(message.data));
+      word = body.w;
+      mistakes = body.e;
     } catch (e) {
       continue;
     }
-    const outcome = submitWord(state, message.sender.userId, word, now);
+    const outcome = submitWord(state, message.sender.userId, word, now, mistakes);
     if (outcome === "ignored") continue;
 
     const player = state.players[message.sender.userId];

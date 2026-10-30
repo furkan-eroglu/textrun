@@ -22,6 +22,7 @@ namespace TextRun.Common
             { "go", new[] { "BAŞLA!", "GO!" } },
             { "tapToType", new[] { "Yazmak için kutuya dokun", "Tap the box to type" } },
             { "typed", new[] { "Yazılan", "Typed" } },
+            { "pressSpace", new[] { "Boşluk tuşuna bas", "Press space" } },
             { "wpm", new[] { "WPM", "WPM" } },
             { "accuracy", new[] { "Doğruluk", "Accuracy" } },
             { "word", new[] { "Kelime", "Word" } },

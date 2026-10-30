@@ -106,6 +106,7 @@ namespace TextRun.Online
     public class SubmitDto
     {
         public string w;
+        public int e; // bu kelimede basılan yanlış tuş sayısı (yalnızca doğruluk istatistiği için)
     }
 
     [Serializable]

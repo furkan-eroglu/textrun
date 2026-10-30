@@ -6,10 +6,12 @@ import {
   addHuman,
   beginRace,
   canJoin,
+  expireReservations,
   createRaceState,
   humanCount,
   playerList,
   removeHuman,
+  reserveSeat,
   shouldStartCountdown,
   startCountdown,
   stepBots,
@@ -70,12 +72,40 @@ test("lobi: kapasite, yeniden baglanma, kapali oda", () => {
   fillHumans(state, 5);
   assert.equal(humanCount(state), 5);
   assert.equal(addHuman(state, "u6", "Fazla", 0), "full");
-  assert.equal(canJoin(state, "u6"), "full");
+  assert.equal(canJoin(state, "u6", 0), "full");
   assert.equal(addHuman(state, "u1", "Oyuncu 1", 0), "rejoined");
 
   startRace(state);
   assert.equal(addHuman(state, "gec", "Gec", 0), "closed");
-  assert.equal(canJoin(state, "u2"), "rejoined");
+  assert.equal(canJoin(state, "u2", 0), "rejoined");
+});
+
+test("lobi: katilma izni verilen ama henuz girmemis oyuncular da kapasiteden sayilir (6. kisi reddedilir)", () => {
+  const state = makeState();
+  // 6 oyuncu AYNI ANDA katilma izni ister; hicbiri henuz matchJoin'e ulasmadi
+  const outcomes = [1, 2, 3, 4, 5, 6].map((i) => {
+    const outcome = canJoin(state, "u" + i, 0);
+    if (outcome === "joined") reserveSeat(state, "u" + i, 0);
+    return outcome;
+  });
+  assert.deepEqual(outcomes, ["joined", "joined", "joined", "joined", "joined", "full"]);
+
+  // Ayni oyuncu tekrar izin isterse ikinci koltuk almaz
+  assert.equal(canJoin(state, "u1", 100), "joined");
+  assert.equal(canJoin(state, "u6", 100), "full");
+
+  // Gercekten girince rezervasyon gercek koltuga donusur, sayi degismez
+  for (let i = 1; i <= 5; i++) addHuman(state, "u" + i, "O" + i, 200);
+  assert.equal(humanCount(state), 5);
+  assert.equal(canJoin(state, "u6", 300), "full");
+});
+
+test("lobi: girmeyen oyuncunun rezervasyonu sure dolunca kalkar", () => {
+  const state = makeState();
+  for (let i = 1; i <= 5; i++) reserveSeat(state, "u" + i, 0);
+  assert.equal(canJoin(state, "u6", 1000), "full");
+  expireReservations(state, 10000);
+  assert.equal(canJoin(state, "u6", 10000), "joined", "5 sn gecince bos koltuklar tekrar acilir");
 });
 
 test("lobi: 5 insan varsa hemen, yoksa sure dolunca baslar ve botla dolar", () => {
@@ -127,6 +157,33 @@ test("kelime gonderme: baslamadan ignore, yanlis ilerletmez, buyuk harf kabul", 
   assert.equal(submitWord(state, "yok", "x", start + 3000), "ignored");
   assert.equal(submitWord(state, "u1", "", start + 3000), "ignored");
   assert.equal(submitWord(state, "u1", "a".repeat(100), start + 3000), "ignored");
+});
+
+test("dogruluk tus duzeyinde: bildirilen yanlis tuslar hesaba katilir, sinirsiz sisirilemez", () => {
+  const state = makeState("en", { minWordsForWpmCheck: 1000 });
+  fillHumans(state, 1);
+  startCountdown(state, 0);
+  beginRace(state);
+  const start = state.raceStartAt;
+  state.words[0] = "abcde"; // 5 harf + bosluk = 6 dogru tus
+
+  assert.equal(submitWord(state, "u1", "abcde", start + 1000, 3), "correct");
+  assert.equal(state.players.u1.errors, 3);
+
+  assert.equal(submitWord(state, "u1", state.words[1], start + 2000, 99999), "correct");
+  assert.equal(state.players.u1.errors, 3 + 50, "tek kelimede en fazla 50 hata sayilir");
+
+  assert.equal(submitWord(state, "u1", state.words[2], start + 3000, -7), "correct");
+  assert.equal(submitWord(state, "u1", state.words[3], start + 4000, Number.NaN), "correct");
+  assert.equal(state.players.u1.errors, 53, "negatif ve gecersiz degerler yok sayilir");
+
+  state.words.length = 4; // listeyi 4 kelimeye indir: oyuncu bitirdi sayilsin
+  state.players.u1.finishedAt = start + 4000;
+  updateRaceEnd(state, start + 5000);
+  const result = state.results![0];
+  const expected = state.players.u1.correctChars / (state.players.u1.correctChars + 53);
+  assert.ok(Math.abs(result.accuracy - expected) < 0.001, "dogruluk = dogru tus / (dogru tus + hata)");
+  assert.ok(result.accuracy < 1);
 });
 
 test("Turkce: buyuk I ve I-noktali dogru kelimeye cevrilir", () => {

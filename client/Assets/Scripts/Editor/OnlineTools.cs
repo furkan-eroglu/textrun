@@ -153,10 +153,24 @@ namespace TextRun.EditorTools
             view.SetAllActive(new[] { "Ali", "Bot 1", "Sen", "Bot 2", "Bot 3" }, 2);
             view.SnapPositions(new[] { 26f, 31f, 28f, 22f, 33f }, true);
 
-            // Telefonda dikey ekranın üst kısmı gibi: geniş yerine dar ve uzun
-            var cam = view.Cam;
-            var rt = new RenderTexture(540, 620, 24);
+            string path = "online-preview.png";
+            var args = Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length - 1; i++) if (args[i] == "-out") path = args[i + 1];
+
+            // İki oran: yarış sırasındaki üst bölge (neredeyse kare) ve menü/arama/sonuç ekranındaki tam dikey ekran
+            Render(view.Cam, 540, 520, path);
+            Render(view.Cam, 540, 960, Path.ChangeExtension(path, null) + "-portrait.png");
+            Debug.Log("Goruntu kaydedildi.");
+        }
+
+        static void Render(Camera cam, int width, int height, string path)
+        {
+            var rt = new RenderTexture(width, height, 24);
             cam.targetTexture = rt;
+
+            // Görüş açısı çizim boyutunun oranına göre hesaplanır; boyut belli olduktan sonra kamerayı yeniden konumlandır.
+            var raceCamera = cam.GetComponent<RaceCamera>();
+            raceCamera.Frame(raceCamera.transform.position.z - raceCamera.offset.z);
             cam.Render();
             RenderTexture.active = rt;
             var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
@@ -164,12 +178,7 @@ namespace TextRun.EditorTools
             tex.Apply();
             RenderTexture.active = null;
             cam.targetTexture = null;
-
-            string path = "online-preview.png";
-            var args = Environment.GetCommandLineArgs();
-            for (int i = 0; i < args.Length - 1; i++) if (args[i] == "-out") path = args[i + 1];
             File.WriteAllBytes(path, tex.EncodeToPNG());
-            Debug.Log("Goruntu kaydedildi.");
         }
 
         // ---------- Android derlemesi ----------

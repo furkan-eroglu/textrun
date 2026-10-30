@@ -51,6 +51,7 @@ export interface RaceState {
   words: string[];
   players: { [id: string]: Player };
   order: string[];
+  reserved: { [id: string]: number }; // katılma izni verilmiş ama henüz girmemiş oyuncular (kimlik -> izin zamanı)
   results: RaceResult[] | null;
 }
 
@@ -73,6 +74,7 @@ export function createRaceState(lang: string, kind: "public" | "private", cfg: R
     words: [],
     players: {},
     order: [],
+    reserved: {},
     results: null,
   };
 }
@@ -97,6 +99,7 @@ export function addHuman(state: RaceState, id: string, name: string, now: number
   if (state.phase !== "lobby") return "closed";
   if (state.order.length >= state.cfg.maxPlayers) return "full";
 
+  delete state.reserved[id]; // rezerve edilen koltuk artık gerçek koltuk
   state.players[id] = newPlayer(id, name, false, state.order.length);
   state.order.push(id);
   state.everHadHuman = true;
@@ -104,12 +107,31 @@ export function addHuman(state: RaceState, id: string, name: string, now: number
   return "joined";
 }
 
-export function canJoin(state: RaceState, id: string): JoinOutcome {
+const RESERVATION_TTL_MS = 5000;
+
+// Katılma izni verilen oyuncu odaya gerçekten girene (matchJoin) kadar bir koltuk "rezerve" edilir.
+// Aksi halde aynı anda gelen birçok oyuncunun hepsine izin verilir ve oda 5 kişiyi aşar.
+export function canJoin(state: RaceState, id: string, now: number): JoinOutcome {
   const existing = state.players[id];
   if (existing && !existing.isBot) return "rejoined";
   if (state.phase !== "lobby") return "closed";
-  if (state.order.length >= state.cfg.maxPlayers) return "full";
+  if (state.reserved[id] !== undefined) return "joined"; // zaten rezervasyonu var, ikinci koltuk almaz
+
+  expireReservations(state, now);
+  const reservedCount = Object.keys(state.reserved).length;
+  if (state.order.length + reservedCount >= state.cfg.maxPlayers) return "full";
   return "joined";
+}
+
+export function reserveSeat(state: RaceState, id: string, now: number): void {
+  state.reserved[id] = now;
+}
+
+// Girmeyen oyuncunun rezervasyonu kısa sürede kalkar.
+export function expireReservations(state: RaceState, now: number): void {
+  for (const id of Object.keys(state.reserved)) {
+    if (now - state.reserved[id] >= RESERVATION_TTL_MS) delete state.reserved[id];
+  }
 }
 
 export function removeHuman(state: RaceState, id: string, now: number): void {
@@ -183,11 +205,14 @@ export function wpmOf(correctChars: number, elapsedMs: number): number {
   return correctChars / 5 / minutes;
 }
 
-export function submitWord(state: RaceState, playerId: string, raw: string, now: number): SubmitOutcome {
+// mistakes: istemcinin bu kelimede reddettiği yanlış tuş sayısı. Yalnızca doğruluk istatistiğine yazılır,
+// yarış sonucunu (sıralama, hız sınırı) etkilemez; bu yüzden istemciye güvenmek sorun değildir. Makul bir üst sınırla kırpılır.
+export function submitWord(state: RaceState, playerId: string, raw: string, now: number, mistakes = 0): SubmitOutcome {
   if (state.phase !== "racing" || now < state.raceStartAt) return "ignored";
   const player = state.players[playerId];
   if (!player || player.isBot || player.finishedAt > 0 || player.disqualified) return "ignored";
   if (typeof raw !== "string" || raw.length === 0 || raw.length > 40) return "ignored";
+  const reported = typeof mistakes === "number" && isFinite(mistakes) ? Math.max(0, Math.min(50, Math.floor(mistakes))) : 0;
 
   const typed = toLowerForLang(raw.trim(), state.lang);
   const expected = state.words[player.index];
@@ -198,6 +223,7 @@ export function submitWord(state: RaceState, playerId: string, raw: string, now:
     return "wrong";
   }
 
+  player.errors += reported;
   player.index++;
   player.correct++;
   player.correctChars += expected.length + 1;
@@ -282,7 +308,8 @@ export function computeResults(state: RaceState, now: number): RaceResult[] {
   return ordered.map((p, i) => {
     const status: RaceResult["status"] = p.disqualified ? "disqualified" : p.finishedAt > 0 ? "finished" : "dnf";
     const endMs = (p.finishedAt > 0 ? p.finishedAt : now) - state.raceStartAt;
-    const attempts = p.correct + p.errors;
+    // Doğruluk tuş düzeyindedir: doğru tuşlar / (doğru tuşlar + reddedilen yanlış tuşlar ve yanlış kelimeler)
+    const attempts = p.correctChars + p.errors;
     return {
       userId: p.id,
       name: p.name,
@@ -291,7 +318,7 @@ export function computeResults(state: RaceState, now: number): RaceResult[] {
       status,
       finishMs: p.finishedAt > 0 ? Math.round(endMs) : 0,
       wpm: Math.round(wpmOf(p.correctChars, endMs) * 10) / 10,
-      accuracy: attempts === 0 ? 0 : Math.round((p.correct / attempts) * 1000) / 1000,
+      accuracy: attempts === 0 ? 0 : Math.round((p.correctChars / attempts) * 1000) / 1000,
       correctWords: p.correct,
       errors: p.errors,
     };
