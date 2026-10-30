@@ -38,7 +38,7 @@ namespace TextRun.Game
         float lobbyEndsLocal;
         float countdownEndsLocal;
 
-        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, typedStyle, statsStyle;
+        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, statsStyle;
 
         void Start()
         {
@@ -312,7 +312,6 @@ namespace TextRun.Game
             labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 18 };
             centerStyle = new GUIStyle(GUI.skin.label) { fontSize = 20, alignment = TextAnchor.MiddleCenter, wordWrap = true };
             smallStyle = new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true };
-            typedStyle = new GUIStyle(GUI.skin.label) { fontSize = 26 };
             statsStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = false, fontStyle = FontStyle.Bold };
         }
 
@@ -459,6 +458,21 @@ namespace TextRun.Game
             GUI.Label(new Rect(width / 2f - 90f, top + 30f, 180f, 90f), seconds > 0 ? seconds.ToString() : T("getReady"), titleStyle);
 
             if (typing != null) wordView.Draw(box, typing, "");
+            DrawSimulatedKeyboard(width, height, scale);
+        }
+
+        // Yalnızca editörde: telefon klavyesinin kaplayacağı alanı gri bir blokla gösterir, düzeni PC'de telefondaki gibi görmek için.
+        void DrawSimulatedKeyboard(float width, float height, float scale)
+        {
+            if (!Application.isEditor) return;
+
+            if (GUI.Button(new Rect(width - 118f, 4f, 112f, 26f), KeyboardInput.SimulateInEditor ? "Klavye: AÇIK" : "Klavye: KAPALI"))
+                KeyboardInput.SimulateInEditor = !KeyboardInput.SimulateInEditor;
+
+            float keyboardH = keyboard.AreaHeight / scale;
+            if (keyboardH <= 0f) return;
+            DrawPanel(new Rect(0f, height - keyboardH, width, keyboardH), 1f);
+            GUI.Label(new Rect(0f, height - keyboardH, width, keyboardH), "(klavye alanı - simülasyon)", centerStyle);
         }
 
         void DrawRacing(float width, float height, float top, float scale)
@@ -472,11 +486,9 @@ namespace TextRun.Game
                 + "  |  " + typing.CurrentIndex + "/" + typing.Count;
             GUI.Label(new Rect(8f, statsY, width - 16f, 24f), stats, statsStyle);
 
-            // Kelime kutusunda yalnızca doğru harfler (yeşil) görünür. Altta kısa bir ipucu satırı var.
+            // Kelime kutusunda yalnızca doğru harfler (yeşil) görünür. Klavye kapanırsa kutuya dokunmak yeniden açar.
             if (wordView.Draw(box, typing, input.Entered)) keyboard.Open(KeyboardKind.Default);
-
-            string hint = input.Complete ? T("pressSpace") : input.Entered.Length == 0 ? T("tapToType") : "";
-            GUI.Label(new Rect(8f, box.yMax + 4f, width - 16f, 34f), hint, typedStyle);
+            DrawSimulatedKeyboard(width, height, scale);
 
             if (noticeText.Length > 0)
             {
@@ -485,14 +497,13 @@ namespace TextRun.Game
             }
         }
 
-        // Alttan yukarı: klavye, yazılan metin, kelime kutusu, istatistik satırı; kalan üst bölge 3D pist.
+        // Alttan yukarı: klavye, kelime kutusu, istatistik satırı; kalan üst bölge 3D pist.
         void LayoutRaceArea(float width, float height, float scale, out Rect box, out float statsY)
         {
             float keyboardH = keyboard.AreaHeight / scale;
-            float typedH = 38f;
-            float bottomEdge = height - keyboardH - 6f;
+            float bottomEdge = height - keyboardH - 8f;
 
-            box = new Rect(8f, bottomEdge - typedH - WordLinesView.BoxHeight, width - 16f, WordLinesView.BoxHeight);
+            box = new Rect(8f, bottomEdge - WordLinesView.BoxHeight, width - 16f, WordLinesView.BoxHeight);
             statsY = box.y - 26f;
 
             float trackBottomPx = (height - statsY + 4f) * scale; // ekranın altından piksel olarak

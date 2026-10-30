@@ -28,8 +28,19 @@ namespace TextRun.Typing
 
         public bool IsOpen => !IsNative || (native != null && native.status == TouchScreenKeyboard.Status.Visible);
 
+        // Yalnızca editörde: telefon klavyesinin kaplayacağı yeri taklit eder (ekranın yaklaşık %38'i; iPhone ~%36, Android ~%40).
+        public static bool SimulateInEditor;
+        const float SimulatedHeightFraction = 0.38f;
+
         // Klavyenin ekrandan kapladığı yükseklik (piksel). Kapalıysa 0.
-        public float AreaHeight => IsNative && IsOpen ? TouchScreenKeyboard.area.height : 0f;
+        public float AreaHeight
+        {
+            get
+            {
+                if (!IsNative) return SimulateInEditor ? Screen.height * SimulatedHeightFraction : 0f;
+                return IsOpen ? TouchScreenKeyboard.area.height : 0f;
+            }
+        }
 
         public string StatusText
         {

@@ -161,6 +161,8 @@ namespace TextRun.EditorTools
             // İki oran: yarış sırasındaki üst bölge (neredeyse kare) ve menü/arama/sonuç ekranındaki tam dikey ekran
             Render(view.Cam, 540, 520, path);
             Render(view.Cam, 540, 960, Path.ChangeExtension(path, null) + "-portrait.png");
+            // Klavye açıkken küçük telefonda (ör. 375x667 pt) 3D alana kalan yer: yaklaşık 375x217 pt
+            Render(view.Cam, 540, 312, Path.ChangeExtension(path, null) + "-small.png");
             Debug.Log("Goruntu kaydedildi.");
         }
 
