@@ -38,7 +38,7 @@ namespace TextRun.Game
         float lobbyEndsLocal;
         float countdownEndsLocal;
 
-        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, typedStyle;
+        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, typedStyle, statsStyle;
 
         void Start()
         {
@@ -267,6 +267,7 @@ namespace TextRun.Game
             centerStyle = new GUIStyle(GUI.skin.label) { fontSize = 20, alignment = TextAnchor.MiddleCenter, wordWrap = true };
             smallStyle = new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true };
             typedStyle = new GUIStyle(GUI.skin.label) { fontSize = 26 };
+            statsStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = false, fontStyle = FontStyle.Bold };
         }
 
         void OnGUI()
@@ -419,10 +420,11 @@ namespace TextRun.Game
             LayoutRaceArea(width, height, scale, out var box, out float statsY);
             view.DrawLabels(scale, T("you"), T("bot"));
 
+            // Tek satır: ikinci satıra kayarsa kelime kutusunun arkasında kalır
             string stats = T("wpm") + " " + typing.Wpm(Time.realtimeSinceStartup).ToString("0")
-                + "   " + T("accuracy") + " %" + (typing.Accuracy * 100f).ToString("0")
-                + "   " + T("word") + " " + typing.CurrentIndex + "/" + typing.Count;
-            GUI.Label(new Rect(8f, statsY, width - 16f, 24f), stats, smallStyle);
+                + "  |  %" + (typing.Accuracy * 100f).ToString("0")
+                + "  |  " + typing.CurrentIndex + "/" + typing.Count;
+            GUI.Label(new Rect(8f, statsY, width - 16f, 24f), stats, statsStyle);
 
             string live = keyboard.Text ?? "";
             if (wordView.Draw(box, typing, live)) keyboard.Open(KeyboardKind.Default);

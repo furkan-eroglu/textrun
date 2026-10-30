@@ -10,6 +10,11 @@ namespace TextRun.Typing
         public const float BoxHeight = LineHeight * 2f + 20f;
         const float WordGap = 14f;
 
+        static readonly Color CorrectColor = new Color(0.4f, 0.85f, 0.5f);   // doğru yazılan: yeşil
+        static readonly Color WrongColor = new Color(0.95f, 0.4f, 0.4f);     // yanlış: kırmızı
+        static readonly Color RemainingColor = new Color(0.78f, 0.8f, 0.85f); // aktif kelimede sırada bekleyen harfler: açık gri
+        static readonly Color UpcomingColor = new Color(0.55f, 0.57f, 0.65f); // sıradaki kelimeler: gri
+
         GUIStyle style;
         int lineStart;
 
@@ -21,7 +26,8 @@ namespace TextRun.Typing
         // Kutuya dokunulduysa true döner (klavyeyi açmak için).
         public bool Draw(Rect box, TypingSession session, string liveText)
         {
-            if (style == null) style = new GUIStyle(GUI.skin.label) { fontSize = 26, wordWrap = false };
+            // Boşluk (padding) sıfır: bir kelime birkaç renkli parça olarak çizildiğinde parçalar arasında aralık oluşmasın.
+            if (style == null) style = new GUIStyle(GUI.skin.label) { fontSize = 26, wordWrap = false, padding = new RectOffset(0, 0, 0, 0) };
 
             GUI.color = new Color(0.1f, 0.12f, 0.18f, 1f);
             GUI.DrawTexture(box, Texture2D.whiteTexture);
@@ -65,24 +71,52 @@ namespace TextRun.Typing
                 var size = style.CalcSize(new GUIContent(word));
                 var rect = new Rect(x, y, size.x, LineHeight - 4f);
 
-                Color color;
                 if (i == session.CurrentIndex)
                 {
-                    bool good = session.IsPrefixOfCurrent(liveText ?? "");
-                    GUI.color = good ? new Color(0.25f, 0.4f, 0.7f, 1f) : new Color(0.75f, 0.25f, 0.25f, 1f);
-                    GUI.DrawTexture(new Rect(rect.x - 3f, rect.y, rect.width + 6f, rect.height), Texture2D.whiteTexture);
+                    // Aktif kelime: arka plan vurgusu + harf harf renk. Hata varsa arka plan hafif kırmızıya döner.
+                    string typed = liveText ?? "";
+                    CountMatch(session, word, typed, out int match, out int wrong);
+
+                    GUI.color = wrong > 0 ? new Color(0.38f, 0.18f, 0.2f, 1f) : new Color(0.2f, 0.26f, 0.42f, 1f);
+                    GUI.DrawTexture(new Rect(rect.x - 4f, rect.y, rect.width + 8f, rect.height), Texture2D.whiteTexture);
                     GUI.color = Color.white;
-                    color = Color.white;
+
+                    DrawSegments(rect, word, match, wrong);
                 }
                 else
                 {
-                    color = session.StateAt(i) == WordState.Correct ? new Color(0.4f, 0.85f, 0.5f) : new Color(0.72f, 0.74f, 0.8f);
+                    style.normal.textColor = session.StateAt(i) == WordState.Correct ? CorrectColor : UpcomingColor;
+                    GUI.Label(rect, word, style);
                 }
 
-                style.normal.textColor = color;
-                GUI.Label(rect, word, style);
                 x += size.x + WordGap;
             }
+        }
+
+        // Yazılanın baştan kaç harfi doğru (match), ilk hatadan sonra kaç harfi yanlış (wrong) olduğunu sayar.
+        static void CountMatch(TypingSession session, string word, string typed, out int match, out int wrong)
+        {
+            match = 0;
+            while (match < typed.Length && match < word.Length && TextNormalizer.ToLower(typed[match], session.Language) == word[match]) match++;
+            wrong = Mathf.Min(typed.Length, word.Length) - match;
+        }
+
+        // Kelimeyi üç renkli parça olarak çizer: doğru yazılan (yeşil), yanlış (kırmızı), henüz yazılmayan (gri).
+        void DrawSegments(Rect rect, string word, int match, int wrong)
+        {
+            float x = rect.x;
+            x = DrawSegment(x, rect, word.Substring(0, match), CorrectColor);
+            x = DrawSegment(x, rect, word.Substring(match, wrong), WrongColor);
+            DrawSegment(x, rect, word.Substring(match + wrong), RemainingColor);
+        }
+
+        float DrawSegment(float x, Rect rect, string text, Color color)
+        {
+            if (text.Length == 0) return x;
+            var size = style.CalcSize(new GUIContent(text));
+            style.normal.textColor = color;
+            GUI.Label(new Rect(x, rect.y, size.x + 2f, rect.height), text, style);
+            return x + size.x;
         }
     }
 }
