@@ -10,3 +10,14 @@
 - `docs/` : Kararlar ve belgeler
 
 Alınan teknik kararlar için `docs/KARARLAR.md` dosyasına bakın.
+
+## Kelime listeleri
+
+Kaynak: `content/words/` (`tr.txt`, `en.txt`, `config.json`, isteğe bağlı `blocklist.txt`).
+
+```
+node tools/words/validate.mjs   # listeleri kontrol eder
+node tools/words/sync.mjs       # Unity'ye (client/Assets/Resources/Words) kopyalar
+```
+
+Listeleri değiştirdikten sonra önce `validate`, sonra `sync` çalıştırılır.

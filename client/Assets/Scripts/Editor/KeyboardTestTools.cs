@@ -59,18 +59,62 @@ namespace TextRun.EditorTools
             Check(Mathf.Abs(s.Wpm(2f) - 54f) < 0.01f, "WPM formulu");
             Check(Mathf.Abs(s.Accuracy - 0.6f) < 0.01f, "dogruluk 9 / (9 + 6)");
 
-            // Aynı tohum aynı liste
-            var a = SampleWords.Generate(GameLanguage.Turkish, 50, 7);
-            var b = SampleWords.Generate(GameLanguage.Turkish, 50, 7);
-            Check(string.Join(",", a) == string.Join(",", b), "ayni tohum ayni kelime dizisi");
-            var en = SampleWords.Generate(GameLanguage.English, 50, 7);
-            bool anyTurkishChar = false;
-            foreach (var w in en)
-                if (w.IndexOfAny("çğıöşü".ToCharArray()) >= 0) anyTurkishChar = true;
-            Check(!anyTurkishChar, "Ingilizce listede Turkce harf yok");
+            TestWordDatabase(Check);
 
             Debug.Log(failures == 0 ? "TUM TESTLER GECTI" : failures + " TEST BASARISIZ");
             EditorApplication.Exit(failures == 0 ? 0 : 1);
+        }
+
+        static void TestWordDatabase(Action<bool, string> check)
+        {
+            var config = JsonUtility.FromJson<WordConfig>(Resources.Load<TextAsset>("Words/config").text);
+            const string turkishLetters = "çğıöşü";
+
+            foreach (var language in new[] { GameLanguage.Turkish, GameLanguage.English })
+            {
+                string code = language.Code();
+                var db = WordDatabase.Load(language);
+                string allowed = null;
+                foreach (var entry in config.languages) if (entry.code == code) allowed = entry.allowedChars;
+
+                check(db.Count > 700, code + ": havuzda 700'den fazla kelime (" + db.Count + ")");
+
+                var list = db.Generate(2000, 11);
+                check(list.Count == 2000, code + ": istenen sayida kelime uretildi");
+                check(string.Join(",", db.Generate(100, 7)) == string.Join(",", db.Generate(100, 7)), code + ": ayni tohum ayni dizi");
+                check(string.Join(",", db.Generate(100, 7)) != string.Join(",", db.Generate(100, 8)), code + ": farkli tohum farkli dizi");
+
+                bool badChar = false, badLength = false;
+                int shortCount = 0;
+                foreach (var w in list)
+                {
+                    foreach (char ch in w) if (allowed.IndexOf(ch) < 0) badChar = true;
+                    if (w.Length < config.minLength || w.Length > config.maxLength) badLength = true;
+                    if (w.Length <= 4) shortCount++;
+                }
+                check(!badChar, code + ": tum kelimeler izinli harflerden olusuyor");
+                check(!badLength, code + ": tum kelimeler uzunluk sinirlarinda");
+                check(shortCount > 400 && shortCount < 800, code + ": kisa kelime orani %20-40 arasi (" + shortCount / 20 + "%)");
+
+                bool nearRepeat = false;
+                for (int i = 0; i < list.Count && !nearRepeat; i++)
+                    for (int j = Math.Max(0, i - config.recentWindow); j < i; j++)
+                        if (list[i] == list[j]) { nearRepeat = true; break; }
+                check(!nearRepeat, code + ": son " + config.recentWindow + " kelime icinde tekrar yok");
+
+                bool hasTurkishLetter = false;
+                foreach (var w in list) if (w.IndexOfAny(turkishLetters.ToCharArray()) >= 0) hasTurkishLetter = true;
+                check(hasTurkishLetter == (language == GameLanguage.Turkish), code + ": Turkce harf sadece Turkce listede");
+            }
+
+            // Türkçe listede altı özel harfin hepsi bulunmalı
+            var trList = WordDatabase.Load(GameLanguage.Turkish).Generate(3000, 3);
+            foreach (char letter in turkishLetters)
+            {
+                bool found = false;
+                foreach (var w in trList) if (w.IndexOf(letter) >= 0) { found = true; break; }
+                check(found, "tr: '" + letter + "' iceren kelime var");
+            }
         }
 
         // Komut satırı: -buildTarget Android -executeMethod TextRun.EditorTools.KeyboardTestTools.BuildAndroid

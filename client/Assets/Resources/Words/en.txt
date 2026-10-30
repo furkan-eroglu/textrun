@@ -1,0 +1,97 @@
+# English word list
+# Rules: lowercase, whitespace separated, lines starting with # are comments.
+# Only a-z, 3-14 letters, no proper nouns, no apostrophes or hyphens.
+# Check with: node tools/words/validate.mjs
+
+# animals
+cat dog bird fish horse cow sheep goat chicken rooster duck goose rabbit mouse wolf fox bear lion tiger elephant
+giraffe monkey snake turtle frog butterfly bee ant spider beetle dolphin whale shark penguin parrot owl eagle
+pigeon sparrow crow deer camel donkey squirrel hedgehog bat zebra panda koala kangaroo otter seal crab lobster
+crocodile flamingo octopus snail worm seagull canary mosquito hamster
+
+# food and drink
+apple pear banana orange lemon cherry strawberry melon grape plum peach apricot pomegranate bread cheese egg
+milk yogurt butter honey jam olive tomato cucumber pepper onion garlic carrot potato bean chickpea lentil rice
+pasta soup salad burger pizza cake cookie candy chocolate sugar salt coffee tea water juice walnut almond
+peanut corn spinach parsley mint pumpkin radish lettuce cereal noodle sandwich pancake cinnamon ginger
+mushroom broccoli celery cabbage biscuit lemonade ketchup vinegar pudding muffin
+
+# home and objects
+table chair door window wall roof room kitchen bathroom garden balcony stairs sofa bed pillow blanket carpet
+curtain lamp mirror cupboard shelf box basket bag wallet key lock clock calendar phone computer keyboard screen
+headphone camera television radio fridge oven stove pot pan spoon fork knife plate glass cup bottle jar towel
+soap brush comb scissors needle thread button zipper umbrella suitcase drawer broom bucket mattress faucet
+candle battery cable bulb socket sponge
+
+# tools
+hammer saw nail screw pliers shovel axe rake machine wheel chain rope ladder
+
+# school
+school class teacher student pencil eraser notebook book board ruler map dictionary homework exam lesson
+principal library letter number line picture paint backpack diploma university college
+
+# nature
+sun moon star cloud rain snow wind storm lightning rainbow fog ice mountain hill valley plain forest tree branch
+leaf flower rose tulip daisy grass river lake sea ocean island coast sand stone rock soil shadow fire smoke
+waterfall cave desert swamp volcano spark flame coal ash
+
+# transport
+car bus train plane ship ferry bicycle motorcycle truck taxi tram subway helicopter road bridge tunnel station
+harbor airport parking ticket driver passenger luggage compass
+
+# body
+head hair eye ear nose mouth tongue tooth face neck shoulder arm hand finger chest stomach back waist leg knee
+foot heel heart blood bone skin eyebrow eyelash chin cheek lip wrist elbow
+
+# jobs
+doctor nurse engineer lawyer cook waiter pilot captain farmer fisherman barber tailor carpenter writer poet
+painter singer actor police soldier firefighter pharmacist athlete referee baker butcher journalist judge
+architect electrician plumber hairdresser photographer
+
+# clothes
+shirt pants skirt dress jacket coat sweater shorts sock shoe boot slipper hat cap scarf glove belt tie ring
+necklace bracelet earring pajamas
+
+# adjectives
+happy sad angry tired fast slow big small long short wide narrow heavy light hot cold warm hard soft clean dirty
+new old young beautiful ugly rich poor open closed full empty sweet bitter sour salty easy difficult right wrong
+strong weak quiet loud bright dark deep shallow thin thick brave honest kind curious clever lazy funny serious
+calm excited surprised friendly polite
+
+# colors
+red blue green yellow purple pink black white gray brown navy beige maroon
+
+# time
+second minute hour day week month year morning noon evening night today tomorrow yesterday monday tuesday
+wednesday thursday friday saturday sunday spring summer autumn winter holiday season
+
+# verbs
+run walk sit stand write read draw say speak listen look see laugh cry sleep wake eat drink wash wear
+close take give throw hold pull push carry fall jump swim fly work play learn understand think forget remember
+wait come return stop start finish find search love want ask answer build break fix climb dance sing travel
+visit win lose share collect catch escape hide try
+
+# family and people
+family mother father sister brother grandfather grandmother aunt uncle child baby friend neighbor guest person
+woman man girl boy cousin nephew niece
+
+# places
+city village town street square market hospital bank museum cinema theater stadium hotel restaurant cafe
+farm barn castle palace bazaar
+
+# fun and sports
+music song movie game ball football basketball volleyball tennis swimming race chess card dice puzzle guitar
+piano violin drum flute cello circus picnic camp champion trophy medal practice
+
+# materials and ideas
+money gold silver copper iron steel plastic paper fabric wood dream idea secret chance hope friendship peace
+freedom courage patience knowledge story fairy poem novel newspaper magazine time space planet world universe
+power speed sound color smell taste
+
+# numbers
+two three four five six seven eight nine twenty thirty forty fifty hundred thousand million
+
+# long words
+adventure pineapple blueberry raspberry watermelon telephone calculator wheelbarrow microscope telescope
+toothbrush toothpaste hairbrush sunflower lighthouse playground blackboard classroom bookshelf fireplace
+earthquake thunderstorm snowflake wardrobe furniture vegetable breakfast birthday treasure dinosaur alligator

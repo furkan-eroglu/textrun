@@ -36,7 +36,7 @@ namespace TextRun.KeyboardTest
 
         void ResetSession()
         {
-            session = new TypingSession(SampleWords.Generate(language, WordCount, 7), language);
+            session = new TypingSession(WordDatabase.Load(language).Generate(WordCount, Random.Range(0, int.MaxValue)), language);
             lineStart = 0;
             jumps = capsEvents = batches = maxBatch = backspaces = 0;
             prevText = "";

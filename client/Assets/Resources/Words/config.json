@@ -1,0 +1,14 @@
+{
+  "minLength": 3,
+  "maxLength": 14,
+  "recentWindow": 30,
+  "tiers": [
+    { "name": "short", "min": 3, "max": 4, "weight": 30 },
+    { "name": "medium", "min": 5, "max": 7, "weight": 50 },
+    { "name": "long", "min": 8, "max": 14, "weight": 20 }
+  ],
+  "languages": [
+    { "code": "tr", "file": "tr", "allowedChars": "abcçdefgğhıijklmnoöprsştuüvyz" },
+    { "code": "en", "file": "en", "allowedChars": "abcdefghijklmnopqrstuvwxyz" }
+  ]
+}

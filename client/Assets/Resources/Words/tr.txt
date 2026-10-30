@@ -1,0 +1,100 @@
+# Türkçe kelime listesi
+# Kurallar: küçük harf, boşlukla ayrılmış, satır başı # yorumdur.
+# Yalnızca Türk alfabesi (q, w, x yok), 3-14 harf, özel isim ve şapkalı harf (â, î, û) yok.
+# Kontrol için: node tools/words/validate.mjs
+
+# hayvanlar
+kedi köpek kuş balık inek koyun keçi tavuk horoz ördek kaz tavşan fare kurt tilki ayı aslan kaplan fil zürafa
+maymun yılan kaplumbağa kurbağa kelebek arı karınca örümcek sinek böcek yunus balina köpekbalığı penguen papağan
+baykuş kartal güvercin serçe karga leylek tosbağa geyik deve eşek katır sincap kirpi yarasa panda timsah
+bülbül kanarya martı flamingo karides ahtapot denizyıldızı salyangoz solucan gelincik
+
+# yiyecek ve içecek
+elma armut muz portakal mandalina limon kiraz vişne çilek karpuz kavun üzüm incir erik şeftali kayısı nar ayva dut
+ekmek peynir yumurta süt yoğurt tereyağı bal reçel zeytin domates salatalık biber patlıcan soğan sarımsak havuç
+patates fasulye nohut mercimek pirinç bulgur makarna çorba pilav köfte kebap lahmacun pide börek baklava helva
+dondurma çikolata şeker tuz karabiber kahve çay ayran meyve sebze fındık ceviz badem fıstık mısır pırasa
+ıspanak maydanoz nane kabak turp marul kuşkonmaz enginar bamya kereviz brokoli mantar gözleme simit poğaça kurabiye
+pasta kek bisküvi sakız limonata kola gazoz şerbet tarçın zencefil kimyon safran
+
+# ev ve eşyalar
+masa sandalye kapı pencere duvar çatı oda mutfak banyo salon bahçe balkon merdiven koltuk yatak yastık yorgan halı
+perde lamba ayna dolap raf kutu sepet çanta cüzdan anahtar kilit saat takvim telefon bilgisayar klavye ekran
+kulaklık kamera televizyon radyo buzdolabı fırın ocak tencere tava kaşık çatal bıçak tabak bardak fincan kupa
+şişe kavanoz çaydanlık sürahi havlu sabun şampuan fırça tarak makas iğne iplik düğme fermuar şemsiye bavul
+çekmece sehpa paspas süpürge kova leğen çöp battaniye çarşaf
+musluk lavabo duş klozet ısıtıcı klima priz fiş kablo pil ampul mum
+
+# aletler
+çekiç testere çivi vida pense kürek balta tırmık makine tekerlek zincir halat
+
+# okul
+okul sınıf öğretmen öğrenci kalem silgi defter kitap tahta cetvel pergel harita sözlük ödev sınav ders teneffüs
+müdür kütüphane harf rakam sayı çizgi resim boya karne diploma üniversite fakülte
+
+# doğa
+güneş yıldız bulut yağmur kar rüzgar fırtına şimşek gökkuşağı sis çiy buz dağ tepe vadi ova orman ağaç dal yaprak
+çiçek gül lale papatya çimen nehir göl deniz okyanus dere ada kıyı kum taş kaya toprak gölge ateş duman
+şelale mağara çöl bataklık yanardağ kıvılcım alev kor kül
+
+# ulaşım
+araba otobüs tren uçak gemi vapur bisiklet motosiklet kamyon taksi tramvay metro helikopter yol köprü tünel
+istasyon liman havalimanı otopark durak bilet sürücü yolcu bagaj pusula
+
+# vücut
+saç göz kulak burun ağız dil diş yüz boyun omuz kol parmak tırnak göğüs karın sırt bel kalça bacak diz ayak
+topuk kalp kan kemik deri kaş kirpik çene yanak dudak bilek dirsek
+
+# meslekler
+doktor hemşire mühendis avukat usta aşçı garson pilot kaptan şoför çiftçi balıkçı berber terzi marangoz yazar
+şair ressam müzisyen oyuncu polis asker itfaiyeci eczacı sporcu hakem futbolcu bakkal manav kasap fırıncı
+gazeteci yargıç mimar elektrikçi tesisatçı kuaför fotoğrafçı
+
+# giyim
+gömlek pantolon etek elbise ceket mont kazak tişört şort çorap ayakkabı bot terlik şapka bere atkı eldiven
+kemer kravat gözlük yüzük kolye bilezik küpe pijama mayo
+
+# sıfatlar
+mutlu üzgün kızgın yorgun hızlı yavaş büyük küçük uzun kısa geniş dar ağır hafif sıcak soğuk ılık sert yumuşak
+temiz kirli yeni eski genç yaşlı güzel çirkin zengin fakir açık kapalı dolu boş tatlı acı ekşi tuzlu kolay zor
+doğru yanlış güçlü zayıf sessiz gürültülü parlak karanlık aydınlık derin sığ ince kalın cesur dürüst nazik
+merhametli meraklı akıllı tembel çalışkan yaramaz sevimli komik ciddi sakin heyecanlı şaşkın
+
+# renkler
+kırmızı mavi yeşil sarı turuncu mor pembe siyah beyaz gri kahverengi lacivert turkuaz bordo krem
+
+# zaman
+saniye dakika gün hafta yıl sabah öğle akşam gece bugün yarın dün pazartesi salı çarşamba perşembe cuma
+cumartesi pazar ilkbahar yaz sonbahar kış bayram tatil mevsim
+
+# fiiller
+koşmak yürümek oturmak kalkmak yazmak okumak çizmek söylemek konuşmak dinlemek bakmak görmek gülmek ağlamak
+uyumak uyanmak yemek içmek pişirmek yıkamak giymek açmak kapamak almak vermek atmak tutmak çekmek itmek
+taşımak düşmek zıplamak yüzmek uçmak çalışmak oynamak öğrenmek anlamak düşünmek unutmak hatırlamak beklemek
+gelmek gitmek dönmek durmak başlamak bitirmek bulmak aramak sevmek istemek sormak boyamak tırmanmak
+dans etmek kazanmak kaybetmek paylaşmak toplamak dağıtmak yakalamak kaçmak saklanmak denemek
+
+# aile ve insanlar
+aile anne baba kardeş abla ağabey dede nine amca dayı teyze hala çocuk bebek arkadaş komşu misafir insan
+kadın erkek kız oğlan torun gelin damat yeğen
+
+# yerler
+şehir köy kasaba mahalle sokak cadde meydan park market hastane eczane banka postane müze sinema tiyatro
+stadyum cami otel lokanta kafe tarla çiftlik ahır kale saray sarnıç çarşı
+
+# eğlence ve spor
+müzik şarkı film oyun top futbol basketbol voleybol tenis yüzme koşu satranç kart zar bulmaca gitar piyano
+keman davul flüt çello sirk piknik kamp yarış şampiyon madalya antrenman
+
+# madde ve kavramlar
+para altın gümüş bakır demir çelik cam plastik kağıt kumaş odun hayal fikir düş sır şans umut sevgi dostluk
+barış özgürlük cesaret sabır bilgi hikaye masal şiir roman gazete dergi mektup zaman uzay gezegen dünya
+evren güç hız ışık ses renk koku tat
+
+# sayılar
+iki dört beş altı yedi sekiz dokuz yirmi otuz kırk elli bin milyon
+
+# uzun kelimeler
+kahvaltı yemekhane alışveriş mutluluk dayanışma arkadaşlık çocukluk yaşlılık hastalık yolculuk kahraman şövalye
+çamaşır bulaşık ayakkabılık kitaplık çamaşırhane kırtasiye dondurmacı otomobil kamyonet paraşüt denizaltı
+mikroskop teleskop pırlanta mücevher ejderha prenses hazine korsan sürpriz macera
