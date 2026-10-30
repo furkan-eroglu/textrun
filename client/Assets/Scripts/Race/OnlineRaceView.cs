@@ -11,8 +11,15 @@ namespace TextRun.Race
         const float FinishOvershoot = 4f;
 
         public int laneCount = 5;
-        public float laneWidth = 1.7f;
+        public float laneWidth = 1.4f;
         public float trackLength = 60f;
+
+        // Kamera oyuncuya yakın durur ve oyuncunun kulvarını takip eder; en uzak kulvar da görünsün diye genişlik buna göre hesaplanır.
+        static readonly Vector3 CameraOffset = new Vector3(0f, 5f, -11f);
+        const float CameraSideMargin = 1.0f;
+        // Kameranın oyuncunun kulvarına ne kadar kaydığı: 0 = hep pist ortası, 1 = tam oyuncunun üstü.
+        // Tam takipte kenar kulvarda ekranın yarısı boş çimen kalır; kısmi takip oyuncuyu merkeze yaklaştırır, pisti de yayar.
+        const float CameraFollowFactor = 0.6f;
 
         static readonly Color[] LaneColors =
         {
@@ -28,6 +35,7 @@ namespace TextRun.Race
         bool[] active;
         bool racing;
         int localSlot = 2;
+        float cameraX;
         Camera cam;
         RaceCamera raceCamera;
         GUIStyle nameStyle;
@@ -63,7 +71,20 @@ namespace TextRun.Race
             raceCamera = cam.GetComponent<RaceCamera>();
             if (raceCamera == null) raceCamera = cam.gameObject.AddComponent<RaceCamera>();
             raceCamera.enabled = false; // kamerayı bu sınıf kendisi hareket ettirir
-            raceCamera.Frame(0f);
+            raceCamera.offset = CameraOffset;
+            // En kenar kulvardaki oyuncu için kamera en fazla yarım pist * takip oranı kadar kayar; o durumda bile pistin öbür ucu görünmeli.
+            float halfTrack = (laneCount - 1) * laneWidth / 2f;
+            raceCamera.halfWidthToFit = halfTrack * (1f + CameraFollowFactor) + CameraSideMargin;
+            cameraX = TrackBuilder.LaneX(localSlot, laneCount, laneWidth) * CameraFollowFactor;
+            raceCamera.Frame(0f, cameraX);
+
+            // Ana kamera ekranın yalnızca üst bölgesini çizer; alt bölge (kelimeler, klavye) temizlenmezse eski kareler birikir.
+            // Bu yüzden tüm ekranı her kare koyu renkle temizleyen, hiçbir şey çizmeyen bir arka plan kamerası eklenir.
+            var background = new GameObject("Background Camera").AddComponent<Camera>();
+            background.clearFlags = CameraClearFlags.SolidColor;
+            background.backgroundColor = new Color(0.07f, 0.08f, 0.12f);
+            background.cullingMask = 0;
+            background.depth = cam.depth - 10f;
 
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.72f, 0.75f, 0.82f);
@@ -140,7 +161,13 @@ namespace TextRun.Race
                 runners[i].runSpeed = Mathf.Clamp(0.7f + speed / 8f, 0.7f, 1.8f);
             }
 
-            if (cam != null && raceCamera != null) raceCamera.Frame(currentZ[localSlot]);
+            if (cam != null && raceCamera != null)
+            {
+                // Kamera oyuncunun kulvarına yumuşakça kayar
+                float targetX = TrackBuilder.LaneX(localSlot, laneCount, laneWidth) * CameraFollowFactor;
+                cameraX = Mathf.Lerp(cameraX, targetX, 1f - Mathf.Exp(-6f * Time.deltaTime));
+                raceCamera.Frame(currentZ[localSlot], cameraX);
+            }
         }
 
         void SetPosition(int lane, float z)
@@ -183,7 +210,8 @@ namespace TextRun.Race
                 runners[i].state = running ? CharacterState.Run : CharacterState.Idle;
                 runners[i].Pose(i * 1.3f);
             }
-            raceCamera.Frame(currentZ[localSlot]);
+            cameraX = TrackBuilder.LaneX(localSlot, laneCount, laneWidth) * CameraFollowFactor;
+            raceCamera.Frame(currentZ[localSlot], cameraX);
         }
 
         public void SetAllActive(string[] playerNames, int local)

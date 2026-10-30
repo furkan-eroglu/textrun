@@ -150,8 +150,9 @@ namespace TextRun.EditorTools
             EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             var view = new GameObject("View").AddComponent<OnlineRaceView>();
             view.Build();
-            view.SetAllActive(new[] { "Ali", "Bot 1", "Sen", "Bot 2", "Bot 3" }, 2);
-            view.SnapPositions(new[] { 26f, 31f, 28f, 22f, 33f }, true);
+            // Oyuncu en sol kulvarda ve önde: kamera bu durumda da oyuncuyu net göstermeli
+            view.SetAllActive(new[] { "Sen", "Bot 1", "Bot 2", "Bot 3", "Bot 4" }, 0);
+            view.SnapPositions(new[] { 30f, 27f, 29f, 24f, 31f }, true);
 
             string path = "online-preview.png";
             var args = Environment.GetCommandLineArgs();
@@ -170,7 +171,7 @@ namespace TextRun.EditorTools
 
             // Görüş açısı çizim boyutunun oranına göre hesaplanır; boyut belli olduktan sonra kamerayı yeniden konumlandır.
             var raceCamera = cam.GetComponent<RaceCamera>();
-            raceCamera.Frame(raceCamera.transform.position.z - raceCamera.offset.z);
+            raceCamera.Frame(raceCamera.transform.position.z - raceCamera.offset.z, raceCamera.transform.position.x - raceCamera.offset.x);
             cam.Render();
             RenderTexture.active = rt;
             var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
