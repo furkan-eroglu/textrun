@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.heroiclabs.nakama-unity": "https://github.com/heroiclabs/nakama-unity.git?path=/Packages/Nakama#v3.22.1",
     "com.unity.multiplayer.center": "1.0.1",
     "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.adaptiveperformance": "1.0.0",

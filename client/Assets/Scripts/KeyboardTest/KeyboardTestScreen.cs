@@ -7,21 +7,19 @@ using UnityEngine;
 namespace TextRun.KeyboardTest
 {
     // Klavye prototipi: iki satır kelime, anlık yazma geri bildirimi ve klavye davranış sayaçları.
-    // Arayüz geçici olarak OnGUI ile çizilir; asıl oyun arayüzü Faz 4'te yapılacak.
+    // Arayüz geçici olarak OnGUI ile çizilir; asıl oyun arayüzü ayrıdır (bkz. Game/OnlineGameController).
     public class KeyboardTestScreen : MonoBehaviour
     {
-        const float LineHeight = 40f;
-        const float WordGap = 14f;
         const int WordCount = 150;
 
         readonly KeyboardInput keyboard = new KeyboardInput();
+        readonly WordLinesView wordView = new WordLinesView();
         readonly List<string> log = new List<string>();
 
         GameLanguage language = GameLanguage.Turkish;
         KeyboardKind kind = KeyboardKind.Default;
         TypingSession session;
         string prevText = "";
-        int lineStart;
         bool keyboardWasOpen;
 
         int jumps, capsEvents, batches, maxBatch, backspaces;
@@ -37,7 +35,7 @@ namespace TextRun.KeyboardTest
         void ResetSession()
         {
             session = new TypingSession(WordDatabase.Load(language).Generate(WordCount, Random.Range(0, int.MaxValue)), language);
-            lineStart = 0;
+            wordView.Reset();
             jumps = capsEvents = batches = maxBatch = backspaces = 0;
             prevText = "";
             keyboard.Text = "";
@@ -134,8 +132,8 @@ namespace TextRun.KeyboardTest
             DrawButtons(width, ref y);
             DrawStats(width, ref y);
 
-            var box = new Rect(8f, y, width - 16f, LineHeight * 2f + 20f);
-            DrawWordBox(box);
+            var box = new Rect(8f, y, width - 16f, WordLinesView.BoxHeight);
+            if (wordView.Draw(box, session, keyboard.Text)) keyboard.Open(kind);
             y = box.yMax + 6f;
 
             string live = keyboard.Text ?? "";
@@ -186,75 +184,6 @@ namespace TextRun.KeyboardTest
             GUI.Label(new Rect(8f, y, width - 16f, 24f), stats, smallStyle);
             GUI.Label(new Rect(8f, y + 20f, width - 16f, 40f), kb, smallStyle);
             y += 54f;
-        }
-
-        void DrawWordBox(Rect box)
-        {
-            GUI.color = new Color(0.1f, 0.12f, 0.18f, 1f);
-            GUI.DrawTexture(box, Texture2D.whiteTexture);
-            GUI.color = Color.white;
-
-            if (Event.current.type == EventType.MouseDown && box.Contains(Event.current.mousePosition))
-                keyboard.Open(kind);
-
-            float maxWidth = box.width - 16f;
-            int firstLine = FitCount(lineStart, maxWidth);
-            if (firstLine > 0 && session.CurrentIndex >= lineStart + firstLine)
-            {
-                lineStart += firstLine;
-                firstLine = FitCount(lineStart, maxWidth);
-            }
-            int secondLine = FitCount(lineStart + firstLine, maxWidth);
-
-            DrawLine(lineStart, firstLine, box.x + 8f, box.y + 10f);
-            DrawLine(lineStart + firstLine, secondLine, box.x + 8f, box.y + 10f + LineHeight);
-        }
-
-        int FitCount(int start, float maxWidth)
-        {
-            float x = 0f;
-            int count = 0;
-            for (int i = start; i < session.Count; i++)
-            {
-                float w = wordStyle.CalcSize(new GUIContent(session.WordAt(i))).x;
-                if (x + w > maxWidth && count > 0) break;
-                x += w + WordGap;
-                count++;
-            }
-            return count;
-        }
-
-        void DrawLine(int start, int count, float x, float y)
-        {
-            for (int i = start; i < start + count && i < session.Count; i++)
-            {
-                string word = session.WordAt(i);
-                var size = wordStyle.CalcSize(new GUIContent(word));
-                var rect = new Rect(x, y, size.x, LineHeight - 4f);
-
-                Color color;
-                if (i == session.CurrentIndex)
-                {
-                    bool good = session.IsPrefixOfCurrent(keyboard.Text ?? "");
-                    GUI.color = good ? new Color(0.25f, 0.4f, 0.7f, 1f) : new Color(0.75f, 0.25f, 0.25f, 1f);
-                    GUI.DrawTexture(new Rect(rect.x - 3f, rect.y, rect.width + 6f, rect.height), Texture2D.whiteTexture);
-                    GUI.color = Color.white;
-                    color = Color.white;
-                }
-                else
-                {
-                    switch (session.StateAt(i))
-                    {
-                        case WordState.Correct: color = new Color(0.4f, 0.85f, 0.5f); break;
-                        case WordState.Wrong: color = new Color(0.95f, 0.4f, 0.4f); break;
-                        default: color = new Color(0.72f, 0.74f, 0.8f); break;
-                    }
-                }
-
-                wordStyle.normal.textColor = color;
-                GUI.Label(rect, word, wordStyle);
-                x += size.x + WordGap;
-            }
         }
 
         void DrawLog(Rect area)

@@ -46,7 +46,8 @@ namespace TextRun.Typing
             return words[CurrentIndex].StartsWith(normalized, StringComparison.Ordinal);
         }
 
-        // Boşluğa basıldığında çağrılır. Kelime doğruysa true döner.
+        // Boşluğa basıldığında çağrılır. Kelime doğruysa ilerler ve true döner.
+        // Yanlış kelime ilerletmez: oyuncu aynı kelimeyi doğru yazana kadar bekler (sunucudaki kuralla aynı).
         public bool Submit(string typed, float now)
         {
             if (Finished) return false;
@@ -54,23 +55,28 @@ namespace TextRun.Typing
 
             var target = words[CurrentIndex];
             var normalized = TextNormalizer.ToLower(typed, Language);
-            bool correct = string.Equals(target, normalized, StringComparison.Ordinal);
 
-            if (correct)
-            {
-                correctChars += target.Length + 1; // +1: boşluk
-                CorrectWords++;
-                states[CurrentIndex] = WordState.Correct;
-            }
-            else
+            if (!string.Equals(target, normalized, StringComparison.Ordinal))
             {
                 wrongChars += Math.Max(target.Length, normalized.Length) + 1;
                 WrongWords++;
-                states[CurrentIndex] = WordState.Wrong;
+                return false;
             }
 
+            correctChars += target.Length + 1; // +1: boşluk
+            CorrectWords++;
+            states[CurrentIndex] = WordState.Correct;
             CurrentIndex++;
-            return correct;
+            return true;
+        }
+
+        // Sunucu farklı bir sıra bildirirse (ör. yeniden bağlanma) yerel durumu ona eşitler.
+        public void SyncTo(int serverIndex)
+        {
+            serverIndex = Math.Max(0, Math.Min(serverIndex, words.Count));
+            for (int i = 0; i < words.Count; i++)
+                states[i] = i < serverIndex ? WordState.Correct : WordState.Pending;
+            CurrentIndex = serverIndex;
         }
 
         // Standart WPM: 5 doğru karakter = 1 kelime.

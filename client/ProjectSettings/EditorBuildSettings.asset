@@ -6,6 +6,6 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/RacePrototype.unity
-    guid: 7e9fac072a2e88344bc6e13241f89f9e
+    path: Assets/Scenes/OnlineGame.unity
+    guid: 812f799e8f44e3b448723ee2429656fe
   m_configObjects: {}

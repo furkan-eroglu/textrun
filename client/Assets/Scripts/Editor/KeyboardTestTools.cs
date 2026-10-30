@@ -52,12 +52,17 @@ namespace TextRun.EditorTools
             Check(s.Submit("ısı", 0f), "dogru kelime kabul");
             Check(s.Submit("İLAÇ", 1f), "buyuk harfle yazilan dogru kelime kabul (otomatik buyuk harf)");
             Check(!s.Submit("seker", 2f), "ş yerine s yazmak hata");
+            Check(s.CurrentIndex == 2 && !s.Finished, "yanlis kelime ilerletmez");
+            Check(s.Submit("şeker", 2f), "dogru yazinca ilerler");
             Check(s.Finished, "liste bitince Finished");
-            Check(s.CorrectWords == 2 && s.WrongWords == 1, "sayaclar 2 dogru 1 yanlis");
+            Check(s.CorrectWords == 3 && s.WrongWords == 1, "sayaclar 3 dogru 1 yanlis");
 
-            // Doğru kelimeler: (3+1) + (4+1) = 9 karakter, 2 saniyede -> 9/5 kelime / (2/60 dk) = 54 WPM
-            Check(Mathf.Abs(s.Wpm(2f) - 54f) < 0.01f, "WPM formulu");
-            Check(Mathf.Abs(s.Accuracy - 0.6f) < 0.01f, "dogruluk 9 / (9 + 6)");
+            // Doğru kelimeler: (3+1) + (4+1) + (5+1) = 15 karakter, 2 saniyede -> 15/5 kelime / (2/60 dk) = 90 WPM
+            Check(Mathf.Abs(s.Wpm(2f) - 90f) < 0.01f, "WPM formulu");
+            Check(Mathf.Abs(s.Accuracy - 15f / 21f) < 0.01f, "dogruluk 15 / (15 + 6)");
+
+            s.SyncTo(1);
+            Check(s.CurrentIndex == 1 && s.StateAt(0) == WordState.Correct && s.StateAt(1) == WordState.Pending, "SyncTo sunucu sirasina esitler");
 
             TestWordDatabase(Check);
 
