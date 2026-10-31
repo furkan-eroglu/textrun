@@ -49,7 +49,7 @@ namespace TextRun.Game
         float searchStartedAt;
         float countdownEndsLocal;
 
-        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle;
+        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle, searchTitleStyle;
 
         void Start()
         {
@@ -212,6 +212,7 @@ namespace TextRun.Game
 
                 case Phase.Finished:
                     results = s.results ?? new ResultDto[0];
+                    resultsBackdrop.Restart();
                     screen = Page.Results;
                     break;
             }
@@ -292,6 +293,7 @@ namespace TextRun.Game
             results = r.results ?? new ResultDto[0];
             view.SetRacing(false);
             endingEndsLocal = 0f;
+            resultsBackdrop.Restart(); // ekran açılınca konfeti yukarıdan süzülmeye başlar
             screen = Page.Results;
 
             bool onPodium = false;
@@ -411,6 +413,7 @@ namespace TextRun.Game
 
             headingStyle = new GUIStyle(GUI.skin.label) { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             rankStyle = new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            searchTitleStyle = new GUIStyle(GUI.skin.label) { fontSize = 28, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, clipping = TextClipping.Overflow };
             smallCenterStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, alignment = TextAnchor.MiddleCenter, wordWrap = false };
             stopwatchStyle = new GUIStyle(GUI.skin.label) { fontSize = 44, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false };
 
@@ -422,6 +425,7 @@ namespace TextRun.Game
             UiKit.SetAllTextColors(smallStyle, text);
             UiKit.SetAllTextColors(smallCenterStyle, text);
             UiKit.SetAllTextColors(stopwatchStyle, Color.white);
+            UiKit.SetAllTextColors(searchTitleStyle, Color.white);
             UiKit.SetAllTextColors(headingStyle, Color.white);
             UiKit.SetAllTextColors(rankStyle, new Color(1f, 0.88f, 0.45f));
         }
@@ -547,16 +551,8 @@ namespace TextRun.Game
             float centerX = width / 2f;
             float centerY = height / 2f - 30f;
 
-            // Başlık: dönen kum saati ve "Karşılaşma aranıyor"
-            string title = T("searching");
-            float titleWidth = centerStyle.CalcSize(new GUIContent(title)).x;
-            const float iconHeight = 54f;
-            float iconWidth = iconHeight * 64f / 96f;
-            float groupWidth = iconWidth + 14f + titleWidth;
-            float groupX = centerX - groupWidth / 2f;
-            float groupY = centerY - 172f;
-            DrawHourglass(new Rect(groupX, groupY, iconWidth, iconHeight));
-            GUI.Label(new Rect(groupX + iconWidth + 14f, groupY, titleWidth + 6f, iconHeight), title, centerStyle);
+            // Başlık: tam ortada; harfleri soldan sağa doğru sırayla büyüyüp küçülür
+            DrawWaveTitle(new Vector2(centerX, centerY - 150f), T("searching"));
 
             DrawStopwatch(new Vector2(centerX, centerY), 74f, Mathf.Max(0, (int)(Time.realtimeSinceStartup - searchStartedAt)));
 
@@ -579,20 +575,44 @@ namespace TextRun.Game
             if (UiKit.SecondaryButton(new Rect(width / 2f - 110f, centerY + 190f, 220f, 54f), T("cancel"), 20)) CancelSearch();
         }
 
-        // Kum saati: her ~1,8 sn'de bir yumuşakça 180° döner (ters çevrilir), sonra bir an durur
-        void DrawHourglass(Rect rect)
+        // Başlık harfleri soldan sağa doğru sırayla büyüyüp küçülür (dalga); büyürken hafif maviye parlar.
+        // Dalga başlığın dışından başlayıp dışında biter, böylece iki dalga arasında kısa bir sakin an olur.
+        void DrawWaveTitle(Vector2 center, string text)
         {
-            const float cycle = 1.8f;
-            float time = Time.realtimeSinceStartup;
-            int flips = (int)(time / cycle);
-            float t = Mathf.Repeat(time, cycle) / cycle;
-            float turn = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / 0.35f)); // döngünün ilk %35'inde döner
-            float angle = flips * 180f + turn * 180f;
+            var widths = new float[text.Length];
+            float total = 0f;
+            for (int i = 0; i < text.Length; i++)
+            {
+                widths[i] = text[i] == ' ' ? searchTitleStyle.fontSize * 0.35f : searchTitleStyle.CalcSize(new GUIContent(text[i].ToString())).x;
+                total += widths[i];
+            }
+
+            const float cycleSeconds = 2.4f;
+            float wavePosition = Mathf.Repeat(Time.realtimeSinceStartup / cycleSeconds, 1f) * (text.Length + 8f) - 4f;
 
             var oldMatrix = GUI.matrix;
-            GUIUtility.RotateAroundPivot(angle, oldMatrix.MultiplyPoint3x4(rect.center));
-            GUI.DrawTexture(rect, Pictograms.Hourglass());
+            var oldColor = GUI.color;
+            float x = center.x - total / 2f;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (text[i] != ' ')
+                {
+                    float distance = i - wavePosition;
+                    float bump = Mathf.Exp(-(distance * distance) / (2f * 1.8f * 1.8f)); // yumuşak çan eğrisi: 0 -> 1 -> 0
+                    float scale = 1f + 0.5f * bump;
+
+                    var rect = new Rect(x, center.y - 24f, widths[i], 48f);
+                    var pivot = rect.center;
+                    GUI.matrix = oldMatrix * Matrix4x4.Translate(pivot) * Matrix4x4.Scale(new Vector3(scale, scale, 1f)) * Matrix4x4.Translate(-pivot);
+                    GUI.color = Color.Lerp(Color.white, new Color(0.45f, 0.85f, 1f), bump);
+                    GUI.Label(rect, text[i].ToString(), searchTitleStyle);
+                }
+                x += widths[i];
+            }
+
             GUI.matrix = oldMatrix;
+            GUI.color = oldColor;
         }
 
         // Kronometre: yuvarlak zemin, çevresinde 60 saniye çizgisi (geçen saniyeler yanar) ve ortada dakika:saniye
@@ -828,6 +848,7 @@ namespace TextRun.Game
                 };
             }
             results = list;
+            resultsBackdrop.Restart();
             screen = Page.Results;
         }
 

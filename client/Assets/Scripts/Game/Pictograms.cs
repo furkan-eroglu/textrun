@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace TextRun.Game
 {
-    // Kodla çizilen küçük resimler (dosya gerektirmez): kupa, ışın demeti ve kum saati.
+    // Kodla çizilen küçük resimler (dosya gerektirmez): kupa ve ışın demeti.
     // Şekiller basit geometri formülleriyle tanımlanır; kenarlar 3x3 örnekle yumuşatılır. Her doku bir kez üretilir.
     public static class Pictograms
     {
@@ -11,7 +11,6 @@ namespace TextRun.Game
 
         static readonly Dictionary<TrophyTint, Texture2D> trophies = new Dictionary<TrophyTint, Texture2D>();
         static Texture2D rays;
-        static Texture2D hourglass;
 
         // ---------- Kupa ----------
 
@@ -150,97 +149,6 @@ namespace TextRun.Game
             }
             rays.Apply();
             return rays;
-        }
-
-        // ---------- Kum saati ----------
-
-        // 64x96: üstte ve altta plaka, cam gövde çerçevesi, üstte ve altta kum, ortada ince kum akışı
-        public static Texture2D Hourglass()
-        {
-            if (hourglass != null) return hourglass;
-
-            const int w = 64, h = 96;
-            hourglass = new Texture2D(w, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave };
-
-            var plate = new Color(0.82f, 0.88f, 0.98f);
-            var glass = new Color(0.85f, 0.93f, 1f);
-            var sand = new Color(1f, 0.78f, 0.30f);
-
-            for (int y = 0; y < h; y++)
-            {
-                for (int x = 0; x < w; x++)
-                {
-                    float r = 0f, g = 0f, b = 0f, a = 0f;
-                    for (int sy = 0; sy < 3; sy++)
-                    {
-                        for (int sx = 0; sx < 3; sx++)
-                        {
-                            if (HourglassColor(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f, plate, glass, sand, out var c))
-                            {
-                                r += c.r * c.a; g += c.g * c.a; b += c.b * c.a; a += c.a;
-                            }
-                        }
-                    }
-                    hourglass.SetPixel(x, y, a <= 0f ? Color.clear : new Color(r / a, g / a, b / a, a / 9f));
-                }
-            }
-            hourglass.Apply();
-            return hourglass;
-        }
-
-        static readonly Vector2 UpperA = new Vector2(11f, 84f), UpperB = new Vector2(53f, 84f), UpperC = new Vector2(32f, 50f);
-        static readonly Vector2 LowerA = new Vector2(32f, 46f), LowerB = new Vector2(11f, 12f), LowerC = new Vector2(53f, 12f);
-
-        static bool HourglassColor(float x, float y, Color plate, Color glass, Color sand, out Color color)
-        {
-            color = default;
-            var p = new Vector2(x, y);
-
-            // Plakalar
-            if (InRect(x, y, 6f, 58f, 86f, 93f) || InRect(x, y, 6f, 58f, 3f, 10f)) { color = plate; return true; }
-
-            bool inUpper = InTriangle(p, UpperA, UpperB, UpperC);
-            bool inLower = InTriangle(p, LowerA, LowerB, LowerC);
-
-            if (inUpper || inLower)
-            {
-                // Kum: üstte küçük üçgen, altta yığın
-                if (InTriangle(p, new Vector2(18f, 82f), new Vector2(46f, 82f), new Vector2(32f, 60f)) && inUpper) { color = sand; return true; }
-                if (InTriangle(p, new Vector2(18f, 12f), new Vector2(46f, 12f), new Vector2(32f, 27f)) && inLower) { color = sand; return true; }
-
-                // Cam çerçevesi: üçgenin kendisi ile küçültülmüş hali arasındaki bant
-                bool innerUpper = inUpper && InTriangle(p, Shrink(UpperA, UpperB, UpperC, 0.86f, 0), Shrink(UpperA, UpperB, UpperC, 0.86f, 1), Shrink(UpperA, UpperB, UpperC, 0.86f, 2));
-                bool innerLower = inLower && InTriangle(p, Shrink(LowerA, LowerB, LowerC, 0.86f, 0), Shrink(LowerA, LowerB, LowerC, 0.86f, 1), Shrink(LowerA, LowerB, LowerC, 0.86f, 2));
-                if (innerUpper || innerLower) { color = new Color(glass.r, glass.g, glass.b, 0.16f); return true; }
-
-                color = new Color(glass.r, glass.g, glass.b, 0.95f);
-                return true;
-            }
-
-            // Ortada ince kum akışı
-            if (InRect(x, y, 31f, 33f, 27f, 50f)) { color = sand; return true; }
-            return false;
-        }
-
-        // Üçgeni ağırlık merkezine doğru küçültür
-        static Vector2 Shrink(Vector2 a, Vector2 b, Vector2 c, float factor, int index)
-        {
-            Vector2 center = (a + b + c) / 3f;
-            Vector2 v = index == 0 ? a : index == 1 ? b : c;
-            return center + (v - center) * factor;
-        }
-
-        static bool InTriangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c)
-        {
-            float d1 = Sign(p, a, b), d2 = Sign(p, b, c), d3 = Sign(p, c, a);
-            bool hasNegative = d1 < 0f || d2 < 0f || d3 < 0f;
-            bool hasPositive = d1 > 0f || d2 > 0f || d3 > 0f;
-            return !(hasNegative && hasPositive);
-        }
-
-        static float Sign(Vector2 p, Vector2 a, Vector2 b)
-        {
-            return (p.x - b.x) * (a.y - b.y) - (a.x - b.x) * (p.y - b.y);
         }
     }
 }

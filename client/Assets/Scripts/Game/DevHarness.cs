@@ -98,6 +98,8 @@ namespace TextRun.Game
             controller.DevShowFakeResults(1);
             yield return new WaitForSeconds(0.6f);
             yield return Shot("6-results-first");
+            yield return new WaitForSeconds(1.2f);
+            yield return Shot("6b-results-first-later"); // konfeti daha aşağıda olmalı
             controller.DevShowFakeResults(4);
             yield return new WaitForSeconds(0.6f);
             yield return Shot("7-results-fourth");
