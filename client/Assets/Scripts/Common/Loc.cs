@@ -18,7 +18,6 @@ namespace TextRun.Common
             { "cancel", new[] { "İptal", "Cancel" } },
             { "matchFound", new[] { "Karşılaşma bulundu!", "Match found!" } },
             { "matchFoundSub", new[] { "Yarış birazdan başlıyor", "The race starts soon" } },
-            { "tagline", new[] { "Yaz. Yarış. Kazan.", "Type. Race. Win." } },
             { "getReady", new[] { "Hazır ol!", "Get ready!" } },
             { "go", new[] { "BAŞLA!", "GO!" } },
             { "typed", new[] { "Yazılan", "Typed" } },

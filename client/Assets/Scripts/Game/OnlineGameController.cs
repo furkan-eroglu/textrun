@@ -530,12 +530,11 @@ namespace TextRun.Game
             if (now - lastMenuDrawAt > 0.5f) menuShownAt = now;
             lastMenuDrawAt = now;
             logo.Draw(width, top + 80f, now - menuShownAt);
-            GUI.Label(new Rect(0f, top + 138f, width, 24f), T("tagline"), smallCenterStyle);
 
             DrawSoundButton(new Rect(width - 54f, top + 8f, 42f, 42f));
 
             // Dil seçimi: başlık yok, yalnızca iki seçenek
-            float y = top + 190f;
+            float y = top + 160f;
             int clickedLanguage = UiKit.Segmented(new Rect(24f, y, width - 48f, 52f), new[] { "Türkçe", "English" }, language == GameLanguage.Turkish ? 0 : 1, 21);
             if (clickedLanguage >= 0) SetLanguage((GameLanguage)clickedLanguage);
             y += 86f;
