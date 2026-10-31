@@ -296,10 +296,7 @@ namespace TextRun.Game
             resultsBackdrop.Restart(); // ekran açılınca konfeti yukarıdan süzülmeye başlar
             screen = Page.Results;
 
-            bool onPodium = false;
-            foreach (var result in results)
-                if (result.userId == net.UserId) onPodium = result.rank <= 3 && result.status == "finished";
-            sound.Finish(onPodium);
+            sound.Finish(PodiumRank() <= 3);
         }
 
         // Yarış bitiş geri sayımında saniye değiştikçe gerilim tiki; son 3 saniyede daha tiz
@@ -798,11 +795,14 @@ namespace TextRun.Game
             view.SetViewport(new Rect(0f, trackBottomPx, UnityEngine.Screen.width, UnityEngine.Screen.height - trackBottomPx));
         }
 
-        int MyRank()
+        // Ödül sırası: kupa rengi, konfeti ve zafer müziği için TEK kural, yalnızca SIRAYA bağlı.
+        // İlk üçte olan (yarışı bitirsin ya da süre dolduğu için bitirmesin) altın/gümüş/bronz kupayı, konfetiyi ve zafer müziğini alır.
+        // Sıralamayı sunucu zaten adil kurar: diskalifiyeler en sona atılır, bu yüzden ilk üçe giremezler.
+        int PodiumRank()
         {
             foreach (var r in results)
                 if (r.userId == net.UserId) return r.rank;
-            return 0;
+            return 4;
         }
 
         // Sonuç ekranı: sıraya göre renklenen büyük bir kupa, altında sıralama kartları ve düğmeler
@@ -810,10 +810,10 @@ namespace TextRun.Game
         {
             FullViewport();
 
-            int myRank = MyRank();
+            int podiumRank = PodiumRank();
             const float trophySize = 128f;
             var trophyCenter = new Vector2(width / 2f, top + 8f + trophySize / 2f);
-            resultsBackdrop.Draw(width, height, trophyCenter, trophySize, myRank > 0 ? myRank : 4);
+            resultsBackdrop.Draw(width, height, trophyCenter, trophySize, podiumRank);
 
             float y = top + trophySize + 10f;
             GUI.Label(new Rect(0f, y, width, 36f), T("results"), headingStyle);
@@ -846,7 +846,7 @@ namespace TextRun.Game
         }
 
         // Geliştirme: sahte sonuç göstererek ekranı doğrular (yalnızca DevHarness kullanır)
-        public void DevShowFakeResults(int myRank)
+        public void DevShowFakeResults(int myRank, string myStatus = "finished")
         {
             var list = new ResultDto[5];
             for (int i = 0; i < 5; i++)
@@ -858,7 +858,7 @@ namespace TextRun.Game
                     name = "Bot " + (i + 1),
                     isBot = !me,
                     rank = i + 1,
-                    status = "finished",
+                    status = me ? myStatus : "finished",
                     finishMs = 31000 + i * 3000,
                     wpm = 78f - i * 9f,
                     accuracy = 0.97f - i * 0.01f,

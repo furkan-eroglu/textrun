@@ -104,6 +104,11 @@ namespace TextRun.Game
             yield return new WaitForSeconds(0.6f);
             yield return Shot("7-results-fourth");
 
+            // Yarışı bitiremeyen ama listede 3. olan: yine bronz kupa ve konfeti alır (ödül yalnızca sıraya bağlı)
+            controller.DevShowFakeResults(3, "dnf");
+            yield return new WaitForSeconds(2.5f);
+            yield return Shot("8-results-dnf-third");
+
             File.WriteAllText(Path.Combine(dir, "done.txt"), "tamam");
             Application.Quit();
         }
