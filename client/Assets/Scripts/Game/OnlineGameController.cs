@@ -48,6 +48,10 @@ namespace TextRun.Game
         float lobbyEndsLocal;
         float searchStartedAt;
         float countdownEndsLocal;
+        float countdownTotal = 3f;     // F1 ışıklarının dağılacağı süre (sunucu geri sayımı)
+        float goFlashUntil;            // GO anında ışıkların yeşil yanıp sönme bitişi
+        int litLights;                 // geri sayımda şu ana kadar yanan ışık sayısı
+        const int LightCount = 5;
 
         GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle, searchTitleStyle, positionStyle;
 
@@ -194,6 +198,9 @@ namespace TextRun.Game
                 case Phase.Countdown:
                     PrepareTyping(s);
                     countdownEndsLocal = now + (s.startAt - s.serverNow) / 1000f;
+                    countdownTotal = Mathf.Max(0.5f, (s.startAt - s.serverNow) / 1000f);
+                    litLights = 0;
+                    goFlashUntil = 0f;
                     lastTickSecond = int.MinValue;
                     endingEndsLocal = 0f;
                     finishOrder.Clear();
@@ -247,6 +254,7 @@ namespace TextRun.Game
         {
             if (typing == null) return;
             screen = Page.Racing;
+            goFlashUntil = Time.realtimeSinceStartup + 0.8f;
             typing.MarkStarted(Time.realtimeSinceStartup);
             view.SetRacing(true);
             keyboard.Open(KeyboardKind.Default);
@@ -311,16 +319,20 @@ namespace TextRun.Game
             sound.AlertTick(seconds <= 3);
         }
 
-        // Geri sayımda saniye değiştikçe tik sesi (3, 2, 1)
+        // F1 ışıkları: geri sayım süresine eşit aralıklarla sırayla yanar, her ışıkta bir tik sesi
+        int LightsLit()
+        {
+            float elapsed = countdownTotal - (countdownEndsLocal - Time.realtimeSinceStartup);
+            return Mathf.Clamp(Mathf.FloorToInt(elapsed / (countdownTotal / (LightCount + 1)) + 0.0001f), 0, LightCount);
+        }
+
         void TickCountdownSound()
         {
             if (screen != Page.Countdown) return;
 
-            int seconds = Mathf.CeilToInt(countdownEndsLocal - Time.realtimeSinceStartup);
-            if (seconds == lastTickSecond || seconds < 1 || seconds > 3) return;
-
-            lastTickSecond = seconds;
-            sound.Tick();
+            int lit = LightsLit();
+            if (lit > litLights) sound.Tick();
+            litLights = lit;
         }
 
         // ---------- Yazma girişi ----------
@@ -655,12 +667,39 @@ namespace TextRun.Game
             view.DrawLabels(scale, T("you"), T("bot"));
             progressStrip.Draw(new Rect(8f, top + 8f, width - 16f, 26f), players, wordCount, net.UserId, 0f);
 
-            int seconds = Mathf.Max(0, Mathf.CeilToInt(countdownEndsLocal - Time.realtimeSinceStartup));
-            DrawPanel(new Rect(width / 2f - 90f, top + 46f, 180f, 90f), 0.6f);
-            GUI.Label(new Rect(width / 2f - 90f, top + 46f, 180f, 90f), seconds > 0 ? seconds.ToString() : T("getReady"), titleStyle);
+            DrawStartLights(width, top, LightsLit(), false);
 
             if (typing != null) wordView.Draw(box, typing, "");
             DrawSimulatedKeyboard(width, height, scale, devButtonY);
+        }
+
+        // F1 start ışıkları: koyu bir panelde 5 kırmızı ışık sırayla yanar; GO'da hepsi kısa süre yeşil yanıp söner
+        void DrawStartLights(float width, float top, int lit, bool green)
+        {
+            const float size = 38f, gap = 10f;
+            float panelW = LightCount * size + (LightCount + 1) * gap;
+            var panel = new Rect(width / 2f - panelW / 2f, top + 44f, panelW, size + gap * 2f + 22f);
+            UiKit.Panel(panel, 0.85f, 14f);
+
+            var old = GUI.color;
+            for (int i = 0; i < LightCount; i++)
+            {
+                var r = new Rect(panel.x + gap + i * (size + gap), panel.y + gap, size, size);
+                bool on = green || i < lit;
+                GUI.color = new Color(0.10f, 0.10f, 0.12f, 1f); // lamba yuvası
+                GUI.DrawTexture(new Rect(r.x - 3f, r.y - 3f, r.width + 6f, r.height + 6f), SoundIcon.Disc());
+                if (on)
+                {
+                    GUI.color = green ? new Color(0.20f, 0.95f, 0.40f, 0.30f) : new Color(1f, 0.15f, 0.15f, 0.30f); // parlama
+                    GUI.DrawTexture(new Rect(r.x - 7f, r.y - 7f, r.width + 14f, r.height + 14f), SoundIcon.Disc());
+                    GUI.color = green ? new Color(0.25f, 0.95f, 0.45f, 1f) : new Color(0.95f, 0.12f, 0.14f, 1f);
+                }
+                else GUI.color = new Color(0.25f, 0.10f, 0.11f, 1f); // sönük
+                GUI.DrawTexture(r, SoundIcon.Disc());
+            }
+            GUI.color = old;
+
+            GUI.Label(new Rect(panel.x, panel.yMax - 26f, panel.width, 22f), green ? T("go") : T("getReady"), smallCenterStyle);
         }
 
         // Yalnızca editörde: telefon klavyesinin kaplayacağı alanı gri bir blokla gösterir, düzeni PC'de telefondaki gibi görmek için.
@@ -682,6 +721,7 @@ namespace TextRun.Game
         {
             LayoutRaceArea(width, height, scale, out var box, out float devButtonY);
             view.DrawLabels(scale, T("you"), T("bot"));
+            if (Time.realtimeSinceStartup < goFlashUntil) DrawStartLights(width, top, LightCount, true);
             // Kendi ilerlemen sunucu cevabını beklemeden yerel durumdan gösterilir
             progressStrip.Draw(new Rect(8f, top + 8f, width - 16f, 26f), players, wordCount, net.UserId, (float)typing.CurrentIndex / Mathf.Max(1, wordCount));
 

@@ -82,7 +82,9 @@ namespace TextRun.Game
             yield return Shot("3-countdown");
 
             yield return WaitForPage("Racing", 15f);
-            yield return new WaitForSeconds(14f);
+            yield return new WaitForSeconds(0.2f);
+            yield return Shot("3b-go"); // ışıklar yeşil yanıp sönmeli
+            yield return new WaitForSeconds(13.8f);
             yield return Shot("4-racing");
 
             KeyboardInput.SimulateInEditor = true; // telefon klavyesinin kaplayacağı yeri taklit eder
