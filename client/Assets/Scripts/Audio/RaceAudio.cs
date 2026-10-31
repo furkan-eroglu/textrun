@@ -9,12 +9,16 @@ namespace TextRun.Audio
         const string SoundKey = "textrun.sound";
         const float MusicVolume = 0.22f;
         const float CheerVolume = 0.9f;
+        const float MenuVolume = 0.2f;
         public const float CheerSeconds = 5.5f;  // alkış + havai fişek sesinin çalacağı süre
         const float CheerFadeSeconds = 1.5f;     // sonunda yumuşakça kısılma
 
         AudioSource sfx;
         AudioSource music;
         AudioSource cheer;
+        AudioSource menu;
+        AudioClip menuClip;
+        bool menuWanted;
         float cheerStartedAt = -999f;
         float cheerLength;
         AudioClip tick, click, alertTick, alertFinal, whistle, loop, fanfarePodium, fanfareDone, applause, matchFound;
@@ -26,7 +30,7 @@ namespace TextRun.Audio
             {
                 PlayerPrefs.SetInt(SoundKey, value ? 1 : 0);
                 PlayerPrefs.Save();
-                if (!value) { StopMusic(); StopCheer(); }
+                if (!value) { StopMusic(); StopCheer(); menu.Stop(); menu.volume = 0f; }
             }
         }
 
@@ -43,8 +47,13 @@ namespace TextRun.Audio
             cheer = gameObject.AddComponent<AudioSource>();
             cheer.playOnAwake = false;
 
+            menu = gameObject.AddComponent<AudioSource>();
+            menu.playOnAwake = false;
+            menu.loop = true;
+            menu.volume = 0f;
+
             // Assets/Resources/Audio içine aynı adla bir ses dosyası (.ogg/.wav/.mp3) konursa o kullanılır;
-            // yoksa kodla üretilen geçici ses çalar. Dosya adları: tick, click, alert_tick, alert_final, whistle, race_loop, finish_win, finish_done, applause, match_found
+            // yoksa kodla üretilen geçici ses çalar. Dosya adları: tick, click, alert_tick, alert_final, whistle, race_loop, finish_win, finish_done, applause, match_found, menu_music
             tick = Custom("tick") ?? SoundSynth.ToClip("tick", SoundSynth.TickSamples());
             click = Custom("click") ?? SoundSynth.ToClip("click", SoundSynth.ClickSamples());
             alertTick = Custom("alert_tick") ?? SoundSynth.ToClip("alertTick", SoundSynth.AlertTickSamples(false));
@@ -55,6 +64,7 @@ namespace TextRun.Audio
             applause = Custom("applause") ?? SoundSynth.ToClip("applause", SoundSynth.ApplauseSamples());
             matchFound = Custom("match_found") ?? SoundSynth.ToClip("matchFound", SoundSynth.MatchFoundSamples());
             applause.LoadAudioData(); // ilk çalışta kasma olmasın
+            menuClip = Custom("menu_music") ?? SoundSynth.ToClip("menuMusic", SoundSynth.MenuMusicSamples());
             fanfareDone = Custom("finish_done") ?? SoundSynth.ToClip("fanfareDone", SoundSynth.FanfareSamples(false));
         }
 
@@ -108,8 +118,27 @@ namespace TextRun.Audio
             cheerLength = Mathf.Min(CheerSeconds, applause.length);
         }
 
+        // Ana menü / eşleşme arka plan müziği: açılırken yumuşakça yükselir, yarışa geçerken kısılır
+        public void SetMenuMusic(bool want)
+        {
+            menuWanted = want && Enabled;
+        }
+
+        void UpdateMenuMusic()
+        {
+            float target = menuWanted ? MenuVolume : 0f;
+            if (menuWanted && !menu.isPlaying)
+            {
+                menu.clip = menuClip;
+                menu.Play();
+            }
+            menu.volume = Mathf.MoveTowards(menu.volume, target, Time.unscaledDeltaTime / (menuWanted ? 1.2f : 0.5f) * MenuVolume);
+            if (!menuWanted && menu.isPlaying && menu.volume <= 0.001f) menu.Stop();
+        }
+
         void Update()
         {
+            UpdateMenuMusic();
             if (!cheer.isPlaying) return;
 
             float t = Time.realtimeSinceStartup - cheerStartedAt;

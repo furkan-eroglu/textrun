@@ -61,7 +61,9 @@ namespace TextRun.Game
             audio.Enabled = true; // önceki yarım kalan çalıştırmadan kalan ayar sonucu bozmasın
 
             yield return WaitForPage("Menu", 30f);
-            yield return new WaitForSeconds(1f);
+            yield return new WaitForSeconds(0.25f);
+            yield return Shot("1a-menu-logo-intro"); // harfler kayarak geliyor
+            yield return new WaitForSeconds(1.5f);
             yield return Shot("1-menu");
 
             // Ses simgesinin "kapalı" (çarpılı) görünümü

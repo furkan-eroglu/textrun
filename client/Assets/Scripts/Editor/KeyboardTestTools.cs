@@ -159,6 +159,9 @@ namespace TextRun.EditorTools
 
             Common("alkis", SoundSynth.ApplauseSamples(), 2.6f);
             Common("eslesme bulundu", SoundSynth.MatchFoundSamples(), 0.9f);
+            var menuMusic = SoundSynth.MenuMusicSamples();
+            Common("menu muzigi", menuMusic, 19.2f);
+            check(Mathf.Abs(menuMusic[0]) < 0.25f && Mathf.Abs(menuMusic[menuMusic.Length - 1]) < 0.25f, "ses menu muzigi: dongu noktasi sessiz (tik yok)");
 
             var click = SoundSynth.ClickSamples();
             Common("tiklama", click, 0.09f);

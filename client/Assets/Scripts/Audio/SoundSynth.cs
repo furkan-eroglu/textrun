@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace TextRun.Audio
@@ -207,6 +208,74 @@ namespace TextRun.Audio
                 float t = i / (float)SampleRate;
                 float release = Mathf.Min(1f, (length - i) / (0.008f * SampleRate)); // nota sonunda ani kesilme olmasın
                 data[index] += generate(t) * release;
+            }
+        }
+
+        // Ana menü müziği: 8 ölçülük (19,2 sn) kesintisiz döngü. Am - F - C - G akoru; bas, pad, arpej, hafif vuruş ve hi-hat.
+        // Notaların kuyruğu döngü başına sarılır, böylece döngü noktasında tık sesi olmaz.
+        public static float[] MenuMusicSamples()
+        {
+            const float bpm = 100f;
+            float beat = 60f / bpm;
+            float bar = beat * 4f;
+            int bars = 8;
+            int n = (int)(bar * bars * SampleRate);
+            var data = new float[n];
+            var random = new System.Random(11);
+
+            float[] roots = { 110f, 87.31f, 130.81f, 98f };
+            float[][] chords =
+            {
+                new[] { 220f, 261.63f, 329.63f }, new[] { 174.61f, 220f, 261.63f },
+                new[] { 261.63f, 329.63f, 392f }, new[] { 196f, 246.94f, 293.66f }
+            };
+
+            for (int b = 0; b < bars; b++)
+            {
+                int chordIndex = b / 2;
+                float barStart = b * bar;
+                var chord = chords[chordIndex];
+
+                // Pad: yumuşak girişli, yavaş çıkışlı akor
+                foreach (float f in chord)
+                    AddWrapped(data, barStart, bar + 0.4f, t => (Mathf.Sin(TwoPi * f * t) + 0.3f * Mathf.Sin(TwoPi * f * 2f * t)) * 0.07f * Mathf.Min(1f, t / 0.5f) * Mathf.Clamp01((bar + 0.4f - t) / 0.6f));
+
+                // Bas: 1. vuruşta ve 2. vuruşun yarısında
+                float root = roots[chordIndex];
+                foreach (float at in new[] { 0f, beat * 1.5f, beat * 2f })
+                    AddWrapped(data, barStart + at, 0.6f, t => Mathf.Sin(TwoPi * root * t) * 0.32f * Mathf.Min(1f, t / 0.006f) * Mathf.Exp(-t * 4.5f));
+
+                // Arpej: sekizlik notalar, akor sesleri bir oktav yukarıda
+                int[] pattern = { 0, 1, 2, 1, 2, 1, 0, 1 };
+                for (int e = 0; e < 8; e++)
+                {
+                    float f = chord[pattern[e]] * 2f;
+                    AddWrapped(data, barStart + e * beat / 2f, 0.5f, t => (Mathf.Sin(TwoPi * f * t) + 0.3f * Mathf.Sin(TwoPi * f * 2f * t)) * 0.12f * Mathf.Min(1f, t / 0.004f) * Mathf.Exp(-t * 9f));
+                }
+
+                // Vuruş: 1. ve 3. vuruşta yumuşak davul; sekizlik arası hi-hat
+                foreach (float at in new[] { 0f, beat * 2f })
+                    AddWrapped(data, barStart + at, 0.25f, t => Mathf.Sin(TwoPi * (45f + 90f * Mathf.Exp(-t * 28f)) * t) * 0.5f * Mathf.Exp(-t * 14f));
+
+                for (int e = 0; e < 4; e++)
+                {
+                    float hatNoise = (float)random.NextDouble();
+                    AddWrapped(data, barStart + (e + 0.5f) * beat, 0.05f, t => (Mathf.Sin(hatNoise * 100f + t * 90000f) * 0.5f + Mathf.Sin(t * 130000f)) * 0.04f * Mathf.Exp(-t * 90f));
+                }
+            }
+
+            Normalize(data, 0.8f);
+            return data;
+        }
+
+        static void AddWrapped(float[] data, float startSeconds, float lengthSeconds, Func<float, float> generate)
+        {
+            int start = (int)(startSeconds * SampleRate);
+            int length = (int)(lengthSeconds * SampleRate);
+            for (int i = 0; i < length; i++)
+            {
+                int index = (start + i) % data.Length;
+                data[index] += generate(i / (float)SampleRate);
             }
         }
 

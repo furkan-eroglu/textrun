@@ -24,6 +24,9 @@ namespace TextRun.Game
         readonly MenuBackdrop backdrop = new MenuBackdrop();
         readonly ResultsBackdrop resultsBackdrop = new ResultsBackdrop();
         readonly Fireworks fireworks = new Fireworks();
+        readonly GameLogo logo = new GameLogo();
+        float menuShownAt;
+        float lastMenuDrawAt = -999f;
 
         OnlineRaceClient net;
         OnlineRaceView view;
@@ -361,6 +364,7 @@ namespace TextRun.Game
             if (screen == Page.MatchFound && Time.realtimeSinceStartup >= countdownEndsLocal - countdownTotal) screen = Page.Countdown;
             TickCountdownSound();
             TickEndingSound();
+            sound.SetMenuMusic(screen == Page.Menu || screen == Page.Searching || screen == Page.MatchFound);
 
             // Pist ve karakterler yalnızca geri sayım ve yarışta görünür
             bool wantTrack = screen == Page.Countdown || screen == Page.Racing;
@@ -521,12 +525,17 @@ namespace TextRun.Game
         {
             FullViewport();
 
-            GUI.Label(new Rect(0f, top + 20f, width, 60f), "TextRun", titleStyle);
+            // Logo: menü her açıldığında harfler yeniden kayarak gelir
+            float now = Time.realtimeSinceStartup;
+            if (now - lastMenuDrawAt > 0.5f) menuShownAt = now;
+            lastMenuDrawAt = now;
+            logo.Draw(width, top + 80f, now - menuShownAt);
+            GUI.Label(new Rect(0f, top + 138f, width, 24f), T("tagline"), smallCenterStyle);
 
             DrawSoundButton(new Rect(width - 54f, top + 8f, 42f, 42f));
 
             // Dil seçimi: başlık yok, yalnızca iki seçenek
-            float y = top + 120f;
+            float y = top + 190f;
             int clickedLanguage = UiKit.Segmented(new Rect(24f, y, width - 48f, 52f), new[] { "Türkçe", "English" }, language == GameLanguage.Turkish ? 0 : 1, 21);
             if (clickedLanguage >= 0) SetLanguage((GameLanguage)clickedLanguage);
             y += 86f;
