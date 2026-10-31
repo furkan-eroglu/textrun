@@ -89,6 +89,11 @@ namespace TextRun.Game
             yield return new WaitForSeconds(1f);
             yield return Shot("5-racing-keyboard");
 
+            // Bitirdin + kırmızı geri sayım görünümü
+            controller.DevShowFinishedEnding();
+            yield return new WaitForSeconds(0.5f);
+            yield return Shot("5b-finished-ending");
+
             // Sonuç ekranı: birinci ve dördüncü için sahte sonuçla görünüm kontrolü
             controller.DevShowFakeResults(1);
             yield return new WaitForSeconds(0.6f);

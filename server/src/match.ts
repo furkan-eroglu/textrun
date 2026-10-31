@@ -42,6 +42,7 @@ function snapshotOf(state: RaceState, now: number) {
     serverNow: now,
     lobbyEndsAt: state.phase === "lobby" && state.lobbyDeadline > 0 ? state.lobbyDeadline : 0,
     startAt: state.raceStartAt,
+    endsAt: state.graceDeadline, // 0 = bitiş geri sayımı başlamadı
     words: state.phase === "lobby" ? [] : state.words,
     players: publicPlayers(state),
     results: state.results,
@@ -161,9 +162,17 @@ export function matchLoop(
       }
       break;
 
-    case "racing":
+    case "racing": {
+      const graceBefore = state.graceDeadline;
       if (stepBots(state, now)) progressChanged = true;
-      if (updateRaceEnd(state, now)) {
+      const ended = updateRaceEnd(state, now);
+
+      // İlk oyuncu bitirdi: herkese yarışın biteceği an bildirilir (kırmızı geri sayım)
+      if (graceBefore === 0 && state.graceDeadline > 0 && !ended) {
+        send(dispatcher, OP.ENDING, { serverNow: now, endsAt: state.graceDeadline });
+      }
+
+      if (ended) {
         send(dispatcher, OP.PROGRESS, { t: now, players: publicPlayers(state) });
         send(dispatcher, OP.RESULTS, { serverNow: now, results: state.results });
         logger.info("Yaris bitti: dil=%s", state.lang);
@@ -171,6 +180,7 @@ export function matchLoop(
         send(dispatcher, OP.PROGRESS, { t: now, players: publicPlayers(state) });
       }
       break;
+    }
 
     case "finished":
       if (now - state.endedAt >= state.cfg.resultsLingerMs) return null;

@@ -114,6 +114,13 @@ namespace TextRun.EditorTools
             Common("tiklama", click, 0.09f);
             check(Mathf.Abs(click[0]) < 0.05f && Mathf.Abs(click[click.Length - 1]) < 0.02f, "ses tiklama: basi/sonu sessiz (tiklama patlamasi yok)");
 
+            var alert = SoundSynth.AlertTickSamples(false);
+            Common("uyari tik", alert, 0.14f);
+            var alertFinal = SoundSynth.AlertTickSamples(true);
+            Common("uyari tik (son 3 sn)", alertFinal, 0.18f);
+            float alertHz = Frequency(alert), finalHz = Frequency(alertFinal);
+            check(finalHz > alertHz * 1.5f, "ses uyari: son 3 sn tiki daha tiz (" + alertHz.ToString("0") + " -> " + finalHz.ToString("0") + " Hz)");
+
             var whistle = SoundSynth.WhistleSamples();
             Common("duduk", whistle, 0.9f);
             float whistleHz = Frequency(whistle);

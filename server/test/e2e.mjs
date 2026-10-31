@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 
 const HOST = '127.0.0.1:7350';
-const OP = { SUBMIT: 1, SNAPSHOT: 100, ROSTER: 101, COUNTDOWN: 102, GO: 103, PROGRESS: 104, ACK: 105, RESULTS: 106 };
+const OP = { SUBMIT: 1, SNAPSHOT: 100, ROSTER: 101, COUNTDOWN: 102, GO: 103, PROGRESS: 104, ACK: 105, RESULTS: 106, ENDING: 107 };
 const runId = Date.now().toString(36);
 
 let failures = 0;
@@ -243,6 +243,15 @@ await test('tek oyuncu: sure dolunca 4 bot gelir, yanlis kelime ilerletmez, erke
   const res = await p.waitFor(OP.RESULTS);
   const results = res.body.results;
   const me = results.find((r) => r.userId === p.userId);
+
+  // Yeni kural: ilk bitirenden sonra geri sayim (test ayarinda 3 sn); sonuc bitirir bitirmez degil, sure dolunca gelir
+  const ending = p.events.find((e) => e.op === OP.ENDING);
+  assert.ok(ending, 'ilk bitirenden sonra ENDING (geri sayim) mesaji gelmeli');
+  const countdownMs = ending.body.endsAt - ending.body.serverNow;
+  assert.ok(countdownMs >= 2500 && countdownMs <= 3500, 'geri sayim suresi ~3 sn olmali (' + countdownMs + ')');
+  assert.ok(res.at - ending.at >= 2000, 'sonuclar geri sayim dolunca gelmeli: ' + (res.at - ending.at) + ' ms');
+  assert.ok(results.filter((r) => r.isBot).some((r) => r.correctWords > 0), 'botlar geri sayim boyunca ilerlemeli');
+
   assert.equal(me.rank, 1, 'cok hizli yazan insan botlari geride birakmali');
   assert.equal(me.status, 'finished');
   assert.equal(me.errors, 1);

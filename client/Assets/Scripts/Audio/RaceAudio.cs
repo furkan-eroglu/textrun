@@ -11,7 +11,7 @@ namespace TextRun.Audio
 
         AudioSource sfx;
         AudioSource music;
-        AudioClip tick, click, whistle, loop, fanfarePodium, fanfareDone;
+        AudioClip tick, click, alertTick, alertFinal, whistle, loop, fanfarePodium, fanfareDone;
 
         public bool Enabled
         {
@@ -35,9 +35,11 @@ namespace TextRun.Audio
             music.volume = MusicVolume;
 
             // Assets/Resources/Audio içine aynı adla bir ses dosyası (.ogg/.wav/.mp3) konursa o kullanılır;
-            // yoksa kodla üretilen geçici ses çalar. Dosya adları: tick, click, whistle, race_loop, finish_win, finish_done
+            // yoksa kodla üretilen geçici ses çalar. Dosya adları: tick, click, alert_tick, alert_final, whistle, race_loop, finish_win, finish_done
             tick = Custom("tick") ?? SoundSynth.ToClip("tick", SoundSynth.TickSamples());
             click = Custom("click") ?? SoundSynth.ToClip("click", SoundSynth.ClickSamples());
+            alertTick = Custom("alert_tick") ?? SoundSynth.ToClip("alertTick", SoundSynth.AlertTickSamples(false));
+            alertFinal = Custom("alert_final") ?? SoundSynth.ToClip("alertFinal", SoundSynth.AlertTickSamples(true));
             whistle = Custom("whistle") ?? SoundSynth.ToClip("whistle", SoundSynth.WhistleSamples());
             loop = Custom("race_loop") ?? SoundSynth.ToClip("raceLoop", SoundSynth.RaceLoopSamples());
             fanfarePodium = Custom("finish_win") ?? SoundSynth.ToClip("fanfarePodium", SoundSynth.FanfareSamples(true));
@@ -53,6 +55,12 @@ namespace TextRun.Audio
         public void Click()
         {
             if (Enabled) sfx.PlayOneShot(click, 0.55f);
+        }
+
+        // Yarış bitiş geri sayımı: her saniyede gerilim tiki; son 3 saniye daha tiz ve vurgulu
+        public void AlertTick(bool urgent)
+        {
+            if (Enabled) sfx.PlayOneShot(urgent ? alertFinal : alertTick, urgent ? 0.9f : 0.7f);
         }
 
         public void Tick()

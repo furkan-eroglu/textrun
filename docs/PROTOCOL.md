@@ -32,6 +32,7 @@ Veri, UTF-8 JSON metnidir.
 | 104 | sunucu → hepsi | `PROGRESS` | Oyuncuların ilerlemesi (her değişimde) |
 | 105 | sunucu → gönderen | `ACK` | Gönderilen kelimenin sonucu |
 | 106 | sunucu → hepsi | `RESULTS` | Yarış bitti, sıralama |
+| 107 | sunucu → hepsi | `ENDING` | İlk oyuncu bitirdi: yarışın biteceği an. `{ "serverNow": ms, "endsAt": ms }` |
 
 ### Ortak gövde (`SNAPSHOT`, `ROSTER`, `COUNTDOWN`)
 
@@ -42,6 +43,7 @@ Veri, UTF-8 JSON metnidir.
   "serverNow": 1793394863031,
   "lobbyEndsAt": 1793394878031,
   "startAt": 1793394866031,
+  "endsAt": 0,
   "words": ["elma", "okul", "..."],
   "players": [
     { "id": "...", "name": "Ali", "isBot": false, "slot": 0, "index": 0, "connected": true, "finished": false, "disqualified": false }
@@ -52,6 +54,7 @@ Veri, UTF-8 JSON metnidir.
 
 - `serverNow` / `startAt`: sunucu saati (ms). İstemci `startAt - serverNow` farkından kendi geri sayımını gösterir; saat farkını önemsemez.
 - `lobbyEndsAt`: lobide botlarla doldurma anı (0 = henüz sayaç başlamadı).
+- `endsAt`: yarışın bitiş geri sayımı bittiği an (0 = geri sayım başlamadı). Yeniden bağlanan oyuncuya da gönderilir.
 - `words` lobide boştur; geri sayım başlayınca dolar. Herkese **aynı** liste gider.
 - `players[].isBot = true` olanlar arayüzde **"Bot" etiketiyle** gösterilmelidir.
 - `index`: oyuncunun sıradaki kelime numarası; ilerleme = `index / words.length`.
@@ -86,7 +89,10 @@ Veri, UTF-8 JSON metnidir.
 - **Dil:** Türkçe ve İngilizce asla aynı odada olmaz. Oda dili sunucuda sabittir ve katılma sırasında doğrulanır.
 - **Lobi:** İlk oyuncudan 15 sn sonra, ya da 5 insan toplanınca yarış başlar. Boş yerleri botlar doldurur.
 - **Geri sayım:** 3 sn. Başlama anını sunucu belirler.
-- **Yarış:** 40 kelime. İlk 3 oyuncu bitirince 20 sn beklenir, bitirmeyenler `dnf` olur. Üst sınır 180 sn.
+- **Yarış:** 40 kelime. **İlk oyuncu (insan ya da bot) bitirince 10 sn'lik bir geri sayım başlar** (`ENDING` mesajı).
+  Bu sürede bitirenler bitiş süresine göre sıralanır; süre dolunca bitirmeyenler `dnf` olur ve yazdıkları kelime sayısına
+  göre sıralanır (eşitlikte kelimeye önce ulaşan öndedir). Herkes bitirirse geri sayım beklenmez. Yarışı sürdüren insan
+  kalmadıysa (hepsi bitirdi ya da diskalifiye oldu) geri sayım yine başlar. Üst sınır 180 sn.
 - **Hız sınırı:** İlk 5 kelimeden sonra 250 WPM'i aşan oyuncu diskalifiye edilir.
 - **Bağlantı kopması:** 30 sn içinde aynı hesapla aynı odaya `joinMatch` yapılırsa yarışa devam edilir (`SNAPSHOT` gelir). Dönmezse `dnf` olur.
 - **Ayarlar** `server/src/config.ts` içindedir; canlı sunucuda `TEXTRUN_...` ortam değişkenleriyle değiştirilebilir.

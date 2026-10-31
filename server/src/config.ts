@@ -6,8 +6,8 @@ export interface RaceConfig {
   wordCount: number;
   maxWpm: number; // bunun üstü insan için şüpheli sayılır
   minWordsForWpmCheck: number;
-  finishGraceAfter: number; // bu kadar oyuncu bitirince bekleme süresi başlar
-  finishGraceMs: number;
+  finishGraceAfter: number; // bu kadar oyuncu (insan ya da bot) bitirince geri sayım başlar
+  finishGraceMs: number; // geri sayım süresi: bitirmeyenler bu sürede yetişebilir, süre dolunca ilerlemeye göre sıralanır
   raceMaxMs: number;
   disconnectGraceMs: number;
   resultsLingerMs: number;
@@ -23,8 +23,8 @@ export const DEFAULT_CONFIG: RaceConfig = {
   wordCount: 40,
   maxWpm: 250,
   minWordsForWpmCheck: 5,
-  finishGraceAfter: 3,
-  finishGraceMs: 20000,
+  finishGraceAfter: 1,
+  finishGraceMs: 10000,
   raceMaxMs: 180000,
   disconnectGraceMs: 30000,
   resultsLingerMs: 15000,

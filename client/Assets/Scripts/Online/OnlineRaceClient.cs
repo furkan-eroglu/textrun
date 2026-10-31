@@ -33,6 +33,7 @@ namespace TextRun.Online
         public event Action<ProgressDto> Progress;
         public event Action<AckDto> Ack;
         public event Action<ResultsDto> Results;
+        public event Action<EndingDto> Ending;
         public event Action<string> Closed;
 
         public string UserId => session?.UserId;
@@ -197,6 +198,7 @@ namespace TextRun.Online
                     case Op.Progress: Progress?.Invoke(JsonUtility.FromJson<ProgressDto>(json)); break;
                     case Op.Ack: Ack?.Invoke(JsonUtility.FromJson<AckDto>(json)); break;
                     case Op.Results: Results?.Invoke(JsonUtility.FromJson<ResultsDto>(json)); break;
+                    case Op.Ending: Ending?.Invoke(JsonUtility.FromJson<EndingDto>(json)); break;
                 }
             });
         }

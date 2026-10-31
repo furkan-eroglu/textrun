@@ -18,6 +18,7 @@ export interface Player {
   errors: number;
   correctChars: number;
   finishedAt: number; // 0 = bitirmedi
+  progressAt: number; // son doğru kelimenin zamanı: ilerleme eşitliğinde kim önce ulaştı
   disqualified: boolean;
   botWpm: number;
   botNextAt: number;
@@ -185,6 +186,7 @@ function newPlayer(id: string, name: string, isBot: boolean, slot: number): Play
     errors: 0,
     correctChars: 0,
     finishedAt: 0,
+    progressAt: 0,
     disqualified: false,
     botWpm: 0,
     botNextAt: 0,
@@ -224,6 +226,7 @@ export function submitWord(state: RaceState, playerId: string, raw: string, now:
   }
 
   player.errors += reported;
+  player.progressAt = now;
   player.index++;
   player.correct++;
   player.correctChars += expected.length + 1;
@@ -254,6 +257,7 @@ export function stepBots(state: RaceState, now: number): boolean {
     if (!bot.isBot || bot.finishedAt > 0) continue;
     while (bot.finishedAt === 0 && bot.botNextAt <= now) {
       const word = state.words[bot.index];
+      bot.progressAt = bot.botNextAt;
       bot.index++;
       bot.correct++;
       bot.correctChars += word.length + 1;
@@ -271,21 +275,28 @@ function humanStillPlaying(state: RaceState, p: Player, now: number): boolean {
 }
 
 // Yarışın bitip bitmediğine bakar; bittiyse sonuçları hesaplar. Bittiyse true döner.
+//
+// Kural: İlk oyuncu (insan ya da bot) bitirince bir geri sayım (finishGraceMs) başlar. Bu sürede bitirenler bitiş
+// süresiyle sıralanır; süre dolunca bitirmeyenler yazdıkları kelime sayısına göre sıralanır. Herkes bitirirse beklenmez.
+// Yarışta yazmaya devam eden insan kalmadıysa (hepsi bitirdi/diskalifiye oldu) ve hiç bitiren yoksa geri sayım yine başlar.
+// Odada hiç insan kalmadıysa (hepsi ayrıldı) yarış hemen biter.
 export function updateRaceEnd(state: RaceState, now: number): boolean {
   if (state.phase !== "racing") return false;
   const players = playerList(state);
 
   const finishers = players.filter((p) => p.finishedAt > 0 && !p.disqualified).length;
-  if (finishers >= state.cfg.finishGraceAfter && state.graceDeadline === 0) {
+  const humansRacing = players.filter((p) => humanStillPlaying(state, p, now)).length;
+  const humansPresent = players.filter((p) => !p.isBot && (p.connected || now - p.disconnectedAt <= state.cfg.disconnectGraceMs)).length;
+
+  if (state.graceDeadline === 0 && (finishers >= state.cfg.finishGraceAfter || (humansPresent > 0 && humansRacing === 0))) {
     state.graceDeadline = now + state.cfg.finishGraceMs;
   }
 
-  // Yarışta yazmaya devam eden insan kalmadıysa (hepsi bitirdi, diskalifiye oldu ya da ayrıldı) botları beklemeye gerek yok.
-  const humansPlaying = players.filter((p) => humanStillPlaying(state, p, now)).length;
+  const everyoneDone = players.every((p) => p.finishedAt > 0 || p.disqualified);
   const graceOver = state.graceDeadline > 0 && now >= state.graceDeadline;
   const tooLong = now - state.raceStartAt >= state.cfg.raceMaxMs;
 
-  if (humansPlaying === 0 || graceOver || tooLong) {
+  if (humansPresent === 0 || everyoneDone || graceOver || tooLong) {
     finishRace(state, now);
     return true;
   }
@@ -301,7 +312,7 @@ function finishRace(state: RaceState, now: number): void {
 export function computeResults(state: RaceState, now: number): RaceResult[] {
   const players = playerList(state);
   const finished = players.filter((p) => p.finishedAt > 0 && !p.disqualified).sort((a, b) => a.finishedAt - b.finishedAt || a.slot - b.slot);
-  const dnf = players.filter((p) => p.finishedAt === 0 && !p.disqualified).sort((a, b) => b.correct - a.correct || a.slot - b.slot);
+  const dnf = players.filter((p) => p.finishedAt === 0 && !p.disqualified).sort((a, b) => b.correct - a.correct || a.progressAt - b.progressAt || a.slot - b.slot);
   const cheaters = players.filter((p) => p.disqualified).sort((a, b) => a.slot - b.slot);
 
   const ordered = finished.concat(dnf, cheaters);

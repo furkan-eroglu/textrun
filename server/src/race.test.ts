@@ -179,7 +179,8 @@ test("dogruluk tus duzeyinde: bildirilen yanlis tuslar hesaba katilir, sinirsiz 
 
   state.words.length = 4; // listeyi 4 kelimeye indir: oyuncu bitirdi sayilsin
   state.players.u1.finishedAt = start + 4000;
-  updateRaceEnd(state, start + 5000);
+  updateRaceEnd(state, start + 5000); // bitiren oldu: geri sayim baslar
+  assert.ok(updateRaceEnd(state, start + 5000 + state.cfg.finishGraceMs), "geri sayim dolunca yaris biter");
   const result = state.results![0];
   const expected = state.players.u1.correctChars / (state.players.u1.correctChars + 53);
   assert.ok(Math.abs(result.accuracy - expected) < 0.001, "dogruluk = dogru tus / (dogru tus + hata)");
@@ -228,8 +229,7 @@ test("botlar yarisi bitirir ve hizlari kendi WPM degerlerine yakindir", () => {
   let now = start;
   while (state.phase === "racing" && now - start < 400000) {
     now += 100;
-    stepBots(state, now);
-    updateRaceEnd(state, now);
+    stepBots(state, now); // yalnızca botların kendi hızı ölçülür (yarış sonu kuralı bu testin konusu değil)
     submitWord(state, "u1", "x", now); // insan oyuncu ilerlemiyor
     if (now - start > 150000) break;
   }
@@ -241,27 +241,100 @@ test("botlar yarisi bitirir ve hizlari kendi WPM degerlerine yakindir", () => {
   }
 });
 
-test("ilk 3 bitirince bekleme basar, sure dolunca bitmeyenler son siraya", () => {
-  const state = makeState("en", { wordCount: 6, finishGraceMs: 20000, minWordsForWpmCheck: 1000 });
-  fillHumans(state, 5);
+test("ilk bitirenden sonra 10 sn geri sayim baslar; bitirenler sureye, bitirmeyenler ilerlemeye gore siralanir", () => {
+  const state = makeState("en", { wordCount: 6, finishGraceMs: 10000, minWordsForWpmCheck: 1000, maxPlayers: 4 });
+  fillHumans(state, 4);
   const start = startRace(state);
 
-  // u1, u2, u3 sırayla bitirir; u4 3 kelimede kalır; u5 hiç yazmaz
-  const finishAt: { [id: string]: number } = { u1: start + 10000, u2: start + 11000, u3: start + 12000 };
-  for (const id of ["u1", "u2", "u3"]) {
-    for (let i = 0; i < 6; i++) submitWord(state, id, state.words[i], finishAt[id] - (5 - i));
-  }
-  for (let i = 0; i < 3; i++) submitWord(state, "u4", state.words[i], start + 5000 + i);
+  // u1 en önce bitirir
+  for (let i = 0; i < 6; i++) submitWord(state, "u1", state.words[i], start + 8000 - (5 - i));
+  assert.ok(!updateRaceEnd(state, start + 8000), "geri sayim basladi ama yaris surmeli");
+  assert.equal(state.graceDeadline, start + 8000 + 10000, "ilk bitirenden 10 sn sonra");
 
-  assert.ok(!updateRaceEnd(state, start + 13000), "bekleme suresi daha dolmadi");
-  assert.equal(state.graceDeadline, start + 13000 + 20000);
-  assert.ok(updateRaceEnd(state, start + 33000), "20 sn sonra bitmeli");
+  // u2 geri sayim icinde bitirir, u3 4 kelimede, u4 2 kelimede kalir
+  for (let i = 0; i < 6; i++) submitWord(state, "u2", state.words[i], start + 11000 - (5 - i));
+  for (let i = 0; i < 4; i++) submitWord(state, "u3", state.words[i], start + 9000 + i);
+  for (let i = 0; i < 2; i++) submitWord(state, "u4", state.words[i], start + 9000 + i);
+
+  assert.ok(!updateRaceEnd(state, start + 17999), "sure dolmadan bitmemeli");
+  assert.ok(updateRaceEnd(state, start + 18000), "sure dolunca bitmeli");
 
   const results = state.results!;
-  assert.deepEqual(results.map((r) => r.userId), ["u1", "u2", "u3", "u4", "u5"]);
-  assert.deepEqual(results.map((r) => r.rank), [1, 2, 3, 4, 5]);
-  assert.deepEqual(results.map((r) => r.status), ["finished", "finished", "finished", "dnf", "dnf"]);
-  assert.equal(results[0].accuracy, 1);
+  assert.deepEqual(results.map((r) => r.userId), ["u1", "u2", "u3", "u4"]);
+  assert.deepEqual(results.map((r) => r.status), ["finished", "finished", "dnf", "dnf"]);
+  assert.deepEqual(results.map((r) => r.correctWords), [6, 6, 4, 2]);
+});
+
+test("ilerleme esitliginde kelimeye once ulasan one gecer", () => {
+  const state = makeState("en", { wordCount: 10, finishGraceMs: 5000, minWordsForWpmCheck: 1000, maxPlayers: 3 });
+  fillHumans(state, 3);
+  const start = startRace(state);
+
+  for (let i = 0; i < 10; i++) submitWord(state, "u1", state.words[i], start + 6000 - (9 - i)); // geri sayimi baslatir
+  // u2 ve u3 ikisi de 4 kelimede; u3 (daha yuksek kulvar) daha ONCE ulasti
+  for (let i = 0; i < 4; i++) submitWord(state, "u3", state.words[i], start + 1000 + i * 100);
+  for (let i = 0; i < 4; i++) submitWord(state, "u2", state.words[i], start + 3000 + i * 100);
+
+  updateRaceEnd(state, start + 6000);
+  assert.ok(updateRaceEnd(state, start + 11000));
+  assert.deepEqual(state.results!.map((r) => r.userId), ["u1", "u3", "u2"], "u3 once ulasti, u2'nin onunde olmali");
+});
+
+test("herkes bitirirse geri sayim beklenmez", () => {
+  const state = makeState("en", { wordCount: 3, finishGraceMs: 10000, minWordsForWpmCheck: 1000, maxPlayers: 2 });
+  fillHumans(state, 2); // 2 kisilik oda: bot yok
+  const start = startRace(state);
+
+  for (let i = 0; i < 3; i++) submitWord(state, "u1", state.words[i], start + 5000 + i);
+  assert.ok(!updateRaceEnd(state, start + 5100), "biri bitirdi, digeri surdu");
+  for (let i = 0; i < 3; i++) submitWord(state, "u2", state.words[i], start + 6000 + i);
+  assert.ok(updateRaceEnd(state, start + 6100), "ikisi de bitirdi: sure dolmadan bitmeli");
+  assert.deepEqual(state.results!.map((r) => r.userId), ["u1", "u2"]);
+});
+
+test("bot once bitirirse insan icin de geri sayim baslar ve insan yetisebilir", () => {
+  const state = makeState("en", { wordCount: 3, finishGraceMs: 10000, minWordsForWpmCheck: 1000, botMinWpm: 200, botMaxWpm: 220 });
+  fillHumans(state, 1);
+  const start = startRace(state);
+
+  let now = start;
+  while (state.graceDeadline === 0 && now - start < 60000) {
+    now += 100;
+    stepBots(state, now);
+    updateRaceEnd(state, now);
+  }
+  assert.ok(state.graceDeadline > 0, "bot bitirince geri sayim baslamali");
+  assert.equal(state.phase, "racing", "insan henuz bitirmedi, yaris surmeli");
+  assert.ok(state.players.u1.finishedAt === 0);
+
+  // insan geri sayim icinde bitirir; botlar da bittiyse ya da sure dolunca yaris biter
+  const human = state.players.u1;
+  for (let i = 0; i < 3; i++) submitWord(state, "u1", state.words[i], now + 500 + i);
+  assert.ok(human.finishedAt > 0, "insan geri sayim icinde bitirebildi");
+
+  while (state.phase === "racing" && now - start < 120000) {
+    now += 100;
+    stepBots(state, now);
+    updateRaceEnd(state, now);
+  }
+  assert.equal(state.phase, "finished");
+  const me = state.results!.find((r) => r.userId === "u1")!;
+  assert.equal(me.status, "finished");
+});
+
+test("yarisi surduren insan kalmadiysa (diskalifiye) geri sayim yine baslar", () => {
+  const state = makeState("en", { maxWpm: 250, minWordsForWpmCheck: 3, finishGraceMs: 10000 });
+  fillHumans(state, 1);
+  const start = startRace(state);
+
+  let outcome = "";
+  for (let i = 0; i < 8 && outcome !== "disqualified"; i++) outcome = submitWord(state, "u1", state.words[i], start + 1000 + i * 5);
+  assert.equal(outcome, "disqualified");
+
+  assert.ok(!updateRaceEnd(state, start + 2000));
+  assert.equal(state.graceDeadline, start + 2000 + 10000, "insan kalmadi: geri sayim baslar");
+  assert.ok(updateRaceEnd(state, start + 12000));
+  assert.equal(state.results!.find((r) => r.userId === "u1")!.status, "disqualified");
 });
 
 test("baglanti kopmasi: sure icinde geri donebilir, sure bitince yarisi kaybeder", () => {

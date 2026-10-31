@@ -90,10 +90,13 @@ namespace TextRun.EditorTools
             GoDto go = null;
             var acks = new List<AckDto>();
             ResultsDto results = null;
+            EndingDto ending = null;
+            long resultsAt = 0, endingAt = 0;
+            c.Ending += e => { ending = e; endingAt = DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond; };
             c.Countdown += s => countdown = s;
             c.Go += g => go = g;
             c.Ack += a => acks.Add(a);
-            c.Results += r => results = r;
+            c.Results += r => { results = r; resultsAt = DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond; };
 
             await c.ConnectAsync();
             Check(!string.IsNullOrEmpty(c.UserId), "giris yapildi, kullanici kimligi var");
@@ -128,6 +131,8 @@ namespace TextRun.EditorTools
             }
 
             await WaitUntil(c, () => results != null, 12000, "sonuclar");
+            Check(ending != null && ending.endsAt > ending.serverNow, "ilk bitirenden sonra bitis geri sayimi (ENDING) geldi");
+            Check(ending != null && resultsAt - endingAt >= 2000, "sonuclar bitirir bitirmez degil, geri sayim dolunca geldi (" + (resultsAt - endingAt) + " ms)");
             Check(results.results.Length == 5, "5 kisilik sonuc tablosu");
             ResultDto mine = null;
             foreach (var r in results.results) if (r.userId == c.UserId) mine = r;

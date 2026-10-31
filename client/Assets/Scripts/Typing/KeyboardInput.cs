@@ -62,6 +62,12 @@ namespace TextRun.Typing
             native = TouchScreenKeyboard.Open("", type, false, false, false, false, "", 0);
         }
 
+        // Klavyeyi kapatır (oyuncu yarışı bitirince artık yazacak bir şey kalmaz)
+        public void Close()
+        {
+            if (IsNative && native != null) native.active = false;
+        }
+
         // Editörde OnGUI olaylarından karakter toplar.
         public void HandleGuiEvent(Event e)
         {

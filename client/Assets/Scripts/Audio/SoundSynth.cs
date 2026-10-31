@@ -47,6 +47,28 @@ namespace TextRun.Audio
             return data;
         }
 
+        // Yarış bitiş geri sayımı: her saniyede bir gerilim tiki. Normal: alçak, kuru "tok"; son 3 saniye (urgent): tiz ve vurgulu
+        public static float[] AlertTickSamples(bool urgent)
+        {
+            float duration = urgent ? 0.18f : 0.14f;
+            int n = (int)(duration * SampleRate);
+            var data = new float[n];
+            float frequency = urgent ? 1180f : 520f;
+
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float env = Mathf.Min(1f, t / 0.003f) * Mathf.Exp(-t * (urgent ? 14f : 24f));
+                float tone = Mathf.Sin(TwoPi * frequency * t) + 0.45f * Mathf.Sin(TwoPi * frequency * 1.5f * t);
+                float thump = urgent ? 0f : Mathf.Sin(TwoPi * 95f * t) * Mathf.Exp(-t * 40f) * 0.7f;
+                data[i] = (tone * 0.6f + thump) * env;
+            }
+
+            Normalize(data, urgent ? 0.85f : 0.65f);
+            FadeEdges(data, 0.003f);
+            return data;
+        }
+
         // Hakem düdüğü: ~2,9 kHz taşıyıcı, 30 Hz titreşim ("bilye" sesi) ve hafif hava
         public static float[] WhistleSamples()
         {

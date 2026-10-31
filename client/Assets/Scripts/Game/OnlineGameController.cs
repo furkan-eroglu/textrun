@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TextRun.Audio;
 using TextRun.Common;
 using TextRun.Online;
@@ -27,6 +28,9 @@ namespace TextRun.Game
         OnlineRaceView view;
         RaceAudio sound;
         int lastTickSecond = int.MinValue;
+        float endingEndsLocal;                     // yarışın biteceği an (yerel saat); 0 = bitiş geri sayımı yok
+        int lastAlertSecond = int.MinValue;
+        readonly List<string> finishOrder = new List<string>(); // bitirenlerin sırası (canlı sıra göstermek için)
         GameLanguage language;
         Page screen = Page.Connecting;
         string errorText = "";
@@ -95,6 +99,7 @@ namespace TextRun.Game
             net.Progress += OnProgress;
             net.Ack += OnAck;
             net.Results += OnResults;
+            net.Ending += OnEnding;
             net.Closed += OnClosed;
 
             try
@@ -134,6 +139,8 @@ namespace TextRun.Game
             screen = Page.Searching;
             players = new PlayerDto[0];
             lobbyEndsLocal = 0f;
+            endingEndsLocal = 0f;
+            finishOrder.Clear();
             view.ResetToStart();
             view.SetRacing(false);
             wordView.Reset();
@@ -176,6 +183,7 @@ namespace TextRun.Game
 
             float now = Time.realtimeSinceStartup;
             if (s.lobbyEndsAt > 0) lobbyEndsLocal = now + (s.lobbyEndsAt - s.serverNow) / 1000f;
+            if (s.endsAt > 0) endingEndsLocal = now + (s.endsAt - s.serverNow) / 1000f; // yeniden bağlanana da geri sayım gösterilir
 
             switch (s.phase)
             {
@@ -187,6 +195,8 @@ namespace TextRun.Game
                     PrepareTyping(s);
                     countdownEndsLocal = now + (s.startAt - s.serverNow) / 1000f;
                     lastTickSecond = int.MinValue;
+                    endingEndsLocal = 0f;
+                    finishOrder.Clear();
                     screen = Page.Countdown;
                     break;
 
@@ -247,12 +257,29 @@ namespace TextRun.Game
         {
             players = progress.players ?? players;
             view.SetProgress(players, wordCount);
+
+            // Bitirenlerin sırasını kaydet (canlı "kaçıncı sıradasın" bilgisi için)
+            foreach (var p in players)
+                if (p.finished && !p.disqualified && !finishOrder.Contains(p.id)) finishOrder.Add(p.id);
+        }
+
+        // İlk oyuncu bitirdi: yarış, sunucunun bildirdiği anda sona erecek (kırmızı geri sayım)
+        void OnEnding(EndingDto e)
+        {
+            endingEndsLocal = Time.realtimeSinceStartup + (e.endsAt - e.serverNow) / 1000f;
+            lastAlertSecond = int.MinValue;
         }
 
         void OnAck(AckDto ack)
         {
             if (typing == null) return;
             if (ack.kind == AckKind.Disqualified) noticeText = T("disqualifiedNotice");
+            if (ack.kind == AckKind.Finished)
+            {
+                // Bitirdin: klavye kapanır, "Bitirdin!" paneli ve canlı sıra gösterilir
+                if (!finishOrder.Contains(net.UserId)) finishOrder.Add(net.UserId);
+                keyboard.Close();
+            }
             if (ack.index != typing.CurrentIndex)
             {
                 typing.SyncTo(ack.index);
@@ -264,12 +291,25 @@ namespace TextRun.Game
         {
             results = r.results ?? new ResultDto[0];
             view.SetRacing(false);
+            endingEndsLocal = 0f;
             screen = Page.Results;
 
             bool onPodium = false;
             foreach (var result in results)
                 if (result.userId == net.UserId) onPodium = result.rank <= 3 && result.status == "finished";
             sound.Finish(onPodium);
+        }
+
+        // Yarış bitiş geri sayımında saniye değiştikçe gerilim tiki; son 3 saniyede daha tiz
+        void TickEndingSound()
+        {
+            if (screen != Page.Racing || endingEndsLocal <= 0f) return;
+
+            int seconds = Mathf.CeilToInt(endingEndsLocal - Time.realtimeSinceStartup);
+            if (seconds == lastAlertSecond || seconds < 1 || seconds > 10) return;
+
+            lastAlertSecond = seconds;
+            sound.AlertTick(seconds <= 3);
         }
 
         // Geri sayımda saniye değiştikçe tik sesi (3, 2, 1)
@@ -290,6 +330,7 @@ namespace TextRun.Game
         {
             net?.Pump();
             TickCountdownSound();
+            TickEndingSound();
 
             // Pist ve karakterler yalnızca geri sayım ve yarışta görünür
             bool wantTrack = screen == Page.Countdown || screen == Page.Racing;
@@ -628,15 +669,80 @@ namespace TextRun.Game
             // Yarış sırasında istatistik (WPM, doğruluk, kelime sayısı) gösterilmez; oyuncu yalnızca birinci olmaya odaklanır.
             // İstatistikler yarış sonunda sonuç tablosunda görünür.
 
-            // Kelime kutusunda yalnızca doğru harfler (yeşil) görünür. Klavye kapanırsa kutuya dokunmak yeniden açar.
-            if (wordView.Draw(box, typing, input.Entered)) keyboard.Open(KeyboardKind.Default);
+            if (typing.Finished)
+            {
+                // Bitirdin: kelime kutusu yerine "Bitirdin!" ve canlı sıra; yarış (ve kırmızı geri sayım) sürer
+                DrawFinishedPanel(box);
+            }
+            else
+            {
+                // Kelime kutusunda yalnızca doğru harfler (yeşil) görünür. Klavye kapanırsa kutuya dokunmak yeniden açar.
+                if (wordView.Draw(box, typing, input.Entered)) keyboard.Open(KeyboardKind.Default);
+            }
             DrawSimulatedKeyboard(width, height, scale, devButtonY);
+            DrawEndingBadge(width, top);
 
             if (noticeText.Length > 0)
             {
-                DrawPanel(new Rect(10f, top + 42f, width - 20f, 56f), 0.85f);
-                GUI.Label(new Rect(10f, top + 42f, width - 20f, 56f), noticeText, centerStyle);
+                float noticeY = endingEndsLocal > 0f ? top + 134f : top + 42f;
+                DrawPanel(new Rect(10f, noticeY, width - 20f, 56f), 0.85f);
+                GUI.Label(new Rect(10f, noticeY, width - 20f, 56f), noticeText, centerStyle);
             }
+        }
+
+        void DrawFinishedPanel(Rect box)
+        {
+            UiKit.Panel(box, 0.80f, 16f);
+
+            var old = GUI.color;
+            GUI.color = new Color(1f, 0.88f, 0.45f);
+            GUI.Label(new Rect(box.x, box.y + 6f, box.width, 38f), T("youFinished"), headingStyle);
+            GUI.color = old;
+
+            int index = finishOrder.IndexOf(net.UserId);
+            if (index >= 0)
+                GUI.Label(new Rect(box.x, box.y + 44f, box.width, 30f), string.Format(T("positionNow"), index + 1), centerStyle);
+        }
+
+        // İlk oyuncu bitirince çıkan kırmızı geri sayım rozeti: büyük kırmızı daire, içinde kalan saniye.
+        // Son 3 saniyede daire hafifçe nabız gibi büyüyüp küçülür.
+        void DrawEndingBadge(float width, float top)
+        {
+            if (endingEndsLocal <= 0f) return;
+
+            int seconds = Mathf.Max(0, Mathf.CeilToInt(endingEndsLocal - Time.realtimeSinceStartup));
+            float pulse = seconds <= 3 ? 1f + 0.08f * Mathf.Abs(Mathf.Sin(Time.realtimeSinceStartup * 6f)) : 1f;
+            float size = 70f * pulse;
+            var center = new Vector2(width / 2f, top + 82f);
+
+            var old = GUI.color;
+            GUI.color = new Color(0.95f, 0.15f, 0.18f, 0.30f); // dış hale
+            GUI.DrawTexture(new Rect(center.x - size * 0.68f, center.y - size * 0.68f, size * 1.36f, size * 1.36f), SoundIcon.Disc());
+            GUI.color = new Color(0.90f, 0.14f, 0.17f, 1f);    // kırmızı daire
+            GUI.DrawTexture(new Rect(center.x - size / 2f, center.y - size / 2f, size, size), SoundIcon.Disc());
+            GUI.color = old;
+
+            GUI.Label(new Rect(center.x - size / 2f, center.y - size / 2f - 1f, size, size), seconds.ToString(), headingStyle);
+
+            // Altındaki yazı, pistin üstünde okunsun diye koyu bir zeminde
+            string label = T("raceEnding");
+            float labelWidth = smallCenterStyle.CalcSize(new GUIContent(label)).x + 28f;
+            var labelRect = new Rect(center.x - labelWidth / 2f, center.y + size / 2f + 8f, labelWidth, 24f);
+            UiKit.Panel(labelRect, 0.78f, 12f);
+            GUI.color = new Color(1f, 0.55f, 0.55f);
+            GUI.Label(labelRect, label, smallCenterStyle);
+            GUI.color = old;
+        }
+
+        // Geliştirme: "bitirdin + kırmızı geri sayım" görünümünü doğrular (yalnızca DevHarness kullanır)
+        public void DevShowFinishedEnding()
+        {
+            if (typing == null) return;
+            typing.SyncTo(typing.Count);
+            finishOrder.Clear();
+            finishOrder.Add(net.UserId);
+            endingEndsLocal = Time.realtimeSinceStartup + 7.4f;
+            screen = Page.Racing;
         }
 
         // Alttan yukarı: klavye, kelime kutusu; kalan üst bölge 3D pist.

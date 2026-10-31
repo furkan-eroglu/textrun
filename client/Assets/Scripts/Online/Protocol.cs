@@ -13,6 +13,7 @@ namespace TextRun.Online
         public const long Progress = 104;
         public const long Ack = 105;
         public const long Results = 106;
+        public const long Ending = 107; // ilk oyuncu bitirdi: yarışın biteceği an (geri sayım)
     }
 
     public static class Phase
@@ -68,6 +69,7 @@ namespace TextRun.Online
         public long serverNow;
         public long lobbyEndsAt;
         public long startAt;
+        public long endsAt; // 0 = bitiş geri sayımı başlamadı
         public string[] words;
         public PlayerDto[] players;
         public ResultDto[] results;
@@ -78,6 +80,13 @@ namespace TextRun.Online
     {
         public long serverNow;
         public long startAt;
+    }
+
+    [Serializable]
+    public class EndingDto
+    {
+        public long serverNow;
+        public long endsAt;
     }
 
     [Serializable]

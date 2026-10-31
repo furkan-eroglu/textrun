@@ -11,6 +11,7 @@ export const OP = {
   PROGRESS: 104, // oyuncuların ilerlemesi
   ACK: 105, // gönderilen kelimenin sonucu (yalnızca gönderene)
   RESULTS: 106, // yarış bitti, sıralama
+  ENDING: 107, // ilk oyuncu bitirdi: yarışın biteceği an (geri sayım)
 } as const;
 
 export const REJECT = {
