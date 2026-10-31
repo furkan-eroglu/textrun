@@ -8,7 +8,8 @@ namespace TextRun.Race
     public class OnlineRaceView : MonoBehaviour
     {
         const float MaxRunSpeed = 14f;
-        const float FinishOvershoot = 4f;
+        // Bitirince karakter çizgiyi geçip hemen ilerisinde durur (daha ileri giderse kapının arkasında kalır)
+        const float FinishOvershoot = 1.6f;
 
         public int laneCount = 5;
         public float laneWidth = 1.4f;

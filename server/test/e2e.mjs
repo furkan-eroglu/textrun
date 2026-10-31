@@ -7,6 +7,8 @@ import assert from 'node:assert/strict';
 const HOST = '127.0.0.1:7350';
 const OP = { SUBMIT: 1, SNAPSHOT: 100, ROSTER: 101, COUNTDOWN: 102, GO: 103, PROGRESS: 104, ACK: 105, RESULTS: 106, ENDING: 107 };
 const runId = Date.now().toString(36);
+// Sunucuda TEXTRUN_FINISH_GRACE_MS verilmediyse varsayilan (10 sn) beklenir: E2E_EXPECT_GRACE_MS=10000
+const expectedGraceMs = Number(process.env.E2E_EXPECT_GRACE_MS || 3000);
 
 let failures = 0;
 async function test(name, fn) {
@@ -248,8 +250,8 @@ await test('tek oyuncu: sure dolunca 4 bot gelir, yanlis kelime ilerletmez, erke
   const ending = p.events.find((e) => e.op === OP.ENDING);
   assert.ok(ending, 'ilk bitirenden sonra ENDING (geri sayim) mesaji gelmeli');
   const countdownMs = ending.body.endsAt - ending.body.serverNow;
-  assert.ok(countdownMs >= 2500 && countdownMs <= 3500, 'geri sayim suresi ~3 sn olmali (' + countdownMs + ')');
-  assert.ok(res.at - ending.at >= 2000, 'sonuclar geri sayim dolunca gelmeli: ' + (res.at - ending.at) + ' ms');
+  assert.ok(Math.abs(countdownMs - expectedGraceMs) <= 500, 'geri sayim suresi ~' + expectedGraceMs + ' ms olmali (' + countdownMs + ')');
+  assert.ok(res.at - ending.at >= expectedGraceMs - 1000, 'sonuclar geri sayim dolunca gelmeli: ' + (res.at - ending.at) + ' ms');
   assert.ok(results.filter((r) => r.isBot).some((r) => r.correctWords > 0), 'botlar geri sayim boyunca ilerlemeli');
 
   assert.equal(me.rank, 1, 'cok hizli yazan insan botlari geride birakmali');

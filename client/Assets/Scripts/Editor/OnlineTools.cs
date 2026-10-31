@@ -186,6 +186,10 @@ namespace TextRun.EditorTools
             view.SnapPositions(new[] { 53f, 50f, 52f, 49f, 54f }, true);
             Render(view.Cam, 540, 520, Path.ChangeExtension(path, null) + "-finish.png");
 
+            // Bitirdikten sonra: karakter çizginin hemen ilerisinde durmalı ve kapının arkasında gizlenmemeli
+            view.SnapPositions(new[] { 61.6f, 55f, 57f, 53f, 58f }, false);
+            Render(view.Cam, 540, 520, Path.ChangeExtension(path, null) + "-overshoot.png");
+
             // Tribünlerde yakın plan: seyirci tiplerini (kilolu/zayıf/çocuk/kadın/erkek, telefon, flaş) değerlendirmek için
             var camT = view.Cam.transform;
             camT.position = new Vector3(0.5f, 2.4f, 17f);

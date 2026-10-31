@@ -35,10 +35,10 @@ namespace TextRun.Race
 
             // Direkler
             for (int side = -1; side <= 1; side += 2)
-                Mats.Primitive("Post", PrimitiveType.Cube, gate, new Vector3(side * (trackWidth / 2f + 0.3f), 2.6f, z), new Vector3(0.4f, 5.2f, 0.4f), White);
+                NoShadow(Mats.Primitive("Post", PrimitiveType.Cube, gate, new Vector3(side * (trackWidth / 2f + 0.3f), 2.6f, z), new Vector3(0.4f, 5.2f, 0.4f), White));
 
             // Beyaz bant gövdesi
-            Mats.Primitive("Banner", PrimitiveType.Cube, gate, new Vector3(0f, BannerCenterY, z), new Vector3(bannerWidth, BannerHeight, 0.2f), White);
+            NoShadow(Mats.Primitive("Banner", PrimitiveType.Cube, gate, new Vector3(0f, BannerCenterY, z), new Vector3(bannerWidth, BannerHeight, 0.2f), White));
 
             // Siyah ayrıntılar (kareli bayrak desenleri ve harfler) tek mesh olarak birleştirilir
             var boxes = new List<CombineInstance>();
@@ -95,7 +95,15 @@ namespace TextRun.Race
             var marks = new GameObject("FinishMarks");
             marks.transform.SetParent(gate, false);
             marks.AddComponent<MeshFilter>().sharedMesh = mesh;
-            marks.AddComponent<MeshRenderer>().sharedMaterial = Mats.Get(Black);
+            var marksRenderer = marks.AddComponent<MeshRenderer>();
+            marksRenderer.sharedMaterial = Mats.Get(Black);
+            marksRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        // Kapı gölge düşürmez: bitişten geçen karakter panonun gölgesinde koyulaşmasın
+        static void NoShadow(GameObject go)
+        {
+            go.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
         static CombineInstance Cell(Mesh box, Vector3 center, float width, float height)

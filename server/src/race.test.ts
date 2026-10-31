@@ -61,10 +61,11 @@ test("kelime uretimi: ayni tohum ayni liste, dile ozel, yakin tekrar yok", () =>
 });
 
 test("ayarlar: ortam degiskenleri gecerliyse uygulanir, bozuksa yok sayilir", () => {
-  const cfg = loadConfig({ TEXTRUN_LOBBY_WAIT_MS: "3000", TEXTRUN_MAX_WPM: "abc", TEXTRUN_WORD_COUNT: "-5" });
+  const cfg = loadConfig({ TEXTRUN_LOBBY_WAIT_MS: "3000", TEXTRUN_MAX_WPM: "abc", TEXTRUN_WORD_COUNT: "-5", TEXTRUN_FINISH_GRACE_MS: "" });
   assert.equal(cfg.lobbyWaitMs, 3000);
   assert.equal(cfg.maxWpm, DEFAULT_CONFIG.maxWpm);
   assert.equal(cfg.wordCount, DEFAULT_CONFIG.wordCount);
+  assert.equal(cfg.finishGraceMs, DEFAULT_CONFIG.finishGraceMs, "bos deger varsayilani bozmamali");
 });
 
 test("lobi: kapasite, yeniden baglanma, kapali oda", () => {

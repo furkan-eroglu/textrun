@@ -49,7 +49,7 @@ namespace TextRun.Game
         float searchStartedAt;
         float countdownEndsLocal;
 
-        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle, searchTitleStyle;
+        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle, searchTitleStyle, positionStyle;
 
         void Start()
         {
@@ -308,7 +308,7 @@ namespace TextRun.Game
             if (screen != Page.Racing || endingEndsLocal <= 0f) return;
 
             int seconds = Mathf.CeilToInt(endingEndsLocal - Time.realtimeSinceStartup);
-            if (seconds == lastAlertSecond || seconds < 1 || seconds > 10) return;
+            if (seconds == lastAlertSecond || seconds < 1) return;
 
             lastAlertSecond = seconds;
             sound.AlertTick(seconds <= 3);
@@ -414,6 +414,7 @@ namespace TextRun.Game
             headingStyle = new GUIStyle(GUI.skin.label) { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             rankStyle = new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             searchTitleStyle = new GUIStyle(GUI.skin.label) { fontSize = 28, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, clipping = TextClipping.Overflow };
+            positionStyle = new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, wordWrap = false, richText = true, clipping = TextClipping.Overflow };
             smallCenterStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, alignment = TextAnchor.MiddleCenter, wordWrap = false };
             stopwatchStyle = new GUIStyle(GUI.skin.label) { fontSize = 44, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false };
 
@@ -426,6 +427,7 @@ namespace TextRun.Game
             UiKit.SetAllTextColors(smallCenterStyle, text);
             UiKit.SetAllTextColors(stopwatchStyle, Color.white);
             UiKit.SetAllTextColors(searchTitleStyle, Color.white);
+            UiKit.SetAllTextColors(positionStyle, Color.white);
             UiKit.SetAllTextColors(headingStyle, Color.white);
             UiKit.SetAllTextColors(rankStyle, new Color(1f, 0.88f, 0.45f));
         }
@@ -710,18 +712,35 @@ namespace TextRun.Game
             }
         }
 
+        // Bitirdin paneli: sıraya göre renklenen kupa, "Bitirdin!" ve büyük, renkli sıra numarası
         void DrawFinishedPanel(Rect box)
         {
-            UiKit.Panel(box, 0.80f, 16f);
+            int index = finishOrder.IndexOf(net.UserId);
+            int place = index >= 0 ? index + 1 : 0;
+
+            var tint = place == 1 ? Pictograms.TrophyTint.Gold : place == 2 ? Pictograms.TrophyTint.Silver : place == 3 ? Pictograms.TrophyTint.Bronze : Pictograms.TrophyTint.Steel;
+            Color accent = place == 1 ? new Color(1.00f, 0.83f, 0.30f) : place == 2 ? new Color(0.82f, 0.89f, 1.00f) : place == 3 ? new Color(1.00f, 0.62f, 0.34f) : new Color(0.55f, 0.66f, 0.96f);
+
+            UiKit.Panel(box, 0.88f, 18f);
+            UiKit.Card(new Rect(box.x + 22f, box.y + 4f, box.width - 44f, 3f), accent, 2f); // üstte sıra renginde ince şerit
+
+            float icon = box.height - 12f;
+            GUI.DrawTexture(new Rect(box.x + 14f, box.y + 6f, icon, icon), Pictograms.Trophy(tint));
+
+            float textX = box.x + icon + 22f;
+            float textWidth = box.width - (icon + 34f);
 
             var old = GUI.color;
-            GUI.color = new Color(1f, 0.88f, 0.45f);
-            GUI.Label(new Rect(box.x, box.y + 6f, box.width, 38f), T("youFinished"), headingStyle);
+            GUI.color = accent;
+            GUI.Label(new Rect(textX, box.y + 8f, textWidth, 34f), T("youFinished"), headingStyle);
             GUI.color = old;
 
-            int index = finishOrder.IndexOf(net.UserId);
-            if (index >= 0)
-                GUI.Label(new Rect(box.x, box.y + 44f, box.width, 30f), string.Format(T("positionNow"), index + 1), centerStyle);
+            if (place > 0)
+            {
+                // Sıra numarası daha büyük ve sıra renginde (zengin metin)
+                string number = "<size=34><b><color=#" + ColorUtility.ToHtmlStringRGB(accent) + ">" + place + "</color></b></size>";
+                GUI.Label(new Rect(textX, box.y + 40f, textWidth, 36f), string.Format(T("positionNow"), number), positionStyle);
+            }
         }
 
         // İlk oyuncu bitirince çıkan kırmızı geri sayım rozeti: büyük kırmızı daire, içinde kalan saniye.
