@@ -210,6 +210,48 @@ namespace TextRun.Audio
             }
         }
 
+        // Alkış: kalabalık el çırpma. Rastgele kısa "çıt"lar (sabit tohumla, hep aynı ses) yoğunlaşıp seyrelir, altında hafif gürültü zemini.
+        public static float[] ApplauseSamples()
+        {
+            const float seconds = 2.6f;
+            int n = (int)(seconds * SampleRate);
+            var data = new float[n];
+            var random = new System.Random(7);
+
+            float low = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float swell = Mathf.Min(1f, t / 0.25f) * Mathf.Exp(-Mathf.Max(0f, t - 0.9f) * 1.3f); // hızla yükselir, sonra söner
+
+                // Zemin: yumuşatılmış gürültü (uzaktaki kalabalık uğultusu)
+                low += ((float)random.NextDouble() * 2f - 1f - low) * 0.35f;
+                data[i] += low * 0.35f * swell;
+            }
+
+            // Tek tek el çırpmalar: kısa, hızla sönen gürültü patlamaları
+            int claps = 260;
+            for (int c = 0; c < claps; c++)
+            {
+                float at = (float)random.NextDouble() * (seconds - 0.1f);
+                float density = Mathf.Min(1f, at / 0.25f) * Mathf.Exp(-Mathf.Max(0f, at - 0.9f) * 1.3f);
+                if (random.NextDouble() > density) continue;
+
+                int start = (int)(at * SampleRate);
+                float amp = 0.4f + (float)random.NextDouble() * 0.6f;
+                int length = (int)(0.012f * SampleRate);
+                for (int k = 0; k < length && start + k < n; k++)
+                {
+                    float env = Mathf.Exp(-k / (0.003f * SampleRate));
+                    data[start + k] += ((float)random.NextDouble() * 2f - 1f) * amp * env;
+                }
+            }
+
+            FadeEdges(data, 0.03f);
+            Normalize(data, 0.85f);
+            return data;
+        }
+
         public static void Normalize(float[] data, float peak)
         {
             float max = 0f;

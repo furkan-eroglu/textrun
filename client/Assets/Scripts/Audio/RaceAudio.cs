@@ -11,7 +11,7 @@ namespace TextRun.Audio
 
         AudioSource sfx;
         AudioSource music;
-        AudioClip tick, click, alertTick, alertFinal, whistle, loop, fanfarePodium, fanfareDone;
+        AudioClip tick, click, alertTick, alertFinal, whistle, loop, fanfarePodium, fanfareDone, applause;
 
         public bool Enabled
         {
@@ -35,7 +35,7 @@ namespace TextRun.Audio
             music.volume = MusicVolume;
 
             // Assets/Resources/Audio içine aynı adla bir ses dosyası (.ogg/.wav/.mp3) konursa o kullanılır;
-            // yoksa kodla üretilen geçici ses çalar. Dosya adları: tick, click, alert_tick, alert_final, whistle, race_loop, finish_win, finish_done
+            // yoksa kodla üretilen geçici ses çalar. Dosya adları: tick, click, alert_tick, alert_final, whistle, race_loop, finish_win, finish_done, applause
             tick = Custom("tick") ?? SoundSynth.ToClip("tick", SoundSynth.TickSamples());
             click = Custom("click") ?? SoundSynth.ToClip("click", SoundSynth.ClickSamples());
             alertTick = Custom("alert_tick") ?? SoundSynth.ToClip("alertTick", SoundSynth.AlertTickSamples(false));
@@ -43,6 +43,7 @@ namespace TextRun.Audio
             whistle = Custom("whistle") ?? SoundSynth.ToClip("whistle", SoundSynth.WhistleSamples());
             loop = Custom("race_loop") ?? SoundSynth.ToClip("raceLoop", SoundSynth.RaceLoopSamples());
             fanfarePodium = Custom("finish_win") ?? SoundSynth.ToClip("fanfarePodium", SoundSynth.FanfareSamples(true));
+            applause = Custom("applause") ?? SoundSynth.ToClip("applause", SoundSynth.ApplauseSamples());
             fanfareDone = Custom("finish_done") ?? SoundSynth.ToClip("fanfareDone", SoundSynth.FanfareSamples(false));
         }
 
@@ -75,6 +76,12 @@ namespace TextRun.Audio
             sfx.PlayOneShot(whistle, 0.9f);
             music.clip = loop;
             music.Play();
+        }
+
+        // Yarışı kendin bitirdiğinde (sonuçlar gelmeden): alkış. Müzik sürer, diğerleri hâlâ yarışıyor.
+        public void Applause()
+        {
+            if (Enabled) sfx.PlayOneShot(applause, 0.9f);
         }
 
         public void StopMusic()

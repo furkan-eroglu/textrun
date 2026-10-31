@@ -288,6 +288,7 @@ namespace TextRun.Game
                 // Bitirdin: klavye kapanır, "Bitirdin!" paneli ve canlı sıra gösterilir
                 if (!finishOrder.Contains(net.UserId)) finishOrder.Add(net.UserId);
                 keyboard.Close();
+                sound.Applause(); // bitirdiğin hemen anlaşılsın
             }
             if (ack.index != typing.CurrentIndex)
             {
