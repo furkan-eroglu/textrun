@@ -74,6 +74,8 @@ namespace TextRun.Game
             yield return WaitForPage("Searching", 15f);
             yield return new WaitForSeconds(2f);
             yield return Shot("2-searching");
+            yield return new WaitForSeconds(7f);
+            yield return Shot("2b-searching-later"); // sayacın ilerlemesini görmek için
 
             yield return WaitForPage("Countdown", 40f);
             yield return new WaitForSeconds(1.2f);

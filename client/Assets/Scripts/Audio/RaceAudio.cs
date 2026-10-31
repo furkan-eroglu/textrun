@@ -11,7 +11,7 @@ namespace TextRun.Audio
 
         AudioSource sfx;
         AudioSource music;
-        AudioClip tick, whistle, loop, fanfarePodium, fanfareDone;
+        AudioClip tick, click, whistle, loop, fanfarePodium, fanfareDone;
 
         public bool Enabled
         {
@@ -35,8 +35,9 @@ namespace TextRun.Audio
             music.volume = MusicVolume;
 
             // Assets/Resources/Audio içine aynı adla bir ses dosyası (.ogg/.wav/.mp3) konursa o kullanılır;
-            // yoksa kodla üretilen geçici ses çalar. Dosya adları: tick, whistle, race_loop, finish_win, finish_done
+            // yoksa kodla üretilen geçici ses çalar. Dosya adları: tick, click, whistle, race_loop, finish_win, finish_done
             tick = Custom("tick") ?? SoundSynth.ToClip("tick", SoundSynth.TickSamples());
+            click = Custom("click") ?? SoundSynth.ToClip("click", SoundSynth.ClickSamples());
             whistle = Custom("whistle") ?? SoundSynth.ToClip("whistle", SoundSynth.WhistleSamples());
             loop = Custom("race_loop") ?? SoundSynth.ToClip("raceLoop", SoundSynth.RaceLoopSamples());
             fanfarePodium = Custom("finish_win") ?? SoundSynth.ToClip("fanfarePodium", SoundSynth.FanfareSamples(true));
@@ -46,6 +47,12 @@ namespace TextRun.Audio
         static AudioClip Custom(string name)
         {
             return Resources.Load<AudioClip>("Audio/" + name);
+        }
+
+        // Düğme tıklaması (ses açıkken)
+        public void Click()
+        {
+            if (Enabled) sfx.PlayOneShot(click, 0.55f);
         }
 
         public void Tick()

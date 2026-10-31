@@ -15,7 +15,6 @@ namespace TextRun.Common
             { "privateGame", new[] { "Özel Oyun (yakında)", "Private Game (soon)" } },
             { "searching", new[] { "Rakipler aranıyor...", "Looking for opponents..." } },
             { "playersFound", new[] { "Bulunan oyuncu", "Players found" } },
-            { "botsJoinIn", new[] { "Eksik yerler botla dolacak:", "Empty seats get bots in:" } },
             { "cancel", new[] { "İptal", "Cancel" } },
             { "getReady", new[] { "Hazır ol!", "Get ready!" } },
             { "go", new[] { "BAŞLA!", "GO!" } },

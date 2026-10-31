@@ -23,6 +23,30 @@ namespace TextRun.Audio
             return data;
         }
 
+        // Düğme tıklaması: kısa, yumuşak "pop" (hızla düşen frekans) ve çok kısa bir tık
+        public static float[] ClickSamples()
+        {
+            int n = (int)(0.09f * SampleRate);
+            var data = new float[n];
+            var rng = new System.Random(3);
+            float phase = 0f;
+
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float frequency = Mathf.Max(480f, 1250f - 9000f * t);
+                phase += TwoPi * frequency / SampleRate;
+
+                float env = Mathf.Min(1f, t / 0.002f) * Mathf.Exp(-t * 48f);
+                float tick = t < 0.003f ? ((float)rng.NextDouble() - 0.5f) * 0.5f : 0f;
+                data[i] = Mathf.Sin(phase) * env * 0.85f + tick;
+            }
+
+            Normalize(data, 0.7f);
+            FadeEdges(data, 0.003f);
+            return data;
+        }
+
         // Hakem düdüğü: ~2,9 kHz taşıyıcı, 30 Hz titreşim ("bilye" sesi) ve hafif hava
         public static float[] WhistleSamples()
         {

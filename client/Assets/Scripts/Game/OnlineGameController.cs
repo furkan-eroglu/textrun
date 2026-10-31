@@ -20,7 +20,7 @@ namespace TextRun.Game
         readonly KeyboardInput keyboard = new KeyboardInput();
         readonly WordLinesView wordView = new WordLinesView();
         readonly RaceProgressStrip progressStrip = new RaceProgressStrip();
-        readonly LetterBackdrop backdrop = new LetterBackdrop();
+        readonly MenuBackdrop backdrop = new MenuBackdrop();
 
         OnlineRaceClient net;
         OnlineRaceView view;
@@ -41,9 +41,10 @@ namespace TextRun.Game
 
         // Yerel saat tabanlı geri sayımlar (sunucu saatinden fark alınarak hesaplanır)
         float lobbyEndsLocal;
+        float searchStartedAt;
         float countdownEndsLocal;
 
-        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle;
+        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle;
 
         void Start()
         {
@@ -53,6 +54,7 @@ namespace TextRun.Game
 
             var timer = System.Diagnostics.Stopwatch.StartNew();
             sound = gameObject.AddComponent<RaceAudio>();
+            UiKit.Clicked = () => sound.Click(); // her düğme tıklamasında (ses açıkken) tıklama sesi
             Debug.Log("[basla] sesler hazirlandi: " + timer.ElapsedMilliseconds + " ms");
 
             gameObject.AddComponent<DevHarness>(); // komut satırında -devharness yoksa kendini kaldırır
@@ -126,6 +128,7 @@ namespace TextRun.Game
         {
             if (searchBusy) return;
             searchBusy = true;
+            searchStartedAt = Time.realtimeSinceStartup;
             noticeText = "";
             screen = Page.Searching;
             players = new PlayerDto[0];
@@ -364,12 +367,17 @@ namespace TextRun.Game
             centerStyle = new GUIStyle(GUI.skin.label) { fontSize = 20, alignment = TextAnchor.MiddleCenter, wordWrap = true };
             smallStyle = new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true };
 
+            smallCenterStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, alignment = TextAnchor.MiddleCenter, wordWrap = false };
+            stopwatchStyle = new GUIStyle(GUI.skin.label) { fontSize = 44, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false };
+
             // Fare üstüne gelince yazı rengi değişmesin: tüm durumlar aynı renk
             var text = new Color(0.92f, 0.93f, 0.96f);
             UiKit.SetAllTextColors(titleStyle, Color.white);
             UiKit.SetAllTextColors(labelStyle, text);
             UiKit.SetAllTextColors(centerStyle, text);
             UiKit.SetAllTextColors(smallStyle, text);
+            UiKit.SetAllTextColors(smallCenterStyle, text);
+            UiKit.SetAllTextColors(stopwatchStyle, Color.white);
         }
 
         void OnGUI()
@@ -442,7 +450,7 @@ namespace TextRun.Game
             if (clickedLanguage >= 0) SetLanguage((GameLanguage)clickedLanguage);
             y += 86f;
 
-            if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 72f), T("normalGame"), 26)) StartSearch();
+            if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 76f), T("normalGame"), 26, true)) StartSearch();
             y += 96f;
 
             UiKit.DisabledButton(new Rect(24f, y, width - 48f, 56f), T("privateGame"), 20);
@@ -471,7 +479,11 @@ namespace TextRun.Game
             var icon = new Rect(rect.x + 7f, rect.y + 7f, rect.width - 14f, rect.height - 14f);
             GUI.DrawTexture(icon, SoundIcon.Get(sound.Enabled));
 
-            if (GUI.Button(rect, GUIContent.none, GUIStyle.none)) sound.Enabled = !sound.Enabled;
+            if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
+            {
+                sound.Enabled = !sound.Enabled;
+                if (sound.Enabled) sound.Click(); // açılınca tıklama sesi duyulur; kapanırken ses çıkmaz
+            }
         }
 
         void SetLanguage(GameLanguage value)
@@ -481,29 +493,64 @@ namespace TextRun.Game
             PlayerPrefs.Save();
         }
 
-        // Eşleşme ekranı: yalnızca arka plan ve ortada arama penceresi (piste yerleşmek yok)
+        // Eşleşme ekranı: yalnızca sade arka plan; ortada kronometre, bulunan oyuncu noktaları ve iptal düğmesi
         void DrawSearching(float width, float height, float top)
         {
             FullViewport();
 
-            float panelHeight = 270f;
-            var panel = new Rect(20f, height / 2f - panelHeight / 2f, width - 40f, panelHeight);
-            DrawPanel(panel, 0.72f);
+            float centerX = width / 2f;
+            float centerY = height / 2f - 30f;
 
-            // Animasyonlu noktalar: arama sürdüğünü gösterir
+            // Başlık (noktalar animasyonlu: arama sürüyor)
             int dots = 1 + (int)(Time.realtimeSinceStartup * 2.5f) % 3;
-            GUI.Label(new Rect(panel.x, panel.y + 18f, panel.width, 36f), T("searching").TrimEnd('.') + new string('.', dots), centerStyle);
+            GUI.Label(new Rect(0f, centerY - 150f, width, 36f), T("searching").TrimEnd('.') + new string('.', dots), centerStyle);
 
-            GUI.Label(new Rect(panel.x, panel.y + 66f, panel.width, 30f), T("playersFound") + ": " + HumanCount() + " / 5", centerStyle);
+            DrawStopwatch(new Vector2(centerX, centerY), 74f, Mathf.Max(0, (int)(Time.realtimeSinceStartup - searchStartedAt)));
 
-            if (lobbyEndsLocal > 0f)
+            // Bulunan oyuncular: 5 nokta, bulunanlar parlak
+            int found = HumanCount();
+            const float dotSize = 16f;
+            const float dotGap = 12f;
+            float rowWidth = 5 * dotSize + 4 * dotGap;
+            var oldColor = GUI.color;
+            for (int i = 0; i < 5; i++)
             {
-                int seconds = Mathf.Max(0, Mathf.CeilToInt(lobbyEndsLocal - Time.realtimeSinceStartup));
-                GUI.Label(new Rect(panel.x, panel.y + 104f, panel.width, 30f), T("botsJoinIn") + " " + seconds, centerStyle);
+                GUI.color = i < found ? new Color(0.35f, 0.85f, 1f, 1f) : new Color(1f, 1f, 1f, 0.16f);
+                GUI.DrawTexture(new Rect(centerX - rowWidth / 2f + i * (dotSize + dotGap), centerY + 110f, dotSize, dotSize), SoundIcon.Disc());
             }
-            if (noticeText.Length > 0) GUI.Label(new Rect(panel.x, panel.y + 140f, panel.width, 30f), noticeText, centerStyle);
+            GUI.color = oldColor;
+            GUI.Label(new Rect(0f, centerY + 132f, width, 26f), found + " / 5", smallCenterStyle);
 
-            if (UiKit.SecondaryButton(new Rect(panel.x + 30f, panel.yMax - 68f, panel.width - 60f, 48f), T("cancel"), 20)) CancelSearch();
+            if (noticeText.Length > 0) GUI.Label(new Rect(0f, centerY + 160f, width, 26f), noticeText, smallCenterStyle);
+
+            if (UiKit.SecondaryButton(new Rect(width / 2f - 110f, centerY + 190f, 220f, 54f), T("cancel"), 20)) CancelSearch();
+        }
+
+        // Kronometre: yuvarlak zemin, çevresinde 60 saniye çizgisi (geçen saniyeler yanar) ve ortada dakika:saniye
+        void DrawStopwatch(Vector2 center, float radius, int seconds)
+        {
+            var oldMatrix = GUI.matrix;
+            var oldColor = GUI.color;
+
+            GUI.color = new Color(1f, 1f, 1f, 0.07f);
+            GUI.DrawTexture(new Rect(center.x - radius, center.y - radius, radius * 2f, radius * 2f), SoundIcon.Disc());
+
+            int lit = seconds % 60;
+            for (int i = 0; i < 60; i++)
+            {
+                bool major = i % 5 == 0;
+                float length = major ? 12f : 7f;
+                GUI.color = i <= lit ? new Color(0.35f, 0.85f, 1f, 1f) : new Color(1f, 1f, 1f, major ? 0.30f : 0.16f);
+
+                // RotateAroundPivot merkezi, arayüz ölçeği uygulanmış (ekran) koordinatında bekler
+                GUIUtility.RotateAroundPivot(i * 6f, oldMatrix.MultiplyPoint3x4(center));
+                GUI.DrawTexture(new Rect(center.x - 1.5f, center.y - radius + 4f, 3f, length), Texture2D.whiteTexture);
+                GUI.matrix = oldMatrix;
+            }
+            GUI.color = oldColor;
+
+            string time = (seconds / 60) + ":" + (seconds % 60).ToString("00");
+            GUI.Label(new Rect(center.x - radius, center.y - 26f, radius * 2f, 52f), time, stopwatchStyle);
         }
 
         int HumanCount()
