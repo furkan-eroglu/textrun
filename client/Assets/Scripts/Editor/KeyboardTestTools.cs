@@ -66,11 +66,42 @@ namespace TextRun.EditorTools
             Check(s.CurrentIndex == 1 && s.StateAt(0) == WordState.Correct && s.StateAt(1) == WordState.Pending, "SyncTo sunucu sirasina esitler");
 
             TestWordInput(Check);
+            TestSoundIcon(Check);
             TestAudio(Check);
             TestWordDatabase(Check);
 
             Debug.Log(failures == 0 ? "TUM TESTLER GECTI" : failures + " TEST BASARISIZ");
             EditorApplication.Exit(failures == 0 ? 0 : 1);
+        }
+
+        // Hoparlör simgesi: çizimin sınırları dokunun ortasında olmalı (düğmenin yuvarlağında kaymasın)
+        static void TestSoundIcon(Action<bool, string> check)
+        {
+            foreach (bool soundOn in new[] { true, false })
+            {
+                var tex = SoundIcon.Get(soundOn);
+                var pixels = tex.GetPixels32();
+                int minX = int.MaxValue, maxX = -1, minY = int.MaxValue, maxY = -1;
+                for (int y = 0; y < tex.height; y++)
+                {
+                    for (int x = 0; x < tex.width; x++)
+                    {
+                        if (pixels[y * tex.width + x].a < 60) continue;
+                        minX = Math.Min(minX, x); maxX = Math.Max(maxX, x);
+                        minY = Math.Min(minY, y); maxY = Math.Max(maxY, y);
+                    }
+                }
+
+                float centerX = (minX + maxX + 1) / 2f;
+                float centerY = (minY + maxY + 1) / 2f;
+                float middle = tex.width / 2f;
+                string name = soundOn ? "acik" : "kapali";
+
+                check(maxX >= 0, "hoparlor simgesi (" + name + "): cizim var");
+                check(Mathf.Abs(centerX - middle) <= 1.5f, "hoparlor simgesi (" + name + "): yatayda ortali (merkez " + centerX.ToString("0.0") + ", ideal " + middle + ")");
+                check(Mathf.Abs(centerY - middle) <= 1.5f, "hoparlor simgesi (" + name + "): dikeyde ortali (merkez " + centerY.ToString("0.0") + ", ideal " + middle + ")");
+                check(maxX < tex.width - 1 && minX > 0, "hoparlor simgesi (" + name + "): doku kenarina tasmiyor");
+            }
         }
 
         // Sentezlenen seslerin teknik doğruluğu: bozuk/sessiz mi, tavan değeri aşılıyor mu, frekans doğru mu, döngü pürüzsüz mü.

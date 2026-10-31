@@ -65,32 +65,35 @@ namespace TextRun.Audio
             return tex;
         }
 
+        // Çizimin yatay sınırları iki durumda da aynıdır (8..57): doku ortası 32'ye göre simetrik, düğmenin yuvarlağında tam ortalanır.
+        // Dikey: koni 10..54 arasındadır, ortası 32.
+
         // Hoparlör gövdesi (dikdörtgen) ve koni (genişleyen yamuk)
         static bool InSpeaker(float x, float y)
         {
-            if (x >= 10f && x <= 22f && Mathf.Abs(y - 32f) <= 8f) return true;
-            if (x > 22f && x <= 38f) return Mathf.Abs(y - 32f) <= 8f + (x - 22f) * (14f / 16f);
+            if (x >= 8f && x <= 18f && Mathf.Abs(y - 32f) <= 8f) return true;
+            if (x > 18f && x <= 32f) return Mathf.Abs(y - 32f) <= 8f + (x - 18f) * (14f / 14f);
             return false;
         }
 
-        // Ses dalgaları: hoparlörün sağında iki yay
+        // Ses dalgaları: hoparlörün sağında iki yay (en dış nokta x=57)
         static bool InWaves(float x, float y)
         {
-            float dx = x - 38f, dy = y - 32f;
+            float dx = x - 32f, dy = y - 32f;
             if (dx <= 0f) return false;
 
             float distance = Mathf.Sqrt(dx * dx + dy * dy);
             float angle = Mathf.Abs(Mathf.Atan2(dy, dx));
             if (angle > 0.85f) return false;
-            return (distance >= 14f && distance <= 18f) || (distance >= 24f && distance <= 28f);
+            return (distance >= 12f && distance <= 16f) || (distance >= 21f && distance <= 25f);
         }
 
-        // Hoparlörün üstündeki çarpı
+        // Hoparlörün yanındaki çarpı: dalgaların kapladığı alanın aynısını kaplar (x 38..57)
         static bool InCross(float x, float y)
         {
-            if (x < 41f || x > 60f || y < 22f || y > 42f) return false;
+            if (x < 38f || x > 57f || y < 22f || y > 42f) return false;
 
-            float a = (x - 41f) / 19f * 20f; // çarpıyı kutuya yay
+            float a = (x - 38f) / 19f * 20f; // çarpıyı kutuya yay
             float b = y - 22f;
             return Mathf.Abs(a - b) <= 2.6f || Mathf.Abs(a + b - 20f) <= 2.6f;
         }
