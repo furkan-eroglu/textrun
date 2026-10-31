@@ -35,10 +35,10 @@ services:
         condition: service_healthy
     volumes:
       - ./build:/nakama/data/modules
-    # Yalnızca bu bilgisayardan erişilebilir (127.0.0.1)
+    # 7349 ve 7351 (yönetim paneli) yalnızca bu bilgisayardan erişilebilir (127.0.0.1); 7350 telefon testi için yerel ağa açık
     ports:
       - "127.0.0.1:7349:7349"
-      - "127.0.0.1:7350:7350"
+      - "7350:7350" # telefonla yerel ağdan test için açık; canlıda kapatılıp HTTPS arkasına alınmalı
       - "127.0.0.1:7351:7351"
     healthcheck:
       test: ["CMD", "/nakama/nakama", "healthcheck"]
