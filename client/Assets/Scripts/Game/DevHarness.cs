@@ -72,6 +72,10 @@ namespace TextRun.Game
             yield return Shot("1b-menu-muted");
             audio.Enabled = true;
 
+            controller.DevShowError();
+            yield return new WaitForSeconds(0.4f);
+            yield return Shot("1f-error-screen");
+            controller.DevBackToMenu();
             controller.DevShowPrivateScreen("menu");
             yield return new WaitForSeconds(0.4f);
             yield return Shot("1c-private-menu");

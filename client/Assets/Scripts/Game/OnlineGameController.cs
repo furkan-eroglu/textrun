@@ -618,7 +618,27 @@ namespace TextRun.Game
             GUI.Label(new Rect(30f, height / 2f - 100f, width - 60f, 30f), T("connectionError"), centerStyle);
             GUI.Label(new Rect(30f, height / 2f - 65f, width - 60f, 90f), errorText, smallStyle);
 
-            if (UiKit.PrimaryButton(new Rect(30f, height / 2f + 30f, width - 60f, 56f), T("retry"))) Connect();
+            bool dev = Application.isEditor || Debug.isDebugBuild;
+            if (UiKit.PrimaryButton(new Rect(30f, height / 2f + 30f, width - 60f, 56f), T("retry")))
+            {
+                if (dev) ServerSettings.Host = hostInput; // yazılan adres de denenir
+                Connect();
+            }
+
+            // Geliştirme: telefonda sunucu adresi yanlışsa buradan düzeltilir (menüye ulaşılamadığı için burada da bulunur)
+            if (dev)
+            {
+                float hy = height / 2f + 130f;
+                GUI.Label(new Rect(30f, hy, width - 60f, 22f), T("server"), smallStyle);
+                hostInput = GUI.TextField(new Rect(30f, hy + 26f, width - 60f, 44f), hostInput, labelStyle);
+            }
+        }
+
+        // Geliştirme: hata ekranını gösterir (yalnızca DevHarness kullanır)
+        public void DevShowError()
+        {
+            errorText = "An error occurred while sending the request";
+            screen = Page.Error;
         }
 
         void DrawMenu(float width, float height, float top)
