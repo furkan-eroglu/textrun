@@ -40,18 +40,6 @@ namespace TextRun.Game
             float top = centerY - height / 2f;
             var old = GUI.color;
 
-            // Hız çizgileri: harflerin geldiği yönde (solda), harfler yerine oturunca kaybolur
-            float lineFade = Mathf.Clamp01(1f - (elapsed - 0.55f) / 0.5f);
-            if (lineFade > 0f)
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    float len = (60f - i * 16f) * (0.5f + 0.5f * Mathf.Clamp01(elapsed / 0.3f));
-                    GUI.color = new Color(1f, 1f, 1f, 0.55f * lineFade);
-                    GUI.DrawTexture(new Rect(x - 12f - len, centerY - 16f + i * 15f, len, 4f), Texture2D.whiteTexture);
-                }
-            }
-
             GUI.color = old;
             float cursor = x;
             for (int i = 0; i < text.Length; i++)

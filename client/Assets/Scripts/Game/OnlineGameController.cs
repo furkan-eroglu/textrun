@@ -24,6 +24,7 @@ namespace TextRun.Game
         readonly MenuBackdrop backdrop = new MenuBackdrop();
         readonly ResultsBackdrop resultsBackdrop = new ResultsBackdrop();
         readonly Fireworks fireworks = new Fireworks();
+        const bool MenuMusicEnabled = false; // menü müziği şimdilik kapalı (kod hazır; true yapınca çalar)
         readonly GameLogo logo = new GameLogo();
         float menuShownAt;
         float lastMenuDrawAt = -999f;
@@ -364,7 +365,7 @@ namespace TextRun.Game
             if (screen == Page.MatchFound && Time.realtimeSinceStartup >= countdownEndsLocal - countdownTotal) screen = Page.Countdown;
             TickCountdownSound();
             TickEndingSound();
-            sound.SetMenuMusic(screen == Page.Menu || screen == Page.Searching || screen == Page.MatchFound);
+            sound.SetMenuMusic(MenuMusicEnabled && (screen == Page.Menu || screen == Page.Searching || screen == Page.MatchFound));
 
             // Pist ve karakterler yalnızca geri sayım ve yarışta görünür
             bool wantTrack = screen == Page.Countdown || screen == Page.Racing;
