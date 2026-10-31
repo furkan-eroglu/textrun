@@ -6,6 +6,7 @@ namespace TextRun.Online
     public static class Op
     {
         public const long Submit = 1;
+        public const long Start = 2; // özel oda: kurucu yarışı başlatır
         public const long Snapshot = 100;
         public const long Roster = 101;
         public const long Countdown = 102;
@@ -66,6 +67,9 @@ namespace TextRun.Online
     {
         public string phase;
         public string lang;
+        public string kind;  // public | private
+        public string code;  // özel oda kodu
+        public string host;  // özel oda kurucusunun kimliği
         public long serverNow;
         public long lobbyEndsAt;
         public long startAt;
@@ -122,6 +126,27 @@ namespace TextRun.Online
     public class FindRaceRequest
     {
         public string lang;
+    }
+
+    [Serializable]
+    public class RoomRequest
+    {
+        public string lang;
+        public string code;
+    }
+
+    [Serializable]
+    public class RoomResponse
+    {
+        public string matchId;
+        public string code;
+        public string lang;
+    }
+
+    [Serializable]
+    public class StartDto
+    {
+        public bool bots;
     }
 
     [Serializable]

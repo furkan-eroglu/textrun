@@ -157,6 +157,43 @@ namespace TextRun.EditorTools
             await tr.CloseAsync();
             await en.CloseAsync();
 
+            // --- Test 3: ozel oda: kur, kodla katil, yanlis kod reddi, kurucu botsuz baslatir ---
+            var host = new OnlineRaceClient("unity-test-" + run + "-host", false);
+            var friend = new OnlineRaceClient("unity-test-" + run + "-friend", false);
+            await host.ConnectAsync();
+            await friend.ConnectAsync();
+
+            SnapshotDto hostSnapshot = null, hostCountdown = null, friendCountdown = null;
+            host.Snapshot += s => hostSnapshot = s;
+            host.Countdown += s => hostCountdown = s;
+            friend.Countdown += s => friendCountdown = s;
+
+            var room = await host.CreateRoomAsync(GameLanguage.Turkish);
+            Check(room.code != null && room.code.Length == 5, "ozel oda kodu 5 karakter (" + room.code + ")");
+            await WaitUntil(host, () => hostSnapshot != null, 5000, "kurucu snapshot");
+            Check(hostSnapshot.kind == "private" && hostSnapshot.code == room.code && hostSnapshot.host == host.UserId, "oda ozel, kod dogru, kurucu kendisi");
+
+            bool wrongCodeRejected = false;
+            string wrongCodeMessage = "";
+            try { await friend.JoinRoomAsync("ZZZZZ"); }
+            catch (Exception e) { wrongCodeMessage = e.GetType().Name + ": " + e.Message; wrongCodeRejected = OnlineRaceClient.IsError(e, "room_not_found"); }
+            Check(wrongCodeRejected, "yanlis kod reddedildi (" + wrongCodeMessage + ")");
+
+            var joined = await friend.JoinRoomAsync(room.code.ToLowerInvariant());
+            Check(joined.matchId == room.matchId && joined.lang == "tr", "kodla (kucuk harfle de) ayni odaya girildi");
+
+            friend.StartRoom(false); // kurucu degil: yok sayilmali
+            await Task.Delay(1200);
+            host.Pump();
+            Check(hostCountdown == null, "kurucu olmayanin baslat istegi yok sayildi");
+
+            host.StartRoom(false);
+            await WaitUntil(host, () => hostCountdown != null, 8000, "ozel oda geri sayimi");
+            await WaitUntil(friend, () => friendCountdown != null, 8000, "arkadas geri sayimi");
+            Check(hostCountdown.players.Length == 2 && friendCountdown.players.Length == 2, "botsuz: yalnizca 2 insan yarisiyor");
+            await host.CloseAsync();
+            await friend.CloseAsync();
+
             Debug.Log(failures == 0 ? "[ONLINE] TUM TESTLER GECTI" : "[ONLINE] " + failures + " TEST BASARISIZ");
             return failures == 0 ? 0 : 1;
         }

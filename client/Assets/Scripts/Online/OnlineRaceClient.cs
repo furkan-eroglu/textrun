@@ -149,6 +149,45 @@ namespace TextRun.Online
             throw last ?? new Exception("yarış bulunamadı");
         }
 
+        // Özel oda kurar ve içine girer. Dönen kodu arkadaşlara söyleyip kodla katılmaları sağlanır.
+        public async Task<RoomResponse> CreateRoomAsync(GameLanguage language)
+        {
+            var rpc = await client.RpcAsync(session, "create_room", JsonUtility.ToJson(new RoomRequest { lang = language.Code() }));
+            var room = JsonUtility.FromJson<RoomResponse>(rpc.Payload);
+            await JoinPrivateAsync(room);
+            return room;
+        }
+
+        // Kodla özel odaya katılır. Hata iletileri: room_not_found, room_closed, room_full.
+        public async Task<RoomResponse> JoinRoomAsync(string code)
+        {
+            var rpc = await client.RpcAsync(session, "join_room", JsonUtility.ToJson(new RoomRequest { code = code }));
+            var room = JsonUtility.FromJson<RoomResponse>(rpc.Payload);
+            await JoinPrivateAsync(room);
+            return room;
+        }
+
+        async Task JoinPrivateAsync(RoomResponse room)
+        {
+            var match = await socket.JoinMatchAsync(room.matchId, new Dictionary<string, string> { { "lang", room.lang }, { "code", room.code } });
+            matchId = match.Id;
+        }
+
+        // Sunucunun fırlattığı hata metni (ör. room_not_found) istisnanın ya da iç istisnalarının metninde aranır.
+        public static bool IsError(Exception e, string code)
+        {
+            for (var x = e; x != null; x = x.InnerException)
+                if ((x.Message ?? "").Contains(code) || x.ToString().Contains(code)) return true;
+            return false;
+        }
+
+        // Yalnızca oda kurucusu: yarışı başlatır (bots: boş yerleri botla doldur)
+        public void StartRoom(bool bots)
+        {
+            if (socket == null || matchId == null) return;
+            _ = SendAsync(Op.Start, JsonUtility.ToJson(new StartDto { bots = bots }));
+        }
+
         public void SubmitWord(string word, int mistakes = 0)
         {
             if (socket == null || matchId == null || string.IsNullOrEmpty(word)) return;

@@ -82,6 +82,14 @@ function normalizeCode(raw: unknown): string {
   return typeof raw === "string" ? raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") : "";
 }
 
+// Beklenen hatalar (yanlış kod, kapalı oda...) 500 yerine uygun kodla döner; istemci kitaplığı 500'leri tekrar deneyip oyuncuyu bekletir.
+const CODE_NOT_FOUND = 5;
+const CODE_FAILED_PRECONDITION = 9;
+
+function fail(message: string, code: number): never {
+  throw { message: message, code: code };
+}
+
 export function createRoomRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
   if (!ctx.userId) throw new Error("giris gerekli");
 
@@ -114,20 +122,20 @@ export function joinRoomRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk
   } catch (e) {
     throw new Error("gecersiz istek");
   }
-  if (code.length !== CODE_LENGTH) throw new Error("room_not_found");
+  if (code.length !== CODE_LENGTH) fail("room_not_found", CODE_NOT_FOUND);
 
   const records = nk.storageRead([{ collection: ROOM_COLLECTION, key: code, userId: SYSTEM_USER }]);
   const match = records.length > 0 ? nk.matchGet(records[0].value.matchId) : null;
-  if (!match) throw new Error("room_not_found");
+  if (!match) fail("room_not_found", CODE_NOT_FOUND);
 
   let label: { lang: string; open: boolean };
   try {
     label = JSON.parse(match.label);
   } catch (e) {
-    throw new Error("room_not_found");
+    fail("room_not_found", CODE_NOT_FOUND);
   }
-  if (!label.open) throw new Error("room_closed");
-  if (match.size >= MAX_PLAYERS) throw new Error("room_full");
+  if (!label.open) fail("room_closed", CODE_FAILED_PRECONDITION);
+  if (match.size >= MAX_PLAYERS) fail("room_full", CODE_FAILED_PRECONDITION);
   return JSON.stringify({ matchId: match.matchId, code: code, lang: label.lang });
 }
 

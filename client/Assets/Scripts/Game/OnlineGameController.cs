@@ -14,7 +14,7 @@ namespace TextRun.Game
     // burada yalnızca yazma girişi alınır, sunucudan gelenler gösterilir.
     public class OnlineGameController : MonoBehaviour
     {
-        enum Page { Connecting, Menu, Searching, MatchFound, Countdown, Racing, Results, Error }
+        enum Page { Connecting, Menu, PrivateMenu, JoinCode, RoomLobby, Searching, MatchFound, Countdown, Racing, Results, Error }
 
         const string LanguageKey = "textrun.language";
 
@@ -37,6 +37,7 @@ namespace TextRun.Game
         int lastAlertSecond = int.MinValue;
         readonly List<string> finishOrder = new List<string>(); // bitirenlerin sırası (canlı sıra göstermek için)
         GameLanguage language;
+        GameLanguage raceLanguage;                 // içinde bulunulan yarışın dili (özel odada odanın dili)
         Page screen = Page.Connecting;
         string errorText = "";
         string noticeText = "";
@@ -59,14 +60,22 @@ namespace TextRun.Game
         const int LightCount = 5;
         const float LightsSeconds = 6f;   // ışıkların yanacağı süre; sunucu geri sayımının kalanı "karşılaşma bulundu" ekranına ayrılır
         float matchFoundStartedAt;
+        bool isPrivateRoom;
+        string roomCode = "";
+        string roomHost = "";
+        bool roomBots;                 // kurucu: boş yerleri botla doldur
+        string joinCodeInput = "";
+        string codeNotice = "";
+        float copiedUntil;
         float matchFoundSeconds;
 
-        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle, searchTitleStyle, positionStyle;
+        GUIStyle rowNameStyle, rowTagStyle, codeStyle, codeFieldStyle, titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle, searchTitleStyle, positionStyle;
 
         void Start()
         {
             Application.targetFrameRate = 60;
             language = (GameLanguage)PlayerPrefs.GetInt(LanguageKey, (int)GameLanguage.Turkish);
+            raceLanguage = language;
             hostInput = ServerSettings.Host;
 
             var timer = System.Diagnostics.Stopwatch.StartNew();
@@ -90,6 +99,8 @@ namespace TextRun.Game
 
         // --- Geliştirme araçları: yalnızca DevHarness (-devharness komut satırı seçeneği) kullanır ---
         public string DevPageName => screen.ToString();
+
+        public void DevBackToMenu() { isPrivateRoom = false; screen = Page.Menu; }
 
         public void DevStartSearch()
         {
@@ -134,7 +145,7 @@ namespace TextRun.Game
 
         void OnClosed(string reason)
         {
-            if (screen == Page.Menu || screen == Page.Connecting || screen == Page.Error) return;
+            if (screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.Connecting || screen == Page.Error) return;
             sound.StopMusic();
             errorText = T("connectionLost");
             screen = Page.Error;
@@ -148,6 +159,8 @@ namespace TextRun.Game
             searchBusy = true;
             searchStartedAt = Time.realtimeSinceStartup;
             noticeText = "";
+            raceLanguage = language;
+            isPrivateRoom = false;
             screen = Page.Searching;
             players = new PlayerDto[0];
             lobbyEndsLocal = 0f;
@@ -177,6 +190,81 @@ namespace TextRun.Game
             }
         }
 
+        // ---------- Özel oda ----------
+
+        async void CreateRoom()
+        {
+            if (searchBusy) return;
+            searchBusy = true;
+            ResetForRoom();
+            raceLanguage = language;
+
+            try
+            {
+                var room = await net.CreateRoomAsync(language);
+                roomCode = room.code;
+                isPrivateRoom = true;
+                screen = Page.RoomLobby;
+            }
+            catch (Exception e)
+            {
+                Fail(e);
+            }
+            finally
+            {
+                searchBusy = false;
+            }
+        }
+
+        async void JoinRoom()
+        {
+            if (searchBusy || joinCodeInput.Length != 5) return;
+            searchBusy = true;
+            codeNotice = "";
+            ResetForRoom();
+
+            try
+            {
+                var room = await net.JoinRoomAsync(joinCodeInput);
+                raceLanguage = room.lang == "en" ? GameLanguage.English : GameLanguage.Turkish; // yarış odanın dilindedir
+                roomCode = room.code;
+                isPrivateRoom = true;
+                screen = Page.RoomLobby;
+            }
+            catch (Exception e)
+            {
+                screen = Page.JoinCode;
+                if (OnlineRaceClient.IsError(e, "room_closed")) codeNotice = T("roomStarted");
+                else if (OnlineRaceClient.IsError(e, "room_full")) codeNotice = T("roomIsFull");
+                else if (OnlineRaceClient.IsError(e, "room_not_found")) codeNotice = T("roomNotFound");
+                else Fail(e);
+            }
+            finally
+            {
+                searchBusy = false;
+            }
+        }
+
+        void ResetForRoom()
+        {
+            noticeText = "";
+            players = new PlayerDto[0];
+            lobbyEndsLocal = 0f;
+            endingEndsLocal = 0f;
+            finishOrder.Clear();
+            view.ResetToStart();
+            view.SetRacing(false);
+            wordView.Reset();
+            keyboard.Text = "";
+        }
+
+        async void LeaveRoom()
+        {
+            await net.LeaveAsync();
+            isPrivateRoom = false;
+            screen = Page.PrivateMenu;
+        }
+
         async void CancelSearch()
         {
             sound.StopMusic();
@@ -187,7 +275,9 @@ namespace TextRun.Game
         // SNAPSHOT, ROSTER ve COUNTDOWN aynı gövdeyi taşır; hepsi buradan durumu günceller.
         void OnSnapshot(SnapshotDto s)
         {
-            if (screen == Page.Menu || screen == Page.Error) return;
+            if (screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.Error) return;
+
+            if (s.kind == "private") { isPrivateRoom = true; roomCode = s.code ?? ""; roomHost = s.host ?? ""; }
 
             players = s.players ?? new PlayerDto[0];
             view.SetRoster(players, net.UserId);
@@ -200,7 +290,7 @@ namespace TextRun.Game
             switch (s.phase)
             {
                 case Phase.Lobby:
-                    screen = Page.Searching;
+                    screen = s.kind == "private" ? Page.RoomLobby : Page.Searching;
                     break;
 
                 case Phase.Countdown:
@@ -246,11 +336,11 @@ namespace TextRun.Game
 
         void PrepareTyping(SnapshotDto s)
         {
-            if (typing != null && typing.Count == s.words.Length && wordCount == s.words.Length && typing.WordAt(0) == TextNormalizer.ToLower(s.words[0], language)) return;
-            typing = new TypingSession(s.words, language);
+            if (typing != null && typing.Count == s.words.Length && wordCount == s.words.Length && typing.WordAt(0) == TextNormalizer.ToLower(s.words[0], raceLanguage)) return;
+            typing = new TypingSession(s.words, raceLanguage);
             wordCount = s.words.Length;
             wordView.Reset();
-            input = new WordInput(language);
+            input = new WordInput(raceLanguage);
             BeginInput();
         }
 
@@ -402,7 +492,7 @@ namespace TextRun.Game
         {
             if (text.Length < prefix.Length) return false;
             for (int i = 0; i < prefix.Length; i++)
-                if (TextNormalizer.ToLower(text[i], language) != prefix[i]) return false;
+                if (TextNormalizer.ToLower(text[i], raceLanguage) != prefix[i]) return false;
             return true;
         }
 
@@ -446,6 +536,12 @@ namespace TextRun.Game
 
             headingStyle = new GUIStyle(GUI.skin.label) { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             rankStyle = new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            codeStyle = new GUIStyle(GUI.skin.label) { fontSize = 54, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, clipping = TextClipping.Overflow };
+            UiKit.SetAllTextColors(codeStyle, new Color(1f, 0.84f, 0.32f));
+            codeFieldStyle = new GUIStyle(GUI.skin.textField) { fontSize = 40, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            UiKit.SetAllTextColors(codeFieldStyle, Color.white);
+            rowNameStyle = new GUIStyle(labelStyle) { alignment = TextAnchor.MiddleLeft };
+            rowTagStyle = new GUIStyle(smallStyle) { alignment = TextAnchor.MiddleRight };
             searchTitleStyle = new GUIStyle(GUI.skin.label) { fontSize = 28, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, clipping = TextClipping.Overflow };
             positionStyle = new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, wordWrap = false, richText = true, clipping = TextClipping.Overflow };
             smallCenterStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, alignment = TextAnchor.MiddleCenter, wordWrap = false };
@@ -477,7 +573,7 @@ namespace TextRun.Game
             float height = UnityEngine.Screen.height / scale;
             float top = (UnityEngine.Screen.height - UnityEngine.Screen.safeArea.yMax) / scale + 6f;
 
-            if (screen == Page.Connecting || screen == Page.Menu || screen == Page.Searching || screen == Page.MatchFound || screen == Page.Error)
+            if (screen == Page.Connecting || screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.RoomLobby || screen == Page.Searching || screen == Page.MatchFound || screen == Page.Error)
                 backdrop.Draw(width, height);
 
             switch (screen)
@@ -485,6 +581,9 @@ namespace TextRun.Game
                 case Page.Connecting: DrawCenterMessage(width, height, T("connecting")); break;
                 case Page.Error: DrawError(width, height); break;
                 case Page.Menu: DrawMenu(width, height, top); break;
+                case Page.PrivateMenu: DrawPrivateMenu(width, height, top); break;
+                case Page.JoinCode: DrawJoinCode(width, height, top); break;
+                case Page.RoomLobby: DrawRoomLobby(width, height, top); break;
                 case Page.Searching: DrawSearching(width, height, top); break;
                 case Page.MatchFound: DrawMatchFound(width, height); break;
                 case Page.Countdown: DrawCountdown(width, height, top, scale); break;
@@ -543,7 +642,12 @@ namespace TextRun.Game
             if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 76f), T("normalGame"), 26, true)) StartSearch();
             y += 96f;
 
-            UiKit.DisabledButton(new Rect(24f, y, width - 48f, 56f), T("privateGame"), 20);
+            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 56f), T("privateGame"), 20))
+            {
+                joinCodeInput = "";
+                codeNotice = "";
+                screen = Page.PrivateMenu;
+            }
 
             // Geliştirme: telefonda sunucu adresini (bilgisayarın yerel IP'si) girmek için
             if (Application.isEditor || Debug.isDebugBuild)
@@ -581,6 +685,133 @@ namespace TextRun.Game
             language = value;
             PlayerPrefs.SetInt(LanguageKey, (int)value);
             PlayerPrefs.Save();
+        }
+
+        // Özel oyun menüsü: oda kur / kodla katıl
+        void DrawPrivateMenu(float width, float height, float top)
+        {
+            FullViewport();
+
+            GUI.Label(new Rect(0f, top + 30f, width, 44f), T("privateGame"), headingStyle);
+
+            float y = top + 120f;
+            if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 76f), T("createRoom"), 26)) CreateRoom();
+            y += 96f;
+            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 64f), T("joinWithCode"), 22)) { codeNotice = ""; screen = Page.JoinCode; }
+            y += 100f;
+            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 50f), T("back"), 20)) screen = Page.Menu;
+        }
+
+        // Oda kodu girişi: 5 karakter, büyük harf
+        void DrawJoinCode(float width, float height, float top)
+        {
+            FullViewport();
+
+            GUI.Label(new Rect(0f, top + 30f, width, 44f), T("enterCode"), headingStyle);
+
+            float y = top + 110f;
+            GUI.SetNextControlName("codeField");
+            string typed = GUI.TextField(new Rect(width / 2f - 130f, y, 260f, 70f), joinCodeInput, 5, codeFieldStyle);
+            joinCodeInput = FilterCode(typed);
+            y += 86f;
+
+            if (codeNotice.Length > 0) GUI.Label(new Rect(0f, y, width, 26f), codeNotice, smallCenterStyle);
+            y += 40f;
+
+            if (joinCodeInput.Length == 5) { if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 64f), T("join"), 24)) JoinRoom(); }
+            else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 64f), T("join"), 24);
+            y += 84f;
+
+            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 50f), T("back"), 20)) screen = Page.PrivateMenu;
+        }
+
+        static string FilterCode(string raw)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (char c in raw.ToUpperInvariant())
+                if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) sb.Append(c);
+            return sb.ToString();
+        }
+
+        // Oda lobisi: büyük oda kodu, oyuncu listesi; kurucu için başlat düğmesi ve botlu/botsuz seçimi
+        void DrawRoomLobby(float width, float height, float top)
+        {
+            FullViewport();
+
+            GUI.Label(new Rect(0f, top + 16f, width, 24f), T("roomCode"), smallCenterStyle);
+
+            var oldColor = GUI.color;
+            GUI.Label(new Rect(0f, top + 38f, width, 64f), roomCode, codeStyle);
+
+            bool copied = Time.realtimeSinceStartup < copiedUntil;
+            if (UiKit.SecondaryButton(new Rect(width / 2f - 90f, top + 108f, 180f, 40f), copied ? T("copied") : T("copyCode"), 17))
+            {
+                GUIUtility.systemCopyBuffer = roomCode;
+                copiedUntil = Time.realtimeSinceStartup + 1.5f;
+            }
+
+            // Oyuncu listesi
+            float y = top + 168f;
+            GUI.Label(new Rect(24f, y, width - 48f, 24f), T("players") + "  " + players.Length + " / 5", smallStyle);
+            y += 30f;
+
+            bool iAmHost = net != null && roomHost == net.UserId;
+            foreach (var p in players)
+            {
+                var row = new Rect(20f, y, width - 40f, 44f);
+                UiKit.Card(row, new Color(1f, 1f, 1f, 0.07f), 12f);
+
+                GUI.color = OnlineRaceView.LaneColors[p.slot % OnlineRaceView.LaneColors.Length];
+                GUI.DrawTexture(new Rect(row.x + 14f, row.y + 14f, 16f, 16f), SoundIcon.Disc());
+                GUI.color = oldColor;
+
+                string label = (net != null && p.id == net.UserId) ? T("you") + " (" + p.name + ")" : p.name;
+                GUI.Label(new Rect(row.x + 42f, row.y, row.width - 120f, 44f), label, rowNameStyle);
+                if (p.id == roomHost) GUI.Label(new Rect(row.xMax - 100f, row.y, 90f, 44f), T("hostTag"), rowTagStyle);
+                y += 52f;
+            }
+
+            // Altta: kurucu başlatır, diğerleri bekler
+            float bottom = height - 28f;
+            if (UiKit.SecondaryButton(new Rect(24f, bottom - 50f, width - 48f, 50f), T("leaveRoom"), 19)) LeaveRoom();
+            bottom -= 62f;
+
+            if (iAmHost)
+            {
+                bool canStart = players.Length >= 2 || roomBots;
+                if (canStart) { if (UiKit.PrimaryButton(new Rect(24f, bottom - 66f, width - 48f, 66f), T("startRace"), 24, true)) net.StartRoom(roomBots); }
+                else UiKit.DisabledButton(new Rect(24f, bottom - 66f, width - 48f, 66f), T("needTwo"), 20);
+                bottom -= 80f;
+
+                int choice = UiKit.Segmented(new Rect(24f, bottom - 46f, width - 48f, 46f), new[] { T("noBots"), T("withBots") }, roomBots ? 1 : 0, 18);
+                if (choice >= 0) roomBots = choice == 1;
+            }
+            else
+            {
+                GUI.Label(new Rect(0f, bottom - 40f, width, 30f), T("waitHost"), smallCenterStyle);
+            }
+        }
+
+        // Geliştirme: özel oda ekranlarını sahte verilerle gösterir (yalnızca DevHarness kullanır)
+        public void DevShowPrivateScreen(string which)
+        {
+            switch (which)
+            {
+                case "menu": screen = Page.PrivateMenu; break;
+                case "join": joinCodeInput = "K7M2P"; codeNotice = T("roomNotFound"); screen = Page.JoinCode; break;
+                case "lobby":
+                    roomCode = "K7M2P";
+                    roomHost = net.UserId;
+                    roomBots = false;
+                    players = new[]
+                    {
+                        new PlayerDto { id = net.UserId, name = "Oyuncu4821", slot = 0, connected = true },
+                        new PlayerDto { id = "u2", name = "Mehmet", slot = 1, connected = true },
+                        new PlayerDto { id = "u3", name = "Ayse", slot = 2, connected = true }
+                    };
+                    screen = Page.RoomLobby;
+                    break;
+            }
         }
 
         // Eşleşme ekranı: yalnızca sade arka plan; ortada kronometre, bulunan oyuncu noktaları ve iptal düğmesi
@@ -954,8 +1185,15 @@ namespace TextRun.Game
             }
 
             y = Mathf.Max(y + 10f, height - 148f);
-            if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 62f), T("playAgain"), 22, true)) AgainAfterResults();
-            if (UiKit.SecondaryButton(new Rect(24f, y + 76f, width - 48f, 50f), T("menu"), 20)) BackToMenu();
+            if (isPrivateRoom)
+            {
+                if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 62f), T("menu"), 22)) BackToMenu();
+            }
+            else
+            {
+                if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 62f), T("playAgain"), 22, true)) AgainAfterResults();
+                if (UiKit.SecondaryButton(new Rect(24f, y + 76f, width - 48f, 50f), T("menu"), 20)) BackToMenu();
+            }
         }
 
         // Geliştirme: sahte sonuç göstererek ekranı doğrular (yalnızca DevHarness kullanır)

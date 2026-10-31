@@ -72,6 +72,18 @@ namespace TextRun.Game
             yield return Shot("1b-menu-muted");
             audio.Enabled = true;
 
+            controller.DevShowPrivateScreen("menu");
+            yield return new WaitForSeconds(0.4f);
+            yield return Shot("1c-private-menu");
+            controller.DevShowPrivateScreen("join");
+            yield return new WaitForSeconds(0.4f);
+            yield return Shot("1d-private-join");
+            controller.DevShowPrivateScreen("lobby");
+            yield return new WaitForSeconds(0.4f);
+            yield return Shot("1e-private-lobby");
+            controller.DevBackToMenu();
+            yield return new WaitForSeconds(0.4f);
+
             controller.DevStartSearch();
             yield return WaitForPage("Searching", 15f);
             yield return new WaitForSeconds(2f);
