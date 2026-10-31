@@ -2,6 +2,7 @@
 export const OP = {
   // istemci -> sunucu
   SUBMIT: 1, // { w: "kelime" }
+  START: 2, // özel oda: kurucu yarışı başlatır { bots: boş yerleri botla doldur }
 
   // sunucu -> istemci
   SNAPSHOT: 100, // odaya girene mevcut durum
@@ -18,4 +19,5 @@ export const REJECT = {
   LANGUAGE_MISMATCH: "language_mismatch",
   ROOM_FULL: "room_full",
   ROOM_CLOSED: "room_closed",
+  BAD_CODE: "bad_code", // özel odaya yanlış kodla girmeye çalışıldı
 } as const;

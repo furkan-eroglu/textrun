@@ -11,6 +11,7 @@ import {
   humanCount,
   playerList,
   removeHuman,
+  requestStart,
   reserveSeat,
   shouldStartCountdown,
   startCountdown,
@@ -371,4 +372,82 @@ test("yaris cok uzarsa zaman asimi ile biter", () => {
   assert.ok(!updateRaceEnd(state, start + 59000));
   assert.ok(updateRaceEnd(state, start + 60000));
   assert.equal(state.results![0].status, "dnf");
+});
+
+// ---------- Özel odalar ----------
+
+function makePrivate(): RaceState {
+  return createRaceState("tr", "private", { ...DEFAULT_CONFIG }, 0, 99, "ABCDE");
+}
+
+test("ozel oda: ilk giren kurucu olur, lobi suresiyle kendiliginden baslamaz", () => {
+  const state = makePrivate();
+  fillHumans(state, 2);
+  assert.equal(state.host, "u1");
+  assert.equal(state.lobbyDeadline, 0, "ozel odada otomatik sure yok");
+  assert.equal(shouldStartCountdown(state, 10 * 60 * 1000), false, "kurucu baslat demeden baslamaz");
+  fillHumans(makePrivate(), 5);
+  const full = makePrivate();
+  fillHumans(full, 5);
+  assert.equal(shouldStartCountdown(full, 1000), false, "oda dolsa da kurucu baslatmali");
+});
+
+test("ozel oda: yalnizca kurucu baslatir, tek kisi botsuz baslatamaz", () => {
+  const state = makePrivate();
+  fillHumans(state, 1);
+  assert.equal(requestStart(state, "u1", false), "too_few");
+  addHuman(state, "u2", "Oyuncu 2", 0);
+  assert.equal(requestStart(state, "u2", false), "not_host");
+  assert.equal(requestStart(state, "u1", false), "ok");
+  assert.equal(shouldStartCountdown(state, 0), true);
+
+  const publicState = makeState();
+  fillHumans(publicState, 2);
+  assert.equal(requestStart(publicState, "u1", true), "not_private");
+});
+
+test("ozel oda: botsuz baslarsa yalnizca insanlar yarisir, botlu baslarsa bosluklar dolar", () => {
+  const without = makePrivate();
+  fillHumans(without, 3);
+  requestStart(without, "u1", false);
+  startCountdown(without, 0);
+  assert.equal(playerList(without).length, 3);
+  assert.ok(playerList(without).every((p) => !p.isBot));
+
+  const withBots = makePrivate();
+  fillHumans(withBots, 2);
+  requestStart(withBots, "u1", true);
+  startCountdown(withBots, 0);
+  assert.equal(playerList(withBots).length, 5);
+  assert.equal(playerList(withBots).filter((p) => p.isBot).length, 3);
+});
+
+test("ozel oda: kurucu lobiden cikinca yetki siradaki oyuncuya gecer; baslayinca katilinamaz", () => {
+  const state = makePrivate();
+  fillHumans(state, 3);
+  removeHuman(state, "u1", 0);
+  assert.equal(state.host, "u2");
+  assert.equal(requestStart(state, "u1", false), "not_host");
+  removeHuman(state, "u2", 0);
+  removeHuman(state, "u3", 0);
+  assert.equal(state.host, "", "kimse kalmayinca kurucu yok");
+
+  const started = makePrivate();
+  fillHumans(started, 2);
+  requestStart(started, "u1", false);
+  startCountdown(started, 0);
+  assert.equal(canJoin(started, "u9", 0), "closed");
+  assert.equal(requestStart(started, "u1", false), "not_lobby");
+});
+
+test("ozel oda: sadece insanlarla yapilan yaris duzgun biter", () => {
+  const state = makePrivate();
+  fillHumans(state, 2);
+  requestStart(state, "u1", false);
+  const start = startRace(state);
+  for (let i = 0; i < state.words.length; i++) submitWord(state, "u1", state.words[i], start + 5000 + i * 100);
+  assert.equal(updateRaceEnd(state, start + 6000), false, "ilk bitirenden sonra gerisayim");
+  for (let i = 0; i < state.words.length; i++) submitWord(state, "u2", state.words[i], start + 7000 + i * 100);
+  assert.equal(updateRaceEnd(state, start + 12000), true);
+  assert.deepEqual(state.results!.map((r) => r.userId), ["u1", "u2"]);
 });

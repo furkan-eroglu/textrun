@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 
 const HOST = '127.0.0.1:7350';
-const OP = { SUBMIT: 1, SNAPSHOT: 100, ROSTER: 101, COUNTDOWN: 102, GO: 103, PROGRESS: 104, ACK: 105, RESULTS: 106, ENDING: 107 };
+const OP = { SUBMIT: 1, START: 2, SNAPSHOT: 100, ROSTER: 101, COUNTDOWN: 102, GO: 103, PROGRESS: 104, ACK: 105, RESULTS: 106, ENDING: 107 };
 const runId = Date.now().toString(36);
 // Sunucuda TEXTRUN_FINISH_GRACE_MS verilmediyse varsayilan (10 sn) beklenir: E2E_EXPECT_GRACE_MS=10000
 const expectedGraceMs = Number(process.env.E2E_EXPECT_GRACE_MS || 3000);
@@ -93,6 +93,16 @@ class Player {
     this.matchId = matchId;
     const res = await this.request({ match_join: { match_id: matchId, metadata: { lang: langMeta } } });
     return res;
+  }
+
+  async joinWith(matchId, metadata) {
+    this.matchId = matchId;
+    return this.request({ match_join: { match_id: matchId, metadata } });
+  }
+
+  start(bots) {
+    const data = Buffer.from(JSON.stringify({ bots })).toString('base64');
+    this.ws.send(JSON.stringify({ match_data_send: { match_id: this.matchId, op_code: String(OP.START), data } }));
   }
 
   waitFor(op, timeoutMs = 20000) {
@@ -312,6 +322,70 @@ await test('eszamanli yuk: 12 oyuncu ayni anda aranir, hicbir oda 5 insani asmaz
   assert.equal(sizes.reduce((a, b) => a + b, 0), 12);
   console.log(`       12 oyuncu ${rooms.size} odaya yerlesti: ${sizes.join(', ')}`);
   players.forEach((p) => p.close());
+});
+
+await test('ozel oda: kod ile katilinir, yanlis kod/yanlis oda reddedilir, kurucu baslatir (botsuz)', async () => {
+  const [host, friend, stranger] = await makePlayers('oda', 'tr', 3);
+
+  const room = await host.rpc('create_room', { lang: 'tr' });
+  assert.match(room.code, /^[A-HJKMNP-Z2-9]{5}$/, 'kod 5 karakter, karisan harf yok');
+  const hostJoin = await host.joinWith(room.matchId, { lang: room.lang, code: room.code });
+  assert.ok(hostJoin.match, 'kurucu odaya girdi');
+  const snap = await host.waitFor(OP.SNAPSHOT);
+  assert.equal(snap.body.kind, 'private');
+  assert.equal(snap.body.code, room.code);
+  assert.equal(snap.body.host, host.userId);
+
+  // Oda numarasini bilen ama kodu bilmeyen giremez
+  const noCode = await stranger.joinWith(room.matchId, { lang: 'tr' });
+  assert.ok(noCode.error, 'kodsuz giris reddedilmeli');
+  const wrongCode = await stranger.joinWith(room.matchId, { lang: 'tr', code: 'ZZZZZ' });
+  assert.ok(wrongCode.error, 'yanlis kodla giris reddedilmeli');
+
+  // Kod ile arayan arkadas bulur (kucuk harf/bosluk onemsiz)
+  const found = await friend.rpc('join_room', { code: ' ' + room.code.toLowerCase() + ' ' });
+  assert.equal(found.matchId, room.matchId);
+  assert.equal(found.lang, 'tr');
+  const friendJoin = await friend.joinWith(found.matchId, { lang: found.lang, code: room.code });
+  assert.ok(friendJoin.match, 'arkadas odaya girdi');
+
+  // Var olmayan kod
+  await assert.rejects(() => stranger.rpc('join_room', { code: 'AAAAA' }), /room_not_found/);
+
+  // Kurucu olmayan baslatamaz: kisa sure beklenip geri sayim gelmedigi gorulur
+  friend.start(false);
+  await sleep(1500);
+  assert.ok(!host.events.some((e) => e.op === OP.COUNTDOWN), 'kurucu olmayanin baslat istegi yok sayilir');
+
+  host.start(false);
+  const countdown = await host.waitFor(OP.COUNTDOWN, 8000);
+  assert.equal(countdown.body.players.length, 2, 'botsuz: yalnizca 2 insan');
+  assert.ok(countdown.body.players.every((p) => !p.isBot));
+
+  // Baslayan odaya yeni katilinamaz
+  await assert.rejects(() => stranger.rpc('join_room', { code: room.code }), /room_closed/);
+
+  await host.waitFor(OP.GO);
+  await Promise.all([host.typeAll(countdown.body.words), friend.typeAll(countdown.body.words)]);
+  const res = await host.waitFor(OP.RESULTS, 20000);
+  assert.equal(res.body.results.length, 2);
+  assert.ok(res.body.results.every((r) => r.status === 'finished'));
+  for (const p of [host, friend, stranger]) p.close();
+});
+
+await test('ozel oda: botlu baslatinca bosluklar dolar; ayni dil kurali (yanlis dil reddedilir)', async () => {
+  const [host, wrongLang] = await makePlayers('odab', 'tr', 2);
+  const room = await host.rpc('create_room', { lang: 'tr' });
+  await host.joinWith(room.matchId, { lang: 'tr', code: room.code });
+  const bad = await wrongLang.joinWith(room.matchId, { lang: 'en', code: room.code });
+  assert.ok(bad.error, 'dil uyusmazligi reddedilir');
+
+  host.start(true);
+  const countdown = await host.waitFor(OP.COUNTDOWN, 8000);
+  assert.equal(countdown.body.players.length, 5);
+  assert.equal(countdown.body.players.filter((p) => p.isBot).length, 4);
+  host.close();
+  wrongLang.close();
 });
 
 // Hile testi yalnızca sunucu varsayılan hız sınırıyla (250 WPM) çalışırken anlamlıdır: E2E_CHEAT=1

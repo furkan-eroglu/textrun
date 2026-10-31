@@ -54,12 +54,17 @@ export interface RaceState {
   order: string[];
   reserved: { [id: string]: number }; // katılma izni verilmiş ama henüz girmemiş oyuncular (kimlik -> izin zamanı)
   results: RaceResult[] | null;
+  code: string; // özel oda kodu (genel odada boş)
+  host: string; // özel odada yarışı başlatma yetkisi olan oyuncu
+  fillBots: boolean; // özel oda: başlarken boş yerleri botla doldur
+  startRequested: boolean; // özel oda: kurucu başlat dedi
 }
 
 export type JoinOutcome = "joined" | "rejoined" | "closed" | "full";
+export type StartOutcome = "ok" | "not_private" | "not_host" | "not_lobby" | "too_few";
 export type SubmitOutcome = "ignored" | "correct" | "wrong" | "finished" | "disqualified";
 
-export function createRaceState(lang: string, kind: "public" | "private", cfg: RaceConfig, now: number, seed: number): RaceState {
+export function createRaceState(lang: string, kind: "public" | "private", cfg: RaceConfig, now: number, seed: number, code = ""): RaceState {
   return {
     lang,
     kind,
@@ -77,6 +82,10 @@ export function createRaceState(lang: string, kind: "public" | "private", cfg: R
     order: [],
     reserved: {},
     results: null,
+    code,
+    host: "",
+    fillBots: false,
+    startRequested: false,
   };
 }
 
@@ -104,7 +113,9 @@ export function addHuman(state: RaceState, id: string, name: string, now: number
   state.players[id] = newPlayer(id, name, false, state.order.length);
   state.order.push(id);
   state.everHadHuman = true;
-  if (state.lobbyDeadline === 0) state.lobbyDeadline = now + state.cfg.lobbyWaitMs;
+  if (state.kind === "private") {
+    if (state.host === "") state.host = id; // ilk giren oda kurucusudur
+  } else if (state.lobbyDeadline === 0) state.lobbyDeadline = now + state.cfg.lobbyWaitMs;
   return "joined";
 }
 
@@ -143,23 +154,42 @@ export function removeHuman(state: RaceState, id: string, now: number): void {
     delete state.players[id];
     state.order = state.order.filter((x) => x !== id);
     if (humanCount(state) === 0) state.lobbyDeadline = 0;
+    if (state.host === id) state.host = nextHost(state); // kurucu çıkınca yetki sıradaki oyuncuya geçer
     return;
   }
   player.connected = false;
   player.disconnectedAt = now;
 }
 
+function nextHost(state: RaceState): string {
+  const humans = playerList(state).filter((p) => !p.isBot);
+  return humans.length > 0 ? humans[0].id : "";
+}
+
+// Özel odada kurucu başlat diyene kadar beklenir; boş yerleri botla doldurma tercihi kurucuya aittir.
+export function requestStart(state: RaceState, id: string, fillBots: boolean): StartOutcome {
+  if (state.kind !== "private") return "not_private";
+  if (state.phase !== "lobby") return "not_lobby";
+  if (state.host !== id) return "not_host";
+  if (humanCount(state) < 2 && !fillBots) return "too_few";
+  state.fillBots = fillBots;
+  state.startRequested = true;
+  return "ok";
+}
+
 export function shouldStartCountdown(state: RaceState, now: number): boolean {
   if (state.phase !== "lobby") return false;
   const humans = humanCount(state);
   if (humans === 0) return false;
+  if (state.kind === "private") return state.startRequested;
   return humans >= state.cfg.maxPlayers || now >= state.lobbyDeadline;
 }
 
 // Boş yerleri botla doldurur, kelime listesini üretir ve geri sayımı başlatır.
 export function startCountdown(state: RaceState, now: number): void {
   let botNumber = 1;
-  while (state.order.length < state.cfg.maxPlayers) {
+  const wantBots = state.kind === "public" || state.fillBots;
+  while (wantBots && state.order.length < state.cfg.maxPlayers) {
     const id = "bot-" + botNumber;
     const bot = newPlayer(id, "Bot " + botNumber, true, state.order.length);
     bot.botWpm = state.cfg.botMinWpm + nextRandom(state) * (state.cfg.botMaxWpm - state.cfg.botMinWpm);

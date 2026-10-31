@@ -10,6 +10,7 @@ import {
   playerList,
   publicPlayers,
   removeHuman,
+  requestStart,
   reserveSeat,
   shouldStartCountdown,
   startCountdown,
@@ -25,7 +26,10 @@ const EMPTY_LOBBY_TIMEOUT_MS = 30000;
 interface MatchInitParams {
   lang: string;
   kind: string;
+  code?: string;
 }
+
+const PRIVATE_LOBBY_MAX_MS = 15 * 60 * 1000; // özel oda lobisi en fazla bu kadar açık kalır
 
 function labelOf(state: RaceState): string {
   return JSON.stringify({ lang: state.lang, kind: state.kind, open: state.phase === "lobby" });
@@ -40,6 +44,9 @@ function snapshotOf(state: RaceState, now: number) {
     phase: state.phase,
     lang: state.lang,
     serverNow: now,
+    kind: state.kind,
+    code: state.code,
+    host: state.host,
     lobbyEndsAt: state.phase === "lobby" && state.lobbyDeadline > 0 ? state.lobbyDeadline : 0,
     startAt: state.raceStartAt,
     endsAt: state.graceDeadline, // 0 = bitiş geri sayımı başlamadı
@@ -52,7 +59,7 @@ function snapshotOf(state: RaceState, now: number) {
 export function matchInit(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, params: { [key: string]: string }) {
   const p = params as unknown as MatchInitParams;
   const seed = Math.floor(Math.random() * 4294967296);
-  const state = createRaceState(p.lang, p.kind === "private" ? "private" : "public", loadConfig(ctx.env), Date.now(), seed);
+  const state = createRaceState(p.lang, p.kind === "private" ? "private" : "public", loadConfig(ctx.env), Date.now(), seed, p.code || "");
   logger.info("Yaris odasi acildi: dil=%s tur=%s", state.lang, state.kind);
   return { state, tickRate: TICK_RATE, label: labelOf(state) };
 }
@@ -71,6 +78,8 @@ export function matchJoinAttempt(
   if (!metadata || metadata.lang !== state.lang) {
     return { state, accept: false, rejectMessage: REJECT.LANGUAGE_MISMATCH };
   }
+  // Özel oda: yalnızca doğru kodu bilen girebilir (oda numarası bilinse bile)
+  if (state.kind === "private" && metadata.code !== state.code) return { state, accept: false, rejectMessage: REJECT.BAD_CODE };
   const outcome = canJoin(state, presence.userId, Date.now());
   if (outcome === "full") return { state, accept: false, rejectMessage: REJECT.ROOM_FULL };
   if (outcome === "closed") return { state, accept: false, rejectMessage: REJECT.ROOM_CLOSED };
@@ -124,6 +133,16 @@ export function matchLoop(
   let progressChanged = false;
 
   for (const message of messages) {
+    if (message.opCode === OP.START) {
+      let bots = false;
+      try {
+        bots = JSON.parse(nk.binaryToString(message.data)).bots === true;
+      } catch (e) {
+        // boş ya da bozuk mesaj: botsuz başlat denir
+      }
+      requestStart(state, message.sender.userId, bots);
+      continue;
+    }
     if (message.opCode !== OP.SUBMIT) continue;
 
     let word = "";
@@ -152,6 +171,8 @@ export function matchLoop(
         logger.info("Geri sayim basladi: dil=%s insan=%d", state.lang, humanCount(state));
       } else if (state.everHadHuman ? humanCount(state) === 0 : now - state.createdAt > EMPTY_LOBBY_TIMEOUT_MS) {
         return null; // lobi boşaldı, oda kapanır
+      } else if (state.kind === "private" && now - state.createdAt > PRIVATE_LOBBY_MAX_MS) {
+        return null; // özel oda çok uzun süre başlatılmadı
       }
       break;
 
