@@ -77,7 +77,11 @@ namespace TextRun.Game
             yield return new WaitForSeconds(7f);
             yield return Shot("2b-searching-later"); // sayacın ilerlemesini görmek için
 
-            yield return WaitForPage("Countdown", 40f);
+            yield return WaitForPage("MatchFound", 40f);
+            yield return new WaitForSeconds(0.9f);
+            yield return Shot("2c-match-found");
+
+            yield return WaitForPage("Countdown", 10f);
             yield return new WaitForSeconds(3.3f); // 6 sn'lik geri sayımın ortası: ~3 ışık yanık
             yield return Shot("3-countdown");
 

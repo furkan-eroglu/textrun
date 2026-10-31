@@ -88,7 +88,7 @@ Veri, UTF-8 JSON metnidir.
 
 - **Dil:** Türkçe ve İngilizce asla aynı odada olmaz. Oda dili sunucuda sabittir ve katılma sırasında doğrulanır.
 - **Lobi:** İlk oyuncudan 15 sn sonra, ya da 5 insan toplanınca yarış başlar. Boş yerleri botlar doldurur.
-- **Geri sayım:** 6 sn (5 F1 ışığı, saniyede bir). Başlama anını sunucu belirler.
+- **Geri sayım:** 8 sn (ilk 2 sn "karşılaşma bulundu" ekranı, sonraki 6 sn 5 F1 ışığı, saniyede bir). Başlama anını sunucu belirler.
 - **Yarış:** 40 kelime. **İlk oyuncu (insan ya da bot) bitirince 10 sn'lik bir geri sayım başlar** (`ENDING` mesajı).
   Bu sürede bitirenler bitiş süresine göre sıralanır; süre dolunca bitirmeyenler `dnf` olur ve yazdıkları kelime sayısına
   göre sıralanır (eşitlikte kelimeye önce ulaşan öndedir). Herkes bitirirse geri sayım beklenmez. Yarışı sürdüren insan

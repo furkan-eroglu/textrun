@@ -19,7 +19,7 @@ export interface RaceConfig {
 export const DEFAULT_CONFIG: RaceConfig = {
   maxPlayers: 5,
   lobbyWaitMs: 15000,
-  countdownMs: 6000,
+  countdownMs: 8000,
   wordCount: 40,
   maxWpm: 250,
   minWordsForWpmCheck: 5,

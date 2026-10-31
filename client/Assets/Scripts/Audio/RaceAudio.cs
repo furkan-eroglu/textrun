@@ -17,7 +17,7 @@ namespace TextRun.Audio
         AudioSource cheer;
         float cheerStartedAt = -999f;
         float cheerLength;
-        AudioClip tick, click, alertTick, alertFinal, whistle, loop, fanfarePodium, fanfareDone, applause;
+        AudioClip tick, click, alertTick, alertFinal, whistle, loop, fanfarePodium, fanfareDone, applause, matchFound;
 
         public bool Enabled
         {
@@ -44,7 +44,7 @@ namespace TextRun.Audio
             cheer.playOnAwake = false;
 
             // Assets/Resources/Audio içine aynı adla bir ses dosyası (.ogg/.wav/.mp3) konursa o kullanılır;
-            // yoksa kodla üretilen geçici ses çalar. Dosya adları: tick, click, alert_tick, alert_final, whistle, race_loop, finish_win, finish_done, applause
+            // yoksa kodla üretilen geçici ses çalar. Dosya adları: tick, click, alert_tick, alert_final, whistle, race_loop, finish_win, finish_done, applause, match_found
             tick = Custom("tick") ?? SoundSynth.ToClip("tick", SoundSynth.TickSamples());
             click = Custom("click") ?? SoundSynth.ToClip("click", SoundSynth.ClickSamples());
             alertTick = Custom("alert_tick") ?? SoundSynth.ToClip("alertTick", SoundSynth.AlertTickSamples(false));
@@ -53,6 +53,8 @@ namespace TextRun.Audio
             loop = Custom("race_loop") ?? SoundSynth.ToClip("raceLoop", SoundSynth.RaceLoopSamples());
             fanfarePodium = Custom("finish_win") ?? SoundSynth.ToClip("fanfarePodium", SoundSynth.FanfareSamples(true));
             applause = Custom("applause") ?? SoundSynth.ToClip("applause", SoundSynth.ApplauseSamples());
+            matchFound = Custom("match_found") ?? SoundSynth.ToClip("matchFound", SoundSynth.MatchFoundSamples());
+            applause.LoadAudioData(); // ilk çalışta kasma olmasın
             fanfareDone = Custom("finish_done") ?? SoundSynth.ToClip("fanfareDone", SoundSynth.FanfareSamples(false));
         }
 
@@ -85,6 +87,12 @@ namespace TextRun.Audio
             sfx.PlayOneShot(whistle, 0.9f);
             music.clip = loop;
             music.Play();
+        }
+
+        // Karşılaşma bulundu uyarısı
+        public void MatchFound()
+        {
+            if (Enabled) sfx.PlayOneShot(matchFound, 0.9f);
         }
 
         // Yarışı kendin bitirdiğinde (sonuçlar gelmeden): alkış. Müzik sürer, diğerleri hâlâ yarışıyor.

@@ -210,6 +210,33 @@ namespace TextRun.Audio
             }
         }
 
+        // "Karşılaşma bulundu": iki yükselen çan sesi (kısa ve neşeli)
+        public static float[] MatchFoundSamples()
+        {
+            const float seconds = 0.9f;
+            int n = (int)(seconds * SampleRate);
+            var data = new float[n];
+
+            AddBell(data, 0.00f, 659.25f, 0.8f); // Mi
+            AddBell(data, 0.16f, 987.77f, 1.0f); // Si (daha yüksek ve parlak)
+
+            FadeEdges(data, 0.01f);
+            Normalize(data, 0.85f);
+            return data;
+        }
+
+        static void AddBell(float[] data, float startSeconds, float frequency, float gain)
+        {
+            int start = (int)(startSeconds * SampleRate);
+            for (int i = start; i < data.Length; i++)
+            {
+                float t = (i - start) / (float)SampleRate;
+                float env = Mathf.Min(1f, t / 0.004f) * Mathf.Exp(-t * 5.5f);
+                float tone = Mathf.Sin(TwoPi * frequency * t) + 0.35f * Mathf.Sin(TwoPi * frequency * 2f * t) + 0.12f * Mathf.Sin(TwoPi * frequency * 3f * t);
+                data[i] += tone * env * gain * 0.5f;
+            }
+        }
+
         // Alkış: kalabalık el çırpma. Rastgele kısa "çıt"lar (sabit tohumla, hep aynı ses) yoğunlaşıp seyrelir, altında hafif gürültü zemini.
         public static float[] ApplauseSamples()
         {

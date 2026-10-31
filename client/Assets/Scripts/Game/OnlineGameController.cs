@@ -14,7 +14,7 @@ namespace TextRun.Game
     // burada yalnızca yazma girişi alınır, sunucudan gelenler gösterilir.
     public class OnlineGameController : MonoBehaviour
     {
-        enum Page { Connecting, Menu, Searching, Countdown, Racing, Results, Error }
+        enum Page { Connecting, Menu, Searching, MatchFound, Countdown, Racing, Results, Error }
 
         const string LanguageKey = "textrun.language";
 
@@ -53,6 +53,9 @@ namespace TextRun.Game
         float goFlashUntil;            // GO anında ışıkların yeşil yanıp sönme bitişi
         int litLights;                 // geri sayımda şu ana kadar yanan ışık sayısı
         const int LightCount = 5;
+        const float LightsSeconds = 6f;   // ışıkların yanacağı süre; sunucu geri sayımının kalanı "karşılaşma bulundu" ekranına ayrılır
+        float matchFoundStartedAt;
+        float matchFoundSeconds;
 
         GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle, searchTitleStyle, positionStyle;
 
@@ -199,14 +202,24 @@ namespace TextRun.Game
                 case Phase.Countdown:
                     PrepareTyping(s);
                     countdownEndsLocal = now + (s.startAt - s.serverNow) / 1000f;
-                    countdownTotal = Mathf.Max(0.5f, (s.startAt - s.serverNow) / 1000f);
+                    float remaining = (s.startAt - s.serverNow) / 1000f;
+                    countdownTotal = Mathf.Min(LightsSeconds, Mathf.Max(0.5f, remaining));
                     litLights = 0;
                     goFlashUntil = 0f;
                     lastTickSecond = int.MinValue;
                     endingEndsLocal = 0f;
                     finishOrder.Clear();
                     fireworks.Clear();
-                    screen = Page.Countdown;
+
+                    // Önce "karşılaşma bulundu" uyarısı (ses ile), sonra ışıklar. Geç bağlananlar (yeniden bağlanma) doğrudan ışıklara geçer.
+                    if (screen != Page.MatchFound && screen != Page.Countdown && remaining > LightsSeconds + 0.6f)
+                    {
+                        matchFoundStartedAt = now;
+                        matchFoundSeconds = remaining - countdownTotal;
+                        screen = Page.MatchFound;
+                        sound.MatchFound();
+                    }
+                    else if (screen != Page.MatchFound) screen = Page.Countdown;
                     break;
 
                 case Phase.Racing:
@@ -345,6 +358,7 @@ namespace TextRun.Game
         void Update()
         {
             net?.Pump();
+            if (screen == Page.MatchFound && Time.realtimeSinceStartup >= countdownEndsLocal - countdownTotal) screen = Page.Countdown;
             TickCountdownSound();
             TickEndingSound();
 
@@ -458,7 +472,7 @@ namespace TextRun.Game
             float height = UnityEngine.Screen.height / scale;
             float top = (UnityEngine.Screen.height - UnityEngine.Screen.safeArea.yMax) / scale + 6f;
 
-            if (screen == Page.Connecting || screen == Page.Menu || screen == Page.Searching || screen == Page.Error)
+            if (screen == Page.Connecting || screen == Page.Menu || screen == Page.Searching || screen == Page.MatchFound || screen == Page.Error)
                 backdrop.Draw(width, height);
 
             switch (screen)
@@ -467,6 +481,7 @@ namespace TextRun.Game
                 case Page.Error: DrawError(width, height); break;
                 case Page.Menu: DrawMenu(width, height, top); break;
                 case Page.Searching: DrawSearching(width, height, top); break;
+                case Page.MatchFound: DrawMatchFound(width, height); break;
                 case Page.Countdown: DrawCountdown(width, height, top, scale); break;
                 case Page.Racing: DrawRacing(width, height, top, scale); break;
                 case Page.Results: DrawResults(width, height, top); break;
@@ -589,6 +604,48 @@ namespace TextRun.Game
             if (noticeText.Length > 0) GUI.Label(new Rect(0f, centerY + 160f, width, 26f), noticeText, smallCenterStyle);
 
             if (UiKit.SecondaryButton(new Rect(width / 2f - 110f, centerY + 190f, 220f, 54f), T("cancel"), 20)) CancelSearch();
+        }
+
+        // "Karşılaşma bulundu!": başlık büyüyerek gelir, 5 oyuncu noktası yanar, altta yarışın başlamasına kalan süre akar
+        void DrawMatchFound(float width, float height)
+        {
+            FullViewport();
+
+            float elapsed = Time.realtimeSinceStartup - matchFoundStartedAt;
+            float centerX = width / 2f;
+            float centerY = height / 2f - 30f;
+
+            // Başlık yaylanarak büyür (kısa bir taşmayla oturur)
+            float u = Mathf.Clamp01(elapsed / 0.4f);
+            float c1 = 1.70158f, c3 = c1 + 1f;
+            float pop = 1f + c3 * Mathf.Pow(u - 1f, 3f) + c1 * Mathf.Pow(u - 1f, 2f);
+
+            var oldMatrix = GUI.matrix;
+            var pivot = oldMatrix.MultiplyPoint3x4(new Vector3(centerX, centerY - 40f, 0f)); // pivot ölçeklenmiş koordinatta
+            GUIUtility.ScaleAroundPivot(new Vector2(pop, pop), pivot);
+            GUI.Label(new Rect(0f, centerY - 80f, width, 80f), T("matchFound"), searchTitleStyle);
+            GUI.matrix = oldMatrix;
+
+            // 5 oyuncu da hazır
+            const float dotSize = 16f;
+            const float dotGap = 12f;
+            float rowWidth = 5 * dotSize + 4 * dotGap;
+            var oldColor = GUI.color;
+            for (int i = 0; i < 5; i++)
+            {
+                float appear = Mathf.Clamp01((elapsed - 0.15f - i * 0.07f) / 0.2f);
+                GUI.color = new Color(0.35f, 0.85f, 1f, appear);
+                GUI.DrawTexture(new Rect(centerX - rowWidth / 2f + i * (dotSize + dotGap), centerY + 10f, dotSize, dotSize), SoundIcon.Disc());
+            }
+            GUI.color = oldColor;
+
+            GUI.Label(new Rect(0f, centerY + 44f, width, 26f), T("matchFoundSub"), smallCenterStyle);
+
+            // Süre çubuğu: yarışın (ışıkların) başlamasına kalan süre
+            float remaining01 = Mathf.Clamp01(1f - elapsed / Mathf.Max(0.1f, matchFoundSeconds));
+            const float barWidth = 200f;
+            UiKit.Card(new Rect(centerX - barWidth / 2f, centerY + 84f, barWidth, 6f), new Color(1f, 1f, 1f, 0.14f), 3f);
+            UiKit.Card(new Rect(centerX - barWidth / 2f, centerY + 84f, barWidth * remaining01, 6f), new Color(0.35f, 0.85f, 1f, 1f), 3f);
         }
 
         // Başlık harfleri soldan sağa doğru sırayla büyüyüp küçülür (dalga); büyürken hafif maviye parlar.

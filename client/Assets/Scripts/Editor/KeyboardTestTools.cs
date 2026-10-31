@@ -158,6 +158,7 @@ namespace TextRun.EditorTools
             check(tickHz > 560f && tickHz < 1500f, "ses tik: temel frekans yuksek bip araliginda (" + tickHz.ToString("0") + " Hz)");
 
             Common("alkis", SoundSynth.ApplauseSamples(), 2.6f);
+            Common("eslesme bulundu", SoundSynth.MatchFoundSamples(), 0.9f);
 
             var click = SoundSynth.ClickSamples();
             Common("tiklama", click, 0.09f);
