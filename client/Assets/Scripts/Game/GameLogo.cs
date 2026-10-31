@@ -3,7 +3,7 @@ using UnityEngine;
 namespace TextRun.Game
 {
     // Ana menü logosu: eğik, kalın "TEXT" (beyaz) + "RUN" (turuncu), koyu çerçeve ve gölge, alt kısmı daha koyu iki tonlu yüzey.
-    // Menü açılınca harfler soldan hız çizgileriyle kayarak gelir (bir kez); altta damalı bayrak şeridi açılır.
+    // Menü açılınca harfler soldan kayarak gelir (bir kez); altta damalı bayrak şeridi açılır.
     public class GameLogo
     {
         static readonly Color Outline = new Color(0.03f, 0.07f, 0.20f);
