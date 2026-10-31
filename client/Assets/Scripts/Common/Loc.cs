@@ -13,7 +13,7 @@ namespace TextRun.Common
             { "retry", new[] { "Tekrar dene", "Retry" } },
             { "normalGame", new[] { "Normal Oyun", "Normal Game" } },
             { "privateGame", new[] { "Özel Oyun (yakında)", "Private Game (soon)" } },
-            { "searching", new[] { "Rakipler aranıyor...", "Looking for opponents..." } },
+            { "searching", new[] { "Karşılaşma aranıyor", "Searching for a match" } },
             { "playersFound", new[] { "Bulunan oyuncu", "Players found" } },
             { "cancel", new[] { "İptal", "Cancel" } },
             { "getReady", new[] { "Hazır ol!", "Get ready!" } },

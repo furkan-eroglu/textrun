@@ -21,6 +21,7 @@ namespace TextRun.Game
         readonly WordLinesView wordView = new WordLinesView();
         readonly RaceProgressStrip progressStrip = new RaceProgressStrip();
         readonly MenuBackdrop backdrop = new MenuBackdrop();
+        readonly ResultsBackdrop resultsBackdrop = new ResultsBackdrop();
 
         OnlineRaceClient net;
         OnlineRaceView view;
@@ -44,7 +45,7 @@ namespace TextRun.Game
         float searchStartedAt;
         float countdownEndsLocal;
 
-        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle;
+        GUIStyle titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle;
 
         void Start()
         {
@@ -367,6 +368,8 @@ namespace TextRun.Game
             centerStyle = new GUIStyle(GUI.skin.label) { fontSize = 20, alignment = TextAnchor.MiddleCenter, wordWrap = true };
             smallStyle = new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true };
 
+            headingStyle = new GUIStyle(GUI.skin.label) { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            rankStyle = new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             smallCenterStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, alignment = TextAnchor.MiddleCenter, wordWrap = false };
             stopwatchStyle = new GUIStyle(GUI.skin.label) { fontSize = 44, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false };
 
@@ -378,6 +381,8 @@ namespace TextRun.Game
             UiKit.SetAllTextColors(smallStyle, text);
             UiKit.SetAllTextColors(smallCenterStyle, text);
             UiKit.SetAllTextColors(stopwatchStyle, Color.white);
+            UiKit.SetAllTextColors(headingStyle, Color.white);
+            UiKit.SetAllTextColors(rankStyle, new Color(1f, 0.88f, 0.45f));
         }
 
         void OnGUI()
@@ -501,9 +506,16 @@ namespace TextRun.Game
             float centerX = width / 2f;
             float centerY = height / 2f - 30f;
 
-            // Başlık (noktalar animasyonlu: arama sürüyor)
-            int dots = 1 + (int)(Time.realtimeSinceStartup * 2.5f) % 3;
-            GUI.Label(new Rect(0f, centerY - 150f, width, 36f), T("searching").TrimEnd('.') + new string('.', dots), centerStyle);
+            // Başlık: dönen kum saati ve "Karşılaşma aranıyor"
+            string title = T("searching");
+            float titleWidth = centerStyle.CalcSize(new GUIContent(title)).x;
+            const float iconHeight = 54f;
+            float iconWidth = iconHeight * 64f / 96f;
+            float groupWidth = iconWidth + 14f + titleWidth;
+            float groupX = centerX - groupWidth / 2f;
+            float groupY = centerY - 172f;
+            DrawHourglass(new Rect(groupX, groupY, iconWidth, iconHeight));
+            GUI.Label(new Rect(groupX + iconWidth + 14f, groupY, titleWidth + 6f, iconHeight), title, centerStyle);
 
             DrawStopwatch(new Vector2(centerX, centerY), 74f, Mathf.Max(0, (int)(Time.realtimeSinceStartup - searchStartedAt)));
 
@@ -524,6 +536,22 @@ namespace TextRun.Game
             if (noticeText.Length > 0) GUI.Label(new Rect(0f, centerY + 160f, width, 26f), noticeText, smallCenterStyle);
 
             if (UiKit.SecondaryButton(new Rect(width / 2f - 110f, centerY + 190f, 220f, 54f), T("cancel"), 20)) CancelSearch();
+        }
+
+        // Kum saati: her ~1,8 sn'de bir yumuşakça 180° döner (ters çevrilir), sonra bir an durur
+        void DrawHourglass(Rect rect)
+        {
+            const float cycle = 1.8f;
+            float time = Time.realtimeSinceStartup;
+            int flips = (int)(time / cycle);
+            float t = Mathf.Repeat(time, cycle) / cycle;
+            float turn = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / 0.35f)); // döngünün ilk %35'inde döner
+            float angle = flips * 180f + turn * 180f;
+
+            var oldMatrix = GUI.matrix;
+            GUIUtility.RotateAroundPivot(angle, oldMatrix.MultiplyPoint3x4(rect.center));
+            GUI.DrawTexture(rect, Pictograms.Hourglass());
+            GUI.matrix = oldMatrix;
         }
 
         // Kronometre: yuvarlak zemin, çevresinde 60 saniye çizgisi (geçen saniyeler yanar) ve ortada dakika:saniye
@@ -625,30 +653,76 @@ namespace TextRun.Game
             view.SetViewport(new Rect(0f, trackBottomPx, UnityEngine.Screen.width, UnityEngine.Screen.height - trackBottomPx));
         }
 
+        int MyRank()
+        {
+            foreach (var r in results)
+                if (r.userId == net.UserId) return r.rank;
+            return 0;
+        }
+
+        // Sonuç ekranı: sıraya göre renklenen büyük bir kupa, altında sıralama kartları ve düğmeler
         void DrawResults(float width, float height, float top)
         {
             FullViewport();
-            DrawPanel(new Rect(0f, 0f, width, height), 0.96f, 0f);
-            GUI.Label(new Rect(0f, top + 10f, width, 50f), T("results"), titleStyle);
 
-            float y = top + 70f;
+            int myRank = MyRank();
+            const float trophySize = 128f;
+            var trophyCenter = new Vector2(width / 2f, top + 8f + trophySize / 2f);
+            resultsBackdrop.Draw(width, height, trophyCenter, trophySize, myRank > 0 ? myRank : 4);
+
+            float y = top + trophySize + 10f;
+            GUI.Label(new Rect(0f, y, width, 36f), T("results"), headingStyle);
+            y += 44f;
+
             foreach (var r in results)
             {
                 bool mine = r.userId == net.UserId;
                 string name = mine ? T("you") : r.isBot ? T("bot") + " (" + r.name + ")" : r.name;
                 string status = r.status == "finished" ? "" : r.status == "disqualified" ? T("disqualified") : T("dnf");
 
-                GUI.color = mine ? new Color(1f, 0.92f, 0.4f) : Color.white;
-                GUI.Label(new Rect(14f, y, width - 28f, 28f), r.rank + ".  " + name, labelStyle);
-                GUI.color = Color.white;
-                GUI.Label(new Rect(14f, y + 24f, width - 28f, 24f),
+                var card = new Rect(16f, y, width - 32f, 50f);
+                UiKit.Card(card, mine ? new Color(1f, 0.82f, 0.30f, 0.24f) : new Color(1f, 1f, 1f, 0.07f), 14f);
+
+                GUI.Label(new Rect(card.x + 10f, card.y, 36f, card.height), r.rank.ToString(), rankStyle);
+
+                var oldColor = GUI.color;
+                GUI.color = mine ? new Color(1f, 0.92f, 0.45f) : Color.white;
+                GUI.Label(new Rect(card.x + 52f, card.y + 4f, card.width - 60f, 24f), name, labelStyle);
+                GUI.color = oldColor;
+
+                GUI.Label(new Rect(card.x + 52f, card.y + 26f, card.width - 60f, 20f),
                     r.wpm.ToString("0") + " " + T("wpm") + "   %" + (r.accuracy * 100f).ToString("0") + "   " + (r.finishMs > 0 ? (r.finishMs / 1000f).ToString("0.0") + " s" : "") + "   " + status, smallStyle);
-                y += 58f;
+                y += 56f;
             }
 
-            y = Mathf.Max(y + 10f, height - 150f);
-            if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 60f), T("playAgain"), 22)) AgainAfterResults();
-            if (UiKit.SecondaryButton(new Rect(24f, y + 72f, width - 48f, 50f), T("menu"), 20)) BackToMenu();
+            y = Mathf.Max(y + 10f, height - 148f);
+            if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 62f), T("playAgain"), 22, true)) AgainAfterResults();
+            if (UiKit.SecondaryButton(new Rect(24f, y + 76f, width - 48f, 50f), T("menu"), 20)) BackToMenu();
+        }
+
+        // Geliştirme: sahte sonuç göstererek ekranı doğrular (yalnızca DevHarness kullanır)
+        public void DevShowFakeResults(int myRank)
+        {
+            var list = new ResultDto[5];
+            for (int i = 0; i < 5; i++)
+            {
+                bool me = i + 1 == myRank;
+                list[i] = new ResultDto
+                {
+                    userId = me ? net.UserId : "bot-" + (i + 1),
+                    name = "Bot " + (i + 1),
+                    isBot = !me,
+                    rank = i + 1,
+                    status = "finished",
+                    finishMs = 31000 + i * 3000,
+                    wpm = 78f - i * 9f,
+                    accuracy = 0.97f - i * 0.01f,
+                    correctWords = 40,
+                    errors = i
+                };
+            }
+            results = list;
+            screen = Page.Results;
         }
 
         async void AgainAfterResults()

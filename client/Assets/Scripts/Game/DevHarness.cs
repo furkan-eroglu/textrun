@@ -89,6 +89,14 @@ namespace TextRun.Game
             yield return new WaitForSeconds(1f);
             yield return Shot("5-racing-keyboard");
 
+            // Sonuç ekranı: birinci ve dördüncü için sahte sonuçla görünüm kontrolü
+            controller.DevShowFakeResults(1);
+            yield return new WaitForSeconds(0.6f);
+            yield return Shot("6-results-first");
+            controller.DevShowFakeResults(4);
+            yield return new WaitForSeconds(0.6f);
+            yield return Shot("7-results-fourth");
+
             File.WriteAllText(Path.Combine(dir, "done.txt"), "tamam");
             Application.Quit();
         }

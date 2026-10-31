@@ -139,6 +139,13 @@ namespace TextRun.Game
             Fill(r, Texture2D.whiteTexture, new Color(0.05f, 0.06f, 0.14f, alpha), radius);
         }
 
+        // Renkli yuvarlak kart (liste satırı zemini gibi)
+        public static void Card(Rect r, Color color, float radius = 12f)
+        {
+            EnsureResources();
+            Fill(r, Texture2D.whiteTexture, color, radius);
+        }
+
         // Ana düğme: parlak mavi, istenirse sol tarafta oynat simgesi
         public static bool PrimaryButton(Rect r, string text, int fontSize = 24, bool playArrow = false)
         {
