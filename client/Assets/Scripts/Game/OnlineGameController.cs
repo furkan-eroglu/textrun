@@ -23,6 +23,7 @@ namespace TextRun.Game
         readonly RaceProgressStrip progressStrip = new RaceProgressStrip();
         readonly MenuBackdrop backdrop = new MenuBackdrop();
         readonly ResultsBackdrop resultsBackdrop = new ResultsBackdrop();
+        readonly Fireworks fireworks = new Fireworks();
 
         OnlineRaceClient net;
         OnlineRaceView view;
@@ -204,6 +205,7 @@ namespace TextRun.Game
                     lastTickSecond = int.MinValue;
                     endingEndsLocal = 0f;
                     finishOrder.Clear();
+                    fireworks.Clear();
                     screen = Page.Countdown;
                     break;
 
@@ -289,6 +291,7 @@ namespace TextRun.Game
                 if (!finishOrder.Contains(net.UserId)) finishOrder.Add(net.UserId);
                 keyboard.Close();
                 sound.Applause(); // bitirdiğin hemen anlaşılsın
+                fireworks.Launch(finishOrder.IndexOf(net.UserId) < 3); // ilk üç: büyük gösteri, diğerleri: küçük
             }
             if (ack.index != typing.CurrentIndex)
             {
@@ -301,6 +304,7 @@ namespace TextRun.Game
         {
             results = r.results ?? new ResultDto[0];
             view.SetRacing(false);
+            fireworks.Clear();
             endingEndsLocal = 0f;
             resultsBackdrop.Restart(); // ekran açılınca konfeti yukarıdan süzülmeye başlar
             screen = Page.Results;
@@ -725,6 +729,7 @@ namespace TextRun.Game
             if (Time.realtimeSinceStartup < goFlashUntil) DrawStartLights(width, top, LightCount, true);
             // Kendi ilerlemen sunucu cevabını beklemeden yerel durumdan gösterilir
             progressStrip.Draw(new Rect(8f, top + 8f, width - 16f, 26f), players, wordCount, net.UserId, (float)typing.CurrentIndex / Mathf.Max(1, wordCount));
+            fireworks.Draw(new Rect(0f, top + 40f, width, height * 0.40f));
 
             // Yarış sırasında istatistik (WPM, doğruluk, kelime sayısı) gösterilmez; oyuncu yalnızca birinci olmaya odaklanır.
             // İstatistikler yarış sonunda sonuç tablosunda görünür.
@@ -818,6 +823,7 @@ namespace TextRun.Game
             typing.SyncTo(typing.Count);
             finishOrder.Clear();
             finishOrder.Add(net.UserId);
+            fireworks.Launch(true);
             endingEndsLocal = Time.realtimeSinceStartup + 7.4f;
             screen = Page.Racing;
         }

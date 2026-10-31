@@ -67,11 +67,27 @@ namespace TextRun.EditorTools
 
             TestWordInput(Check);
             TestSoundIcon(Check);
+            TestFireworks(Check);
             TestAudio(Check);
             TestWordDatabase(Check);
 
             Debug.Log(failures == 0 ? "TUM TESTLER GECTI" : failures + " TEST BASARISIZ");
             EditorApplication.Exit(failures == 0 ? 0 : 1);
+        }
+
+        // Havai fişek: başlatılınca etkin, Clear ile hemen söner, küçük gösteri daha kısa
+        static void TestFireworks(Action<bool, string> check)
+        {
+            var big = new TextRun.Game.Fireworks();
+            check(!big.Active, "havai fisek: baslamadan once kapali");
+            big.Launch(true);
+            check(big.Active, "havai fisek: Launch sonrasi acik");
+            check(big.TotalSeconds > 3f && big.TotalSeconds < RaceAudio.CheerSeconds + 1f, "havai fisek: sure ses suresine yakin (" + big.TotalSeconds.ToString("0.0") + " sn)");
+            var small = new TextRun.Game.Fireworks();
+            small.Launch(false);
+            check(small.TotalSeconds < big.TotalSeconds, "havai fisek: kucuk gosteri daha kisa");
+            big.Clear();
+            check(!big.Active, "havai fisek: Clear sonrasi kapali");
         }
 
         // Hoparlör simgesi: çizimin sınırları dokunun ortasında olmalı (düğmenin yuvarlağında kaymasın)

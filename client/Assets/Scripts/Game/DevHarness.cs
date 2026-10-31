@@ -93,8 +93,10 @@ namespace TextRun.Game
 
             // Bitirdin + kırmızı geri sayım görünümü
             controller.DevShowFinishedEnding();
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSeconds(1.2f); // havai fisekler patlamaya baslamis olmali
             yield return Shot("5b-finished-ending");
+            yield return new WaitForSeconds(1.1f);
+            yield return Shot("5c-fireworks-later");
 
             // Sonuç ekranı: birinci ve dördüncü için sahte sonuçla görünüm kontrolü
             controller.DevShowFakeResults(1);

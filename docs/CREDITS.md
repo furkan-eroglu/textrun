@@ -12,3 +12,6 @@ oyuna "Hakkında / Krediler" ekranı eklendiğinde ve mağaza açıklamasında b
 Lisans: https://creativecommons.org/licenses/by/4.0/
 
 Not: Lisans bilgisi arama sonuçlarından öğrenilmiştir; sayfadaki lisans satırı yayından önce bir kez daha doğrulanmalıdır.
+
+## applause.mp3
+"Fireworks With Applause Happy People" - Almitory (OpenGameArt). Sayfada CC0 secenegi de sunuluyor; atif zorunlu degil. https://opengameart.org/content/fireworks-with-applause-happy-people

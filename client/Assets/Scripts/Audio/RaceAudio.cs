@@ -8,9 +8,15 @@ namespace TextRun.Audio
     {
         const string SoundKey = "textrun.sound";
         const float MusicVolume = 0.22f;
+        const float CheerVolume = 0.9f;
+        public const float CheerSeconds = 5.5f;  // alkış + havai fişek sesinin çalacağı süre
+        const float CheerFadeSeconds = 1.5f;     // sonunda yumuşakça kısılma
 
         AudioSource sfx;
         AudioSource music;
+        AudioSource cheer;
+        float cheerStartedAt = -999f;
+        float cheerLength;
         AudioClip tick, click, alertTick, alertFinal, whistle, loop, fanfarePodium, fanfareDone, applause;
 
         public bool Enabled
@@ -20,7 +26,7 @@ namespace TextRun.Audio
             {
                 PlayerPrefs.SetInt(SoundKey, value ? 1 : 0);
                 PlayerPrefs.Save();
-                if (!value) StopMusic();
+                if (!value) { StopMusic(); StopCheer(); }
             }
         }
 
@@ -33,6 +39,9 @@ namespace TextRun.Audio
             music.playOnAwake = false;
             music.loop = true;
             music.volume = MusicVolume;
+
+            cheer = gameObject.AddComponent<AudioSource>();
+            cheer.playOnAwake = false;
 
             // Assets/Resources/Audio içine aynı adla bir ses dosyası (.ogg/.wav/.mp3) konursa o kullanılır;
             // yoksa kodla üretilen geçici ses çalar. Dosya adları: tick, click, alert_tick, alert_final, whistle, race_loop, finish_win, finish_done, applause
@@ -79,9 +88,30 @@ namespace TextRun.Audio
         }
 
         // Yarışı kendin bitirdiğinde (sonuçlar gelmeden): alkış. Müzik sürer, diğerleri hâlâ yarışıyor.
+        // Uzun bir kayıt (örn. Resources/Audio/applause.mp3) konmuşsa yalnızca ilk CheerSeconds saniyesi çalınır ve sonunda kısılır.
         public void Applause()
         {
-            if (Enabled) sfx.PlayOneShot(applause, 0.9f);
+            if (!Enabled) return;
+
+            cheer.clip = applause;
+            cheer.volume = CheerVolume;
+            cheer.Play();
+            cheerStartedAt = Time.realtimeSinceStartup;
+            cheerLength = Mathf.Min(CheerSeconds, applause.length);
+        }
+
+        void Update()
+        {
+            if (!cheer.isPlaying) return;
+
+            float t = Time.realtimeSinceStartup - cheerStartedAt;
+            if (t >= cheerLength) { cheer.Stop(); return; }
+            cheer.volume = CheerVolume * Mathf.Clamp01((cheerLength - t) / CheerFadeSeconds);
+        }
+
+        public void StopCheer()
+        {
+            if (cheer != null) cheer.Stop();
         }
 
         public void StopMusic()
@@ -93,6 +123,7 @@ namespace TextRun.Audio
         public void Finish(bool onPodium)
         {
             StopMusic();
+            StopCheer();
             if (Enabled) sfx.PlayOneShot(onPodium ? fanfarePodium : fanfareDone, 0.9f);
         }
     }
