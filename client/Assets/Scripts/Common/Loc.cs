@@ -13,7 +13,6 @@ namespace TextRun.Common
             { "retry", new[] { "Tekrar dene", "Retry" } },
             { "normalGame", new[] { "Normal Oyun", "Normal Game" } },
             { "privateGame", new[] { "Özel Oyun (yakında)", "Private Game (soon)" } },
-            { "language", new[] { "Dil", "Language" } },
             { "searching", new[] { "Rakipler aranıyor...", "Looking for opponents..." } },
             { "playersFound", new[] { "Bulunan oyuncu", "Players found" } },
             { "botsJoinIn", new[] { "Eksik yerler botla dolacak:", "Empty seats get bots in:" } },

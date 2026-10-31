@@ -289,6 +289,10 @@ namespace TextRun.Game
 
             // Pist ve karakterler yalnızca geri sayım ve yarışta görünür
             bool wantTrack = screen == Page.Countdown || screen == Page.Racing;
+
+            // Menü ve eşleşme ekranlarında 30 FPS yeter (pil ve ısınma); yarışta 60
+            int targetFps = wantTrack ? 60 : 30;
+            if (Application.targetFrameRate != targetFps) Application.targetFrameRate = targetFps;
             if (view.IsVisible != wantTrack) view.SetVisible(wantTrack);
 
             if (screen != Page.Racing || typing == null || input == null) return;
@@ -359,6 +363,13 @@ namespace TextRun.Game
             labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 18 };
             centerStyle = new GUIStyle(GUI.skin.label) { fontSize = 20, alignment = TextAnchor.MiddleCenter, wordWrap = true };
             smallStyle = new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true };
+
+            // Fare üstüne gelince yazı rengi değişmesin: tüm durumlar aynı renk
+            var text = new Color(0.92f, 0.93f, 0.96f);
+            UiKit.SetAllTextColors(titleStyle, Color.white);
+            UiKit.SetAllTextColors(labelStyle, text);
+            UiKit.SetAllTextColors(centerStyle, text);
+            UiKit.SetAllTextColors(smallStyle, text);
         }
 
         void OnGUI()
@@ -374,7 +385,7 @@ namespace TextRun.Game
             float top = (UnityEngine.Screen.height - UnityEngine.Screen.safeArea.yMax) / scale + 6f;
 
             if (screen == Page.Connecting || screen == Page.Menu || screen == Page.Searching || screen == Page.Error)
-                backdrop.Draw(width, height, language);
+                backdrop.Draw(width, height);
 
             switch (screen)
             {
@@ -395,11 +406,9 @@ namespace TextRun.Game
             view.SetViewport(new Rect(0, 0, UnityEngine.Screen.width, UnityEngine.Screen.height));
         }
 
-        void DrawPanel(Rect r, float alpha = 0.75f)
+        void DrawPanel(Rect r, float alpha = 0.75f, float radius = 18f)
         {
-            GUI.color = new Color(0.06f, 0.08f, 0.13f, alpha);
-            GUI.DrawTexture(r, Texture2D.whiteTexture);
-            GUI.color = Color.white;
+            UiKit.Panel(r, alpha, radius);
         }
 
         void DrawCenterMessage(float width, float height, string message)
@@ -416,7 +425,7 @@ namespace TextRun.Game
             GUI.Label(new Rect(30f, height / 2f - 100f, width - 60f, 30f), T("connectionError"), centerStyle);
             GUI.Label(new Rect(30f, height / 2f - 65f, width - 60f, 90f), errorText, smallStyle);
 
-            if (GUI.Button(new Rect(30f, height / 2f + 35f, width - 60f, 50f), T("retry"), bigButton)) Connect();
+            if (UiKit.PrimaryButton(new Rect(30f, height / 2f + 30f, width - 60f, 56f), T("retry"))) Connect();
         }
 
         void DrawMenu(float width, float height, float top)
@@ -427,20 +436,16 @@ namespace TextRun.Game
 
             DrawSoundButton(new Rect(width - 54f, top + 8f, 42f, 42f));
 
-            float y = top + 100f;
-            GUI.Label(new Rect(20f, y, width - 40f, 26f), T("language"), labelStyle);
-            y += 30f;
-            float half = (width - 50f) / 2f;
-            if (DrawChoice(new Rect(20f, y, half, 44f), "Türkçe", language == GameLanguage.Turkish)) SetLanguage(GameLanguage.Turkish);
-            if (DrawChoice(new Rect(30f + half, y, half, 44f), "English", language == GameLanguage.English)) SetLanguage(GameLanguage.English);
-            y += 70f;
+            // Dil seçimi: başlık yok, yalnızca iki seçenek
+            float y = top + 120f;
+            int clickedLanguage = UiKit.Segmented(new Rect(24f, y, width - 48f, 52f), new[] { "Türkçe", "English" }, language == GameLanguage.Turkish ? 0 : 1, 21);
+            if (clickedLanguage >= 0) SetLanguage((GameLanguage)clickedLanguage);
+            y += 86f;
 
-            if (GUI.Button(new Rect(20f, y, width - 40f, 64f), T("normalGame"), bigButton)) StartSearch();
-            y += 76f;
+            if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 72f), T("normalGame"), 26)) StartSearch();
+            y += 96f;
 
-            GUI.enabled = false;
-            GUI.Button(new Rect(20f, y, width - 40f, 54f), T("privateGame"), bigButton);
-            GUI.enabled = true;
+            UiKit.DisabledButton(new Rect(24f, y, width - 48f, 56f), T("privateGame"), 20);
 
             // Geliştirme: telefonda sunucu adresini (bilgisayarın yerel IP'si) girmek için
             if (Application.isEditor || Debug.isDebugBuild)
@@ -454,15 +459,6 @@ namespace TextRun.Game
                     Connect();
                 }
             }
-        }
-
-        bool DrawChoice(Rect r, string text, bool selected)
-        {
-            var old = GUI.backgroundColor;
-            GUI.backgroundColor = selected ? new Color(0.3f, 0.6f, 1f) : Color.gray;
-            bool clicked = GUI.Button(r, text, bigButton);
-            GUI.backgroundColor = old;
-            return clicked;
         }
 
         // Hoparlör simgesi: dokununca ses açılır/kapanır; kapalıyken simgenin üstünde kırmızı çarpı görünür.
@@ -507,7 +503,7 @@ namespace TextRun.Game
             }
             if (noticeText.Length > 0) GUI.Label(new Rect(panel.x, panel.y + 140f, panel.width, 30f), noticeText, centerStyle);
 
-            if (GUI.Button(new Rect(panel.x + 30f, panel.yMax - 66f, panel.width - 60f, 46f), T("cancel"), bigButton)) CancelSearch();
+            if (UiKit.SecondaryButton(new Rect(panel.x + 30f, panel.yMax - 68f, panel.width - 60f, 48f), T("cancel"), 20)) CancelSearch();
         }
 
         int HumanCount()
@@ -585,7 +581,7 @@ namespace TextRun.Game
         void DrawResults(float width, float height, float top)
         {
             FullViewport();
-            DrawPanel(new Rect(0f, 0f, width, height), 0.96f);
+            DrawPanel(new Rect(0f, 0f, width, height), 0.96f, 0f);
             GUI.Label(new Rect(0f, top + 10f, width, 50f), T("results"), titleStyle);
 
             float y = top + 70f;
@@ -604,8 +600,8 @@ namespace TextRun.Game
             }
 
             y = Mathf.Max(y + 10f, height - 150f);
-            if (GUI.Button(new Rect(20f, y, width - 40f, 54f), T("playAgain"), bigButton)) AgainAfterResults();
-            if (GUI.Button(new Rect(20f, y + 62f, width - 40f, 46f), T("menu"), bigButton)) BackToMenu();
+            if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 60f), T("playAgain"), 22)) AgainAfterResults();
+            if (UiKit.SecondaryButton(new Rect(24f, y + 72f, width - 48f, 50f), T("menu"), 20)) BackToMenu();
         }
 
         async void AgainAfterResults()
