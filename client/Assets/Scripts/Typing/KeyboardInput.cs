@@ -12,6 +12,9 @@ namespace TextRun.Typing
 
         public bool IsNative => Application.isMobilePlatform;
 
+        // Klavye her (yeniden) açıldığında artar: giriş izleyicisi klavye metninin sıfırlandığını anlar.
+        public int Generation { get; private set; }
+
         public string Text
         {
             get
@@ -53,6 +56,7 @@ namespace TextRun.Typing
 
         public void Open(KeyboardKind kind)
         {
+            Generation++;
             desktopText = "";
             if (!IsNative) return;
 

@@ -69,11 +69,107 @@ namespace TextRun.EditorTools
             TestSoundIcon(Check);
             TestFireworks(Check);
             TestKeyboardDiff(Check);
+            TestKeyboardTracker(Check);
             TestAudio(Check);
             TestWordDatabase(Check);
 
             Debug.Log(failures == 0 ? "TUM TESTLER GECTI" : failures + " TEST BASARISIZ");
             EditorApplication.Exit(failures == 0 ? 0 : 1);
+        }
+
+        // Klavye izleyicisi: telefon klavyesinin metni nasıl değişirse değişsin giriş kilitlenmemeli (kavun hatası)
+        static void TestKeyboardTracker(Action<bool, string> check)
+        {
+            var tr = GameLanguage.Turkish;
+
+            // Sistem klavyesini taklit eden küçük sınama düzeneği
+            WordInput input = null;
+            KeyboardTracker tracker = null;
+            int submits = 0;
+            string[] queue = null;
+            int next = 0;
+
+            void Start(params string[] words)
+            {
+                queue = words;
+                next = 0;
+                submits = 0;
+                input = new WordInput(tr);
+                tracker = new KeyboardTracker();
+                input.Begin(queue[next++]);
+            }
+
+            bool Press(char c)
+            {
+                var result = input.Press(c);
+                if (result == KeyResult.Submit)
+                {
+                    submits++;
+                    input.Begin(next < queue.Length ? queue[next++] : "");
+                    tracker.Reset();
+                    return true;
+                }
+                return result == KeyResult.Accepted;
+            }
+
+            void Type(string raw) => tracker.Update(raw, tr, Press, () => input.TrimTo(input.Entered.Length - 1));
+
+            // 1) Normal yazma
+            Start("kavun", "çorba");
+            foreach (var raw in new[] { "k", "ka", "kav", "kavu", "kavun" }) Type(raw);
+            check(input.Entered == "kavun" && input.MistakesThisWord == 0, "izleyici: normal yazma kavun");
+
+            // 2) Yanlış harf: klavye metni üzerine yazılmadığı için aynı yanlış harf her karede yeniden sayılmaz, sonra devam edilir
+            Start("kavun", "çorba");
+            Type("kav");
+            Type("kavx");
+            for (int i = 0; i < 10; i++) Type("kavx"); // klavye aynı metni göstermeye devam ediyor (eski hata: her karede sayılıyordu)
+            check(input.MistakesThisWord == 1 && input.Entered == "kav", "izleyici: ayni yanlis harf tekrar tekrar sayilmaz");
+            Type("kavxu");
+            Type("kavxun");
+            check(input.Entered == "kavun", "izleyici: yanlis harften sonra yazmaya devam edilebilir (kavun)");
+
+            // 3) Boşluk basıp kelime bitmeden devam
+            Start("kavun", "çorba");
+            Type("kav");
+            Type("kav ");
+            Type("kav u");
+            Type("kav un");
+            check(input.Entered == "kavun", "izleyici: erken bosluk girisi bozmaz");
+
+            // 4) Silme: kabul edilmiş harf geri alınır, reddedilmiş harf girişi etkilemez
+            Start("kavun", "çorba");
+            Type("kav");
+            Type("ka");
+            check(input.Entered == "ka", "izleyici: silme tusu kabul edilen harfi geri alir");
+            Type("kax");
+            Type("ka");
+            check(input.Entered == "ka", "izleyici: reddedilen harfi silmek girisi etkilemez");
+
+            // 5) Büyük harf (otomatik büyük harf) ve öneri tamamlaması
+            Start("kavun", "çorba");
+            Type("K");
+            Type("Ka");
+            Type("Kavun");
+            check(input.Entered == "kavun", "izleyici: otomatik buyuk harf sorun cikarmaz");
+
+            // 6) Boşlukla gönderme ve aynı karede yeni kelimenin harfleri
+            Start("ab", "cd");
+            Type("ab");
+            Type("ab c");
+            check(submits == 1 && input.Entered == "c", "izleyici: bosluk kelimeyi gonderir, sonraki harf yeni kelimeye gider");
+            Type(""); // gercek klavye metni kelime gecisinde sifirlanir
+            Type("d");
+            check(input.Entered == "cd", "izleyici: kelime gecisinden sonra klavye metni sifirlanir ve devam edilir");
+
+            // 7) Klavye yeniden açıldı: ilerleme korunur
+            Start("kavun", "çorba");
+            Type("kav");
+            tracker.Reset(); // klavye yeniden açıldı, metin boş
+            Type("");
+            Type("u");
+            Type("un");
+            check(input.Entered == "kavun", "izleyici: klavye yeniden acilinca ilerleme korunur");
         }
 
         // Klavye metni beklenmedik değişince yeni harfler doğru bulunmalı (ı/İ dahil)

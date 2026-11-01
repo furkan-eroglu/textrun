@@ -64,6 +64,8 @@ namespace TextRun.Game
         string roomCode = "";
         string roomHost = "";
         string roomLang = "tr";
+        readonly KeyboardTracker tracker = new KeyboardTracker();
+        int trackerGeneration = -1;
         bool keyboardRequested;        // yarış ekranında klavye istendi mi (ışıklar başlayınca açılır, yarış bitince kapanır)
         bool roomBots;                 // kurucu: boş yerleri botla doldur
         string joinCodeInput = "";
@@ -360,6 +362,7 @@ namespace TextRun.Game
             if (input == null || typing == null) return;
             input.Begin(typing.Finished ? "" : typing.WordAt(typing.CurrentIndex));
             keyboard.Text = "";
+            tracker.Reset();
         }
 
         void SyncLocalIndex()
@@ -497,49 +500,35 @@ namespace TextRun.Game
         // böylece yanlış harfler, otomatik düzeltmeler ya da klavyenin kendi eklemeleri girişi bozamaz.
         void PollTyping()
         {
-            string raw = keyboard.Text ?? "";
-            if (raw == input.Entered) return;
-
-            if (raw.Length > input.Entered.Length && StartsWithIgnoreCase(raw, input.Entered))
+            // Klavye yeniden açıldıysa (ör. kelime kutusuna dokunuldu) klavye metni boştur; ilerleme korunur
+            if (trackerGeneration != keyboard.Generation)
             {
-                for (int i = input.Entered.Length; i < raw.Length && !typing.Finished; i++) HandleKey(raw[i]);
-            }
-            else if (raw.Length < input.Entered.Length && StartsWithIgnoreCase(input.Entered, raw))
-            {
-                input.TrimTo(raw.Length); // silme tuşu
-            }
-            else
-            {
-                // Klavye metni beklenmedik biçimde değişti (öneri, otomatik düzeltme, yazım alanı): ortak başlangıçtan sonrası yeni tuş sayılır.
-                // Eskiden bu durumda harf sessizce yutuluyordu ve klavye yeniden açılana kadar düzelmiyordu.
-                Debug.LogWarning("[klavye] beklenmeyen metin: '" + raw + "' (beklenen baslangic: '" + input.Entered + "')");
-                int common = KeyboardInput.CommonPrefixLength(raw, input.Entered, raceLanguage);
-                input.TrimTo(common);
-                for (int i = common; i < raw.Length && !typing.Finished; i++) HandleKey(raw[i]);
+                tracker.Reset();
+                trackerGeneration = keyboard.Generation;
             }
 
-            if (keyboard.Text != input.Entered) keyboard.Text = input.Entered;
+            // Klavye metnine dokunulmaz; yalnızca değişiklik izlenir (bkz. KeyboardTracker). Yanlış harfler klavyede kalır ama giriş onları yok sayar.
+            tracker.Update(keyboard.Text, raceLanguage, c => !typing.Finished && HandleKey(c), () => input.TrimTo(input.Entered.Length - 1));
         }
 
-        bool StartsWithIgnoreCase(string text, string prefix)
-        {
-            if (text.Length < prefix.Length) return false;
-            for (int i = 0; i < prefix.Length; i++)
-                if (TextNormalizer.ToLower(text[i], raceLanguage) != prefix[i]) return false;
-            return true;
-        }
-
-        void HandleKey(char c)
+        // Harfi girişe verir; giriş tarafından kabul edildiyse (doğru harf ya da kelime gönderimi) true döner.
+        bool HandleKey(char c)
         {
             switch (input.Press(c))
             {
                 case KeyResult.Rejected:
                     wordView.FlashMistake();
-                    break;
+                    return false;
 
                 case KeyResult.Submit:
                     SubmitCurrentWord();
-                    break;
+                    return true;
+
+                case KeyResult.Accepted:
+                    return true;
+
+                default:
+                    return false;
             }
         }
 
@@ -1094,6 +1083,14 @@ namespace TextRun.Game
             {
                 // Kelime kutusunda yalnızca doğru harfler (yeşil) görünür. Klavye kapanırsa kutuya dokunmak yeniden açar.
                 if (wordView.Draw(box, typing, input.Entered)) keyboard.Open(KeyboardKind.Default);
+            }
+            // Geliştirme sürümü (telefon): klavye metni ve giriş küçük gri yazıyla gösterilir; takılma olursa ekran görüntüsünden teşhis için
+            if (Debug.isDebugBuild && !Application.isEditor && input != null)
+            {
+                var old = GUI.color;
+                GUI.color = new Color(1f, 1f, 1f, 0.45f);
+                GUI.Label(new Rect(8f, box.y - 22f, width - 16f, 20f), "kb '" + keyboard.Text + "'  giris '" + input.Entered + "'", smallStyle);
+                GUI.color = old;
             }
             DrawSimulatedKeyboard(width, height, scale, devButtonY);
             DrawEndingBadge(width, top);
