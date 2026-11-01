@@ -84,6 +84,33 @@ namespace TextRun.EditorTools
 
             string run = Guid.NewGuid().ToString("N").Substring(0, 8);
 
+            // --- Test 0: kullanıcı adı + şifre hesabı: kayıt, profil, oyun içi ad, kayıtlı oturumla geri giriş, hatalı giriş ---
+            string login = "u" + run;
+            var acc = new OnlineRaceClient("unity-test-" + run + "-acc", false) { LoginName = login, Password = "sifre12345", Register = true };
+            await acc.ConnectAsync();
+            Check(acc.IsAccount && !string.IsNullOrEmpty(acc.UserId), "hesap kaydi ve girisi (kullanici adi + sifre)");
+            var accProfile = await acc.GetProfileAsync();
+            Check(!accProfile.guest && string.IsNullOrEmpty(accProfile.name) && accProfile.level == 1, "yeni hesap: misafir degil, oyun ici ad henuz yok");
+            accProfile = await acc.SetNameAsync("Furkan Çş");
+            Check(accProfile.name == "Furkan Çş", "oyun ici ad kaydedildi (Turkce harfli)");
+            try { await acc.SetNameAsync("<x>"); Check(false, "gecersiz ad reddedilmeli"); }
+            catch (Exception e) { Check(OnlineRaceClient.IsError(e, "name_invalid"), "gecersiz oyun ici ad reddedildi"); }
+            await acc.CloseAsync();
+
+            var saved = new OnlineRaceClient("unity-test-" + run + "-saved", false) { UseSavedAccount = true };
+            await saved.ConnectAsync();
+            Check(saved.IsAccount && saved.UserId == acc.UserId, "kayitli oturumla ayni hesaba geri girildi");
+            Check((await saved.GetProfileAsync()).name == "Furkan Çş", "kayitli oturumda profil geldi");
+            await saved.CloseAsync();
+            OnlineRaceClient.ForgetAccount();
+            Check(!OnlineRaceClient.HasSavedAccount, "cikista kayitli oturum unutuldu");
+
+            try { await new OnlineRaceClient("x", false) { LoginName = login, Password = "yanlis12345" }.ConnectAsync(); Check(false, "yanlis sifre reddedilmeli"); }
+            catch (Exception e) { Check(OnlineRaceClient.StatusOf(e) == 401 || OnlineRaceClient.StatusOf(e) == 404, "yanlis sifre reddedildi (durum " + OnlineRaceClient.StatusOf(e) + ")"); }
+            try { await new OnlineRaceClient("x", false) { LoginName = login, Password = "baska12345", Register = true }.ConnectAsync(); Check(false, "ayni ad ikinci kez alinamaz"); }
+            catch (Exception e) { Check(OnlineRaceClient.StatusOf(e) == 409 || OnlineRaceClient.StatusOf(e) == 401, "ayni kullanici adiyla ikinci kayit reddedildi (durum " + OnlineRaceClient.StatusOf(e) + ")"); }
+            OnlineRaceClient.ForgetAccount();
+
             // --- Test 1: tek insan + botlar, tam yarış ---
             var c = new OnlineRaceClient("unity-test-" + run + "-a", false);
             SnapshotDto countdown = null;
@@ -100,6 +127,7 @@ namespace TextRun.EditorTools
 
             await c.ConnectAsync();
             Check(!string.IsNullOrEmpty(c.UserId), "giris yapildi, kullanici kimligi var");
+            Check((await c.GetProfileAsync()).guest, "cihaz kimligiyle giren misafirdir (XP/seviye yok)");
 
             await c.FindAndJoinAsync(GameLanguage.Turkish);
             Check(!string.IsNullOrEmpty(c.MatchId), "Turkce odaya katilindi");
@@ -139,6 +167,7 @@ namespace TextRun.EditorTools
             Check(mine != null && mine.status == "finished" && mine.rank == 1, "insan oyuncu bitirdi ve birinci oldu");
             Check(mine != null && mine.errors == 1, "tek yanlis kelime sayildi");
             Check(results.results[0].userId == c.UserId, "sonuc listesi siralamali");
+            Check(results.rewards == null || results.rewards.Length == 0, "misafire XP odulu verilmedi");
             await c.CloseAsync();
 
             // --- Test 2: dil ayrimi: Ingilizce oyuncu ayri odaya duser ---

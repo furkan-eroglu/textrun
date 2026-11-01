@@ -14,7 +14,7 @@ namespace TextRun.Game
     // burada yalnızca yazma girişi alınır, sunucudan gelenler gösterilir.
     public class OnlineGameController : MonoBehaviour
     {
-        enum Page { Connecting, Welcome, Settings, Menu, PrivateMenu, JoinCode, RoomLobby, Searching, MatchFound, Countdown, Racing, Results, Error }
+        enum Page { Connecting, Welcome, Login, NameEntry, Settings, Menu, PrivateMenu, JoinCode, RoomLobby, Searching, MatchFound, Countdown, Racing, Results, Error }
 
         const string LanguageKey = "textrun.language";
 
@@ -69,13 +69,22 @@ namespace TextRun.Game
         bool keyboardRequested;        // yarış ekranında klavye istendi mi (ışıklar başlayınca açılır, yarış bitince kapanır)
         bool roomBots;                 // kurucu: boş yerleri botla doldur
         string joinCodeInput = "";
-        ProfileDto profile = new ProfileDto();   // sunucudaki oyuncu profili (ad, XP, seviye)
+        ProfileDto profile = new ProfileDto();   // sunucudaki oyuncu profili (ad, XP, seviye); misafirde guest=true
+        enum Entry { Guest, Account, Saved }     // sunucuya giriş türü: misafir, kullanıcı adı + şifre, telefonda kayıtlı hesap
+        Entry lastEntry = Entry.Guest;
+        string loginInput = "";
+        string passInput = "";
+        string loginNotice = "";
+        bool registerMode;
+        string nameInput = "";
+        string nameNotice = "";
+        bool nameBusy;
         RewardDto myReward;                      // son yarıştan kazanılan XP (sonuç ekranında gösterilir)
         string codeNotice = "";
         float copiedUntil;
         float matchFoundSeconds;
 
-        GUIStyle rowNameStyle, rowTagStyle, codeStyle, codeFieldStyle, titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle, searchTitleStyle, positionStyle;
+        GUIStyle nameFieldStyle, rowNameStyle, rowTagStyle, codeStyle, codeFieldStyle, titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle, searchTitleStyle, positionStyle;
 
         void Start()
         {
@@ -99,7 +108,9 @@ namespace TextRun.Game
             view.SetVisible(false); // menü ve eşleşme ekranlarında pist görünmez; yalnızca arka plan ve arayüz vardır
             view.ResetToStart();
 
-            screen = Page.Welcome; // önce giriş seçimi; sunucuya misafir olarak girilince bağlanılır
+            // Bu telefonda kayıtlı hesap varsa doğrudan girilir; yoksa giriş seçimi gelir (misafir olarak girilince bağlanılır)
+            if (OnlineRaceClient.HasSavedAccount) Connect(Entry.Saved);
+            else screen = Page.Welcome;
         }
 
         string T(string key) => Loc.T(key, language);
@@ -119,13 +130,24 @@ namespace TextRun.Game
 
         // ---------- Bağlantı ----------
 
-        async void Connect()
+        void Connect() { Connect(lastEntry); }
+
+        async void Connect(Entry entry)
         {
+            lastEntry = entry;
             screen = Page.Connecting;
             if (net != null) await net.CloseAsync();
 
-            // Misafir hesabı geçicidir: her bağlanışta yeni kimlik, cihaza kaydedilmez (oyun kapanınca hesap kaybolur)
+            // Misafir geçicidir: her bağlanışta yeni kimlik, cihaza kaydedilmez. Hesap girişinde oturum kaydedilir.
             net = new OnlineRaceClient(Guid.NewGuid().ToString(), false);
+            if (entry == Entry.Guest) net.GuestName = "Misafir" + UnityEngine.Random.Range(1000, 10000);
+            else if (entry == Entry.Saved) net.UseSavedAccount = true;
+            else
+            {
+                net.LoginName = loginInput;
+                net.Password = passInput;
+                net.Register = registerMode;
+            }
             net.Snapshot += OnSnapshot;
             net.Roster += OnSnapshot;
             net.Countdown += OnSnapshot;
@@ -139,12 +161,30 @@ namespace TextRun.Game
             try
             {
                 await net.ConnectAsync();
-                profile = await net.SetNameAsync("Misafir" + UnityEngine.Random.Range(1000, 10000));
-                screen = Page.Menu;
+                profile = await net.GetProfileAsync();
+                if (entry != Entry.Guest) lastEntry = Entry.Saved; // yeniden denemede kayıtlı oturum kullanılır (şifre bellekte tutulmaz)
+                passInput = "";
+                if (entry == Entry.Guest || !string.IsNullOrEmpty(profile.name)) screen = Page.Menu;
+                else { nameInput = ""; nameNotice = ""; screen = Page.NameEntry; } // yeni hesap: önce oyun içi ad
             }
             catch (Exception e)
             {
-                Fail(e);
+                int status = OnlineRaceClient.StatusOf(e);
+                if (entry == Entry.Account && status != 0)
+                {
+                    lastEntry = Entry.Guest;
+                    // Kayıtta var olan bir adla farklı şifre denenirse sunucu 401 döner: kullanıcıya "ad alınmış" denir
+                    loginNotice = status == 409 || (registerMode && status == 401) ? T("loginTaken") : status == 400 ? T("passwordShort") : T("loginWrong");
+                    screen = Page.Login;
+                }
+                else if (entry == Entry.Saved && status != 0)
+                {
+                    // Kayıtlı oturum artık geçerli değil (ör. şifre/hesap silindi): unutulur, giriş seçimine dönülür
+                    OnlineRaceClient.ForgetAccount();
+                    lastEntry = Entry.Guest;
+                    screen = Page.Welcome;
+                }
+                else Fail(e);
             }
         }
 
@@ -158,7 +198,7 @@ namespace TextRun.Game
         void OnClosed(string reason)
         {
             if (screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.Connecting || screen == Page.Error
-                || screen == Page.Welcome || screen == Page.Settings) return;
+                || screen == Page.Welcome || screen == Page.Login || screen == Page.NameEntry || screen == Page.Settings) return;
             sound.StopMusic();
             errorText = T("connectionLost");
             screen = Page.Error;
@@ -455,7 +495,7 @@ namespace TextRun.Game
             try
             {
                 var fresh = await net.GetProfileAsync();
-                if (!string.IsNullOrEmpty(fresh.name)) profile = fresh;
+                profile = fresh;
             }
             catch (Exception e)
             {
@@ -614,6 +654,7 @@ namespace TextRun.Game
             UiKit.SetAllTextColors(codeStyle, new Color(1f, 0.84f, 0.32f));
             codeFieldStyle = new GUIStyle(GUI.skin.textField) { fontSize = 40, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             UiKit.SetAllTextColors(codeFieldStyle, Color.white);
+            nameFieldStyle = new GUIStyle(codeFieldStyle) { fontSize = 28 };
             rowNameStyle = new GUIStyle(labelStyle) { alignment = TextAnchor.MiddleLeft };
             rowTagStyle = new GUIStyle(smallStyle) { alignment = TextAnchor.MiddleRight };
             searchTitleStyle = new GUIStyle(GUI.skin.label) { fontSize = 28, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, clipping = TextClipping.Overflow };
@@ -655,6 +696,8 @@ namespace TextRun.Game
                 case Page.Connecting: DrawCenterMessage(width, height, T("connecting")); break;
                 case Page.Error: DrawError(width, height); break;
                 case Page.Welcome: DrawWelcome(width, height, top); break;
+                case Page.Login: DrawLogin(width, height, top); break;
+                case Page.NameEntry: DrawNameEntry(width, height, top); break;
                 case Page.Settings: DrawSettings(width, height, top); break;
                 case Page.Menu: DrawMenu(width, height, top); break;
                 case Page.PrivateMenu: DrawPrivateMenu(width, height, top); break;
@@ -776,13 +819,18 @@ namespace TextRun.Game
 
         // ---------- Hesap: karşılama, ad, ayarlar, seviye ----------
 
-        // Ad, seviye ve XP çubuğu olan kart
+        // Ad, seviye ve XP çubuğu olan kart. Misafirde seviye/XP yoktur: yalnızca ad ve "Misafir" etiketi.
         void DrawProfileCard(Rect r)
         {
             UiKit.Card(r, new Color(1f, 1f, 1f, 0.08f), 14f);
 
-            string name = string.IsNullOrEmpty(profile.name) ? "-" : profile.name;
+            string name = profile.guest ? (net?.Username ?? "-") : string.IsNullOrEmpty(profile.name) ? "-" : profile.name;
             GUI.Label(new Rect(r.x + 12f, r.y + 3f, r.width - 100f, 26f), name, rowNameStyle);
+            if (profile.guest)
+            {
+                GUI.Label(new Rect(r.xMax - 118f, r.y + 3f, 106f, 26f), T("guestTag"), rowTagStyle);
+                return;
+            }
             GUI.Label(new Rect(r.xMax - 118f, r.y + 3f, 106f, 26f), T("level") + " " + profile.level, rowTagStyle);
 
             var bar = new Rect(r.x + 12f, r.yMax - 20f, r.width - 24f, 10f);
@@ -796,24 +844,29 @@ namespace TextRun.Game
             if (t > 0f) UiKit.Card(new Rect(bar.x, bar.y, Mathf.Max(bar.height, bar.width * t), bar.height), new Color(0.27f, 0.64f, 1f), 5f);
         }
 
-        // Karşılama (yalnızca adı olmayan yeni oyuncuda): giriş seçenekleri
+        // Karşılama: kullanıcı adı + şifre ile giriş/kayıt, misafir, (yakında) Google ve Apple
         void DrawWelcome(float width, float height, float top)
         {
             FullViewport();
             logo.Draw(width, top + 110f, LogoElapsed());
 
-            float y = top + 220f;
+            float y = top + 210f;
             GUI.Label(new Rect(0f, y, width, 44f), T("welcomeTitle"), headingStyle);
-            y += 70f;
+            y += 64f;
 
-            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 64f), T("guest"), 22))
-                ContinueAsGuest();
-            y += 84f;
+            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 64f), T("accountLogin"), 22))
+            {
+                loginNotice = "";
+                screen = Page.Login;
+            }
+            y += 78f;
+            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 56f), T("guest"), 20)) ContinueAsGuest();
+            y += 72f;
             // Google ve Apple girişi, mağaza hesapları bağlanınca açılacak
-            UiKit.DisabledButton(new Rect(24f, y, width - 48f, 56f), T("signGoogle") + " (" + T("soon") + ")", 19);
-            y += 70f;
-            UiKit.DisabledButton(new Rect(24f, y, width - 48f, 56f), T("signApple") + " (" + T("soon") + ")", 19);
-            y += 76f;
+            UiKit.DisabledButton(new Rect(24f, y, width - 48f, 50f), T("signGoogle") + " (" + T("soon") + ")", 18);
+            y += 62f;
+            UiKit.DisabledButton(new Rect(24f, y, width - 48f, 50f), T("signApple") + " (" + T("soon") + ")", 18);
+            y += 66f;
             GUI.Label(new Rect(30f, y, width - 60f, 60f), T("welcomeNote"), smallCenterWrapStyle());
         }
 
@@ -824,7 +877,113 @@ namespace TextRun.Game
             return smallCenterWrap;
         }
 
-        // Ayarlar / hesap: seviye, istatistikler ve hesap durumu
+        // Giriş adı: yalnızca küçük harf, rakam, alt çizgi
+        static string CleanLogin(string raw)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (char c in (raw ?? "").ToLowerInvariant())
+                if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_') sb.Append(c);
+            return sb.ToString();
+        }
+
+        static bool LoginIsValid(string login, string password) => login.Length >= 3 && login.Length <= 16 && password.Length >= 8;
+
+        // Oyun içi ad: sunucudaki kuralın aynısı (son karar sunucunundur)
+        static string CleanName(string raw)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (char c in raw ?? "")
+                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || " çğıöşüÇĞİÖŞÜ_.-".IndexOf(c) >= 0) sb.Append(c);
+            return sb.ToString();
+        }
+
+        static bool NameIsValid(string raw)
+        {
+            string name = System.Text.RegularExpressions.Regex.Replace((raw ?? "").Trim(), @"\s+", " ");
+            if (name.Length < 3 || name.Length > 12) return false;
+            foreach (char c in name)
+                if (char.IsLetterOrDigit(c)) return true;
+            return false;
+        }
+
+        // Kullanıcı adı + şifre ile giriş ya da kayıt
+        void DrawLogin(float width, float height, float top)
+        {
+            FullViewport();
+            GUI.Label(new Rect(0f, top + 36f, width, 44f), T("loginTitle"), headingStyle);
+
+            float y = top + 110f;
+            GUI.Label(new Rect(24f, y, width - 48f, 22f), T("username"), smallStyle);
+            y += 24f;
+            loginInput = CleanLogin(GUI.TextField(new Rect(24f, y, width - 48f, 58f), loginInput ?? "", 16, nameFieldStyle));
+            y += 70f;
+            GUI.Label(new Rect(24f, y, width - 48f, 22f), T("password"), smallStyle);
+            y += 24f;
+            passInput = GUI.PasswordField(new Rect(24f, y, width - 48f, 58f), passInput ?? "", '*', 32, nameFieldStyle);
+            y += 68f;
+
+            GUI.Label(new Rect(24f, y, width - 48f, 44f), loginNotice.Length > 0 ? loginNotice : T("loginRule"), smallCenterWrapStyle());
+            y += 56f;
+
+            bool valid = LoginIsValid(loginInput, passInput);
+            if (valid) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 58f), T("login"), 22)) SubmitLogin(false); }
+            else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 58f), T("login"), 22);
+            y += 70f;
+            if (valid) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 58f), T("register"), 22)) SubmitLogin(true); }
+            else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 58f), T("register"), 22);
+            y += 78f;
+
+            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 50f), T("back"), 20)) screen = Page.Welcome;
+        }
+
+        void SubmitLogin(bool register)
+        {
+            if (screen == Page.Connecting) return;
+            if (Debug.isDebugBuild || Application.isEditor) ServerSettings.Host = hostInput;
+            registerMode = register;
+            loginNotice = "";
+            Connect(Entry.Account);
+        }
+
+        // Yeni hesap: oyun içi ad (giriş adından ayrıdır)
+        void DrawNameEntry(float width, float height, float top)
+        {
+            FullViewport();
+            GUI.Label(new Rect(0f, top + 40f, width, 44f), T("chooseName"), headingStyle);
+
+            float y = top + 130f;
+            nameInput = CleanName(GUI.TextField(new Rect(24f, y, width - 48f, 70f), nameInput ?? "", 12, nameFieldStyle));
+            y += 82f;
+            GUI.Label(new Rect(24f, y, width - 48f, 44f), nameNotice.Length > 0 ? nameNotice : T("nameRule"), smallCenterWrapStyle());
+            y += 60f;
+
+            if (NameIsValid(nameInput) && !nameBusy) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 64f), T("continue"), 24)) SubmitName(true); }
+            else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 64f), T("continue"), 24);
+        }
+
+        async void SubmitName(bool first)
+        {
+            if (nameBusy) return;
+            nameBusy = true;
+            nameNotice = "";
+            try
+            {
+                profile = await net.SetNameAsync(nameInput);
+                if (first) screen = Page.Menu;
+                else { nameInput = profile.name; nameNotice = T("saved"); }
+            }
+            catch (Exception e)
+            {
+                if (OnlineRaceClient.IsError(e, "name_invalid")) nameNotice = T("nameInvalid");
+                else Fail(e);
+            }
+            finally
+            {
+                nameBusy = false;
+            }
+        }
+
+        // Ayarlar / hesap: misafirde bilgi ve giriş düğmesi; hesapta oyun içi ad, istatistikler ve çıkış
         void DrawSettings(float width, float height, float top)
         {
             FullViewport();
@@ -833,17 +992,43 @@ namespace TextRun.Game
             float y = top + 100f;
             DrawProfileCard(new Rect(16f, y, width - 32f, 58f));
             y += 64f;
-            GUI.Label(new Rect(16f, y, width - 32f, 22f), profile.xpIntoLevel + " / " + profile.xpForNext + " XP     " + T("raceCount") + " " + profile.races + "     " + T("winCount") + " " + profile.wins, smallCenterStyle);
-            y += 50f;
 
-            GUI.Label(new Rect(30f, y, width - 60f, 80f), T("guestNote"), smallCenterWrapStyle());
-            y += 110f;
+            if (profile.guest)
+            {
+                y += 14f;
+                GUI.Label(new Rect(30f, y, width - 60f, 80f), T("guestNote"), smallCenterWrapStyle());
+                y += 100f;
+                if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 58f), T("accountLogin"), 20)) Logout();
+                y += 72f;
+            }
+            else
+            {
+                GUI.Label(new Rect(16f, y, width - 32f, 22f), profile.xpIntoLevel + " / " + profile.xpForNext + " XP     " + T("raceCount") + " " + profile.races + "     " + T("winCount") + " " + profile.wins, smallCenterStyle);
+                y += 44f;
+
+                GUI.Label(new Rect(24f, y, width - 48f, 22f), T("playerName"), smallStyle);
+                y += 24f;
+                nameInput = CleanName(GUI.TextField(new Rect(24f, y, width - 48f, 58f), nameInput ?? "", 12, nameFieldStyle));
+                y += 64f;
+                GUI.Label(new Rect(24f, y, width - 48f, 44f), nameNotice.Length > 0 ? nameNotice : T("nameRule"), smallCenterWrapStyle());
+                y += 50f;
+
+                bool changed = NameIsValid(nameInput) && nameInput.Trim() != profile.name;
+                if (changed && !nameBusy) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 54f), T("save"), 20)) SubmitName(false); }
+                else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 54f), T("save"), 20);
+                y += 66f;
+
+                if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 54f), T("logout"), 20)) Logout();
+                y += 66f;
+            }
 
             if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 50f), T("back"), 20)) screen = Page.Menu;
         }
 
         void OpenSettings()
         {
+            nameInput = profile.name ?? "";
+            nameNotice = "";
             screen = Page.Settings;
         }
 
@@ -852,7 +1037,18 @@ namespace TextRun.Game
         {
             if (screen == Page.Connecting) return;
             if (Debug.isDebugBuild || Application.isEditor) ServerSettings.Host = hostInput; // yazılan sunucu adresi de denenir
-            Connect();
+            Connect(Entry.Guest);
+        }
+
+        // Çıkış (ya da misafirken hesap açmak için): bağlantı kapanır, kayıtlı oturum unutulur, karşılamaya dönülür
+        async void Logout()
+        {
+            OnlineRaceClient.ForgetAccount();
+            lastEntry = Entry.Guest;
+            profile = new ProfileDto();
+            loginNotice = "";
+            screen = Page.Welcome;
+            if (net != null) await net.CloseAsync();
         }
 
         // Hoparlör simgesi: dokununca ses açılır/kapanır; kapalıyken simgenin üstünde kırmızı çarpı görünür.
@@ -1379,6 +1575,15 @@ namespace TextRun.Game
                 y += 56f;
             }
 
+            // Misafir: XP ve ödül yok, hesap açmaya davet
+            if (myReward == null && profile.guest)
+            {
+                var note = new Rect(16f, y + 4f, width - 32f, 56f);
+                UiKit.Card(note, new Color(1f, 1f, 1f, 0.07f), 14f);
+                GUI.Label(new Rect(note.x + 12f, note.y + 4f, note.width - 24f, note.height - 8f), T("guestResultNote"), smallCenterWrapStyle());
+                y = note.yMax;
+            }
+
             // Kazanılan XP ve seviye
             if (myReward != null)
             {
@@ -1411,6 +1616,7 @@ namespace TextRun.Game
 
         // Geliştirme: sahte sonuç göstererek ekranı doğrular (yalnızca DevHarness kullanır)
         public void DevContinueAsGuest() { ContinueAsGuest(); }
+        public void DevMakeGuestProfile() { profile = new ProfileDto { guest = true }; }
 
         public void DevShowAccountScreen(string which)
         {
@@ -1418,13 +1624,21 @@ namespace TextRun.Game
             switch (which)
             {
                 case "welcome": screen = Page.Welcome; break;
+                case "login": loginNotice = ""; screen = Page.Login; break;
+                case "name": nameInput = "Fur"; nameNotice = ""; screen = Page.NameEntry; break;
+                case "guestsettings": profile = new ProfileDto { guest = true }; screen = Page.Settings; break;
                 default: screen = Page.Settings; break;
             }
         }
 
-        public void DevShowFakeResults(int myRank, string myStatus = "finished", bool levelUp = false)
+        public void DevShowFakeResults(int myRank, string myStatus = "finished", bool levelUp = false, bool guestView = false)
         {
             myReward = new RewardDto { userId = net.UserId, gain = 20 + new[] { 50, 35, 25, 15, 10 }[Mathf.Clamp(myRank - 1, 0, 4)], xp = 410, level = levelUp ? 5 : 4, leveledUp = levelUp };
+            if (guestView)
+            {
+                myReward = null; // misafir: XP kutusu yok, hesap açma notu var
+                profile = new ProfileDto { guest = true };
+            }
             var list = new ResultDto[5];
             for (int i = 0; i < 5; i++)
             {

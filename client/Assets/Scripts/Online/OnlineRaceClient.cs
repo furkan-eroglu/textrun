@@ -16,6 +16,7 @@ namespace TextRun.Online
         const string SessionKey = "textrun.session";
         const string RefreshKey = "textrun.refresh";
         const string DeviceKey = "textrun.deviceId";
+        const string AccountKey = "textrun.account"; // 1 = bu telefonda kalıcı hesap oturumu kayıtlı
 
         readonly IClient client;
         readonly string deviceId;
@@ -40,6 +41,39 @@ namespace TextRun.Online
         public string Username => session?.Username;
         public string MatchId => matchId;
 
+        // Giriş türü (ConnectAsync'ten önce ayarlanır):
+        //   hiçbiri            -> misafir (cihaz kimliği; GuestName ile ad)
+        //   LoginName+Password -> kullanıcı adı + şifre (Register: yeni hesap aç)
+        //   UseSavedAccount    -> bu telefonda kayıtlı hesap oturumu
+        public string GuestName;
+        public string LoginName;
+        public string Password;
+        public bool Register;
+        public bool UseSavedAccount;
+        public bool IsAccount { get; private set; }
+
+        public static bool HasSavedAccount => PlayerPrefs.GetInt(AccountKey, 0) == 1 && !string.IsNullOrEmpty(PlayerPrefs.GetString(RefreshKey, ""));
+
+        // Çıkış: kayıtlı hesap oturumu unutulur
+        public static void ForgetAccount()
+        {
+            PlayerPrefs.DeleteKey(SessionKey);
+            PlayerPrefs.DeleteKey(RefreshKey);
+            PlayerPrefs.SetInt(AccountKey, 0);
+            PlayerPrefs.Save();
+        }
+
+        // Sunucuda giriş adı e-posta biçimine çevrilir (gerçek e-posta istenmez)
+        static string EmailOf(string loginName) => loginName.Trim().ToLowerInvariant() + "@textrun.local";
+
+        // Sunucunun HTTP durumu (ör. 401 yanlış şifre, 404 hesap yok, 409 ad alınmış); sunucu cevabı değilse 0
+        public static int StatusOf(Exception e)
+        {
+            for (var x = e; x != null; x = x.InnerException)
+                if (x is ApiResponseException api) return (int)api.StatusCode;
+            return 0;
+        }
+
         // deviceId verilmezse bu cihaza ait kalıcı bir kimlik kullanılır. Testlerde her istemciye ayrı kimlik verilir.
         public OnlineRaceClient(string deviceId = null, bool persistSession = true)
         {
@@ -62,6 +96,22 @@ namespace TextRun.Online
 
         public async Task ConnectAsync()
         {
+            if (LoginName != null)
+            {
+                session = await client.AuthenticateEmailAsync(EmailOf(LoginName), Password, LoginName.Trim().ToLowerInvariant(), Register);
+                IsAccount = true;
+                SaveAccountSession();
+                await OpenSocketAsync();
+                return;
+            }
+            if (UseSavedAccount)
+            {
+                session = await RestoreAccountAsync();
+                IsAccount = true;
+                await OpenSocketAsync();
+                return;
+            }
+
             session = persistSession ? RestoreSession() : null;
 
             if (session != null)
@@ -82,6 +132,28 @@ namespace TextRun.Online
             await OpenSocketAsync();
         }
 
+        void SaveAccountSession()
+        {
+            PlayerPrefs.SetString(SessionKey, session.AuthToken);
+            PlayerPrefs.SetString(RefreshKey, session.RefreshToken ?? "");
+            PlayerPrefs.SetInt(AccountKey, 1);
+            PlayerPrefs.Save();
+        }
+
+        // Kayıtlı oturum süresi dolmak üzereyse yenileme anahtarıyla uzatılır (geçersizse sunucu hata döner)
+        async Task<ISession> RestoreAccountAsync()
+        {
+            var restored = Session.Restore(PlayerPrefs.GetString(SessionKey, ""), PlayerPrefs.GetString(RefreshKey, ""));
+            if (restored == null) throw new Exception("kayitli oturum yok");
+            if (restored.HasExpired(DateTime.UtcNow.AddHours(1)))
+            {
+                restored = await client.SessionRefreshAsync(restored);
+                session = restored;
+                SaveAccountSession();
+            }
+            return restored;
+        }
+
         ISession RestoreSession()
         {
             var token = PlayerPrefs.GetString(SessionKey, "");
@@ -96,7 +168,7 @@ namespace TextRun.Online
             ISession created;
             try
             {
-                created = await client.AuthenticateDeviceAsync(deviceId, "Oyuncu" + UnityEngine.Random.Range(1000, 10000), true);
+                created = await client.AuthenticateDeviceAsync(deviceId, GuestName ?? "Oyuncu" + UnityEngine.Random.Range(1000, 10000), true);
             }
             catch (Exception)
             {

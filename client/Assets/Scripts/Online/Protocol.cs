@@ -130,6 +130,7 @@ namespace TextRun.Online
     [Serializable]
     public class ProfileDto
     {
+        public bool guest;   // misafir: XP, seviye, ödül yok
         public string name;
         public int xp;
         public int level = 1;

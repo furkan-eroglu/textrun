@@ -81,7 +81,7 @@ namespace TextRun.Game
             yield return Shot("1b-menu-muted");
             audio.Enabled = true;
 
-            foreach (var which in new[] { "welcome", "settings" })
+            foreach (var which in new[] { "welcome", "login", "name", "settings", "guestsettings" })
             {
                 controller.DevShowAccountScreen(which);
                 yield return new WaitForSeconds(1.2f);
@@ -166,6 +166,11 @@ namespace TextRun.Game
             controller.DevShowFakeResults(3, "dnf");
             yield return new WaitForSeconds(2.5f);
             yield return Shot("8-results-dnf-third");
+
+            // Misafir: sonuç ekranında XP yok, not var
+            controller.DevShowFakeResults(2, "finished", false, true);
+            yield return new WaitForSeconds(0.6f);
+            yield return Shot("9-results-guest");
 
             File.WriteAllText(Path.Combine(dir, "done.txt"), "tamam");
             Application.Quit();
