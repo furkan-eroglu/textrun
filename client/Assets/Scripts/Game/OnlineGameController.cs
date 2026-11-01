@@ -533,8 +533,18 @@ namespace TextRun.Game
 
         // ---------- Yazma girişi ----------
 
+        Page lastScreen = Page.Connecting;
+
         void Update()
         {
+            // Ekran değişince yazı kutusunun odağı bırakılır, telefon klavyesi kapanır (yarışın kendi klavyesi hariç)
+            if (screen != lastScreen)
+            {
+                lastScreen = screen;
+                GUIUtility.keyboardControl = 0;
+                if (screen != Page.Countdown && screen != Page.Racing) keyboard.Close();
+            }
+
             net?.Pump();
             if (screen == Page.MatchFound && Time.realtimeSinceStartup >= countdownEndsLocal - countdownTotal) screen = Page.Countdown;
             TickCountdownSound();
@@ -680,6 +690,7 @@ namespace TextRun.Game
         {
             keyboard.HandleGuiEvent(Event.current);
             EnsureStyles();
+            GUI.skin.settings.cursorColor = Color.clear;
 
             float scale = Mathf.Max(1.2f, ScreenDpi() / 160f);
             GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
@@ -906,35 +917,69 @@ namespace TextRun.Game
             return false;
         }
 
-        // Kullanıcı adı + şifre ile giriş ya da kayıt
+        // Kullanıcı adı + şifre ile giriş ya da kayıt: üstte iki sekme, giriş yapma varsayılan
         void DrawLogin(float width, float height, float top)
         {
             FullViewport();
-            GUI.Label(new Rect(0f, top + 36f, width, 44f), T("loginTitle"), headingStyle);
+            GUI.Label(new Rect(0f, top + 30f, width, 44f), T(registerMode ? "registerTitle" : "loginTitle"), headingStyle);
 
-            float y = top + 110f;
+            float y = top + 96f;
+            int tab = UiKit.Segmented(new Rect(24f, y, width - 48f, 50f), new[] { T("login"), T("register") }, registerMode ? 1 : 0, 20);
+            if (tab >= 0 && (tab == 1) != registerMode)
+            {
+                registerMode = tab == 1;
+                loginNotice = "";
+            }
+            y += 70f;
+
             GUI.Label(new Rect(24f, y, width - 48f, 22f), T("username"), smallStyle);
             y += 24f;
-            loginInput = CleanLogin(GUI.TextField(new Rect(24f, y, width - 48f, 58f), loginInput ?? "", 16, nameFieldStyle));
-            y += 70f;
+            loginInput = CleanLogin(DrawField(new Rect(24f, y, width - 48f, 58f), loginInput ?? "", 16, "loginField", nameFieldStyle));
+            y += 68f;
             GUI.Label(new Rect(24f, y, width - 48f, 22f), T("password"), smallStyle);
             y += 24f;
-            passInput = GUI.PasswordField(new Rect(24f, y, width - 48f, 58f), passInput ?? "", '*', 32, nameFieldStyle);
-            y += 68f;
+            passInput = DrawField(new Rect(24f, y, width - 48f, 58f), passInput ?? "", 32, "passField", nameFieldStyle, true);
+            y += 66f;
 
             GUI.Label(new Rect(24f, y, width - 48f, 44f), loginNotice.Length > 0 ? loginNotice : T("loginRule"), smallCenterWrapStyle());
-            y += 56f;
+            y += 52f;
 
-            bool valid = LoginIsValid(loginInput, passInput);
-            if (valid) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 58f), T("login"), 22)) SubmitLogin(false); }
-            else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 58f), T("login"), 22);
-            y += 70f;
-            if (valid) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 58f), T("register"), 22)) SubmitLogin(true); }
-            else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 58f), T("register"), 22);
-            y += 78f;
+            string action = T(registerMode ? "register" : "login");
+            if (LoginIsValid(loginInput, passInput)) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 62f), action, 24)) SubmitLogin(registerMode); }
+            else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 62f), action, 24);
+            y += 80f;
 
             if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 50f), T("back"), 20)) screen = Page.Welcome;
         }
+
+        // Yazı kutusu: yanıp sönen imleç çizer (telefonun yazı kutusu imleç göstermiyor; kutunun seçili olduğu anlaşılsın)
+        string pendingFocus;
+        string DrawField(Rect r, string text, int maxLength, string controlName, GUIStyle style, bool password = false)
+        {
+            GUI.SetNextControlName(controlName);
+            string result = password ? GUI.PasswordField(r, text, '*', maxLength, style) : GUI.TextField(r, text, maxLength, style);
+
+            if (pendingFocus == controlName)
+            {
+                GUI.FocusControl(controlName);
+                pendingFocus = null;
+            }
+
+            bool blinkOn = ((int)(Time.realtimeSinceStartup * 2f) & 1) == 0;
+            if (Event.current.type == EventType.Repaint && blinkOn && GUI.GetNameOfFocusedControl() == controlName)
+            {
+                string shown = password ? new string('*', result.Length) : result;
+                float textWidth = shown.Length == 0 ? 0f : style.CalcSize(new GUIContent(shown)).x;
+                float caretHeight = style.fontSize * 1.25f;
+                var old = GUI.color;
+                GUI.color = Color.white;
+                GUI.DrawTexture(new Rect(r.center.x + textWidth / 2f + 1f, r.center.y - caretHeight / 2f, 2f, caretHeight), Texture2D.whiteTexture);
+                GUI.color = old;
+            }
+            return result;
+        }
+
+        public void DevFocusField(string controlName) { pendingFocus = controlName; }
 
         void SubmitLogin(bool register)
         {
@@ -952,7 +997,7 @@ namespace TextRun.Game
             GUI.Label(new Rect(0f, top + 40f, width, 44f), T("chooseName"), headingStyle);
 
             float y = top + 130f;
-            nameInput = CleanName(GUI.TextField(new Rect(24f, y, width - 48f, 70f), nameInput ?? "", 12, nameFieldStyle));
+            nameInput = CleanName(DrawField(new Rect(24f, y, width - 48f, 70f), nameInput ?? "", 12, "nameField", nameFieldStyle));
             y += 82f;
             GUI.Label(new Rect(24f, y, width - 48f, 44f), nameNotice.Length > 0 ? nameNotice : T("nameRule"), smallCenterWrapStyle());
             y += 60f;
@@ -1008,7 +1053,7 @@ namespace TextRun.Game
 
                 GUI.Label(new Rect(24f, y, width - 48f, 22f), T("playerName"), smallStyle);
                 y += 24f;
-                nameInput = CleanName(GUI.TextField(new Rect(24f, y, width - 48f, 58f), nameInput ?? "", 12, nameFieldStyle));
+                nameInput = CleanName(DrawField(new Rect(24f, y, width - 48f, 58f), nameInput ?? "", 12, "nameField", nameFieldStyle));
                 y += 64f;
                 GUI.Label(new Rect(24f, y, width - 48f, 44f), nameNotice.Length > 0 ? nameNotice : T("nameRule"), smallCenterWrapStyle());
                 y += 50f;
@@ -1098,8 +1143,7 @@ namespace TextRun.Game
             GUI.Label(new Rect(0f, top + 30f, width, 44f), T("enterCode"), headingStyle);
 
             float y = top + 110f;
-            GUI.SetNextControlName("codeField");
-            string typed = GUI.TextField(new Rect(width / 2f - 130f, y, 260f, 70f), joinCodeInput, 5, codeFieldStyle);
+            string typed = DrawField(new Rect(width / 2f - 130f, y, 260f, 70f), joinCodeInput, 5, "codeField", codeFieldStyle);
             joinCodeInput = FilterCode(typed);
             y += 86f;
 
@@ -1624,7 +1668,8 @@ namespace TextRun.Game
             switch (which)
             {
                 case "welcome": screen = Page.Welcome; break;
-                case "login": loginNotice = ""; screen = Page.Login; break;
+                case "login": registerMode = false; loginNotice = ""; screen = Page.Login; break;
+                case "register": registerMode = true; loginNotice = ""; screen = Page.Login; break;
                 case "name": nameInput = "Fur"; nameNotice = ""; screen = Page.NameEntry; break;
                 case "guestsettings": profile = new ProfileDto { guest = true }; screen = Page.Settings; break;
                 default: screen = Page.Settings; break;

@@ -68,6 +68,7 @@ namespace TextRun.Common
             { "accountLogin", new[] { "Giriş yap / Kayıt ol", "Log in / Sign up" } },
             { "loginTitle", new[] { "Hesabına gir", "Log in" } },
             { "login", new[] { "Giriş yap", "Log in" } },
+            { "registerTitle", new[] { "Hesap oluştur", "Create account" } },
             { "register", new[] { "Kayıt ol", "Sign up" } },
             { "username", new[] { "Kullanıcı adı", "Username" } },
             { "password", new[] { "Şifre", "Password" } },

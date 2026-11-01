@@ -81,9 +81,10 @@ namespace TextRun.Game
             yield return Shot("1b-menu-muted");
             audio.Enabled = true;
 
-            foreach (var which in new[] { "welcome", "login", "name", "settings", "guestsettings" })
+            foreach (var which in new[] { "welcome", "login", "register", "name", "settings", "guestsettings" })
             {
                 controller.DevShowAccountScreen(which);
+                if (which == "login") controller.DevFocusField("loginField"); // imlecin göründüğünü doğrulamak için
                 yield return new WaitForSeconds(1.2f);
                 yield return Shot("1h-account-" + which);
             }
