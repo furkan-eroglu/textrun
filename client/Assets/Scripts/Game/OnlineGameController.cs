@@ -1198,8 +1198,10 @@ namespace TextRun.Game
                 GUI.DrawTexture(new Rect(row.x + 14f, row.y + 14f, 16f, 16f), SoundIcon.Disc());
                 GUI.color = oldColor;
 
-                string label = (net != null && p.id == net.UserId) ? T("you") + " (" + p.name + ")" : p.name;
-                GUI.Label(new Rect(row.x + 42f, row.y, row.width - 120f, 44f), label, rowNameStyle);
+                bool me = net != null && p.id == net.UserId;
+                GUI.color = me ? new Color(1f, 0.92f, 0.45f) : Color.white; // kendi adım sarı
+                GUI.Label(new Rect(row.x + 42f, row.y, row.width - 120f, 44f), p.name, rowNameStyle);
+                GUI.color = oldColor;
                 if (p.id == roomHost) GUI.Label(new Rect(row.xMax - 100f, row.y, 90f, 44f), T("hostTag"), rowTagStyle);
                 y += 52f;
             }
@@ -1399,7 +1401,7 @@ namespace TextRun.Game
         {
             // Üstte 3D pist, altta kelimeler (yarıştaki düzenin aynısı; yazmak için henüz erken)
             LayoutRaceArea(width, height, scale, out var box, out float devButtonY);
-            view.DrawLabels(scale, T("you"), T("bot"));
+            view.DrawLabels(scale, null, T("bot"));
             progressStrip.Draw(new Rect(8f, top + 8f, width - 16f, 26f), players, wordCount, net.UserId, 0f);
 
             DrawStartLights(width, top, LightsLit(), false);
@@ -1455,7 +1457,7 @@ namespace TextRun.Game
         void DrawRacing(float width, float height, float top, float scale)
         {
             LayoutRaceArea(width, height, scale, out var box, out float devButtonY);
-            view.DrawLabels(scale, T("you"), T("bot"));
+            view.DrawLabels(scale, null, T("bot")); // yarışta kendi oyun içi adım (sarı) yazar
             if (Time.realtimeSinceStartup < goFlashUntil) DrawStartLights(width, top, LightCount, true);
             // Kendi ilerlemen sunucu cevabını beklemeden yerel durumdan gösterilir
             progressStrip.Draw(new Rect(8f, top + 8f, width - 16f, 26f), players, wordCount, net.UserId, (float)typing.CurrentIndex / Mathf.Max(1, wordCount));
@@ -1601,7 +1603,7 @@ namespace TextRun.Game
             foreach (var r in results)
             {
                 bool mine = r.userId == net.UserId;
-                string name = mine ? T("you") : r.isBot ? T("bot") + " (" + r.name + ")" : r.name;
+                string name = r.isBot ? T("bot") + " (" + r.name + ")" : r.name; // kendi adım sarı renkle ayrılır
                 string status = r.status == "finished" ? "" : r.status == "disqualified" ? T("disqualified") : T("dnf");
 
                 var card = new Rect(16f, y, width - 32f, 50f);
@@ -1631,18 +1633,30 @@ namespace TextRun.Game
             // Kazanılan XP ve seviye
             if (myReward != null)
             {
-                var panel = new Rect(16f, y + 4f, width - 32f, 66f);
+                var panel = new Rect(16f, y + 4f, width - 32f, myReward.leveledUp ? 98f : 78f);
                 UiKit.Card(panel, new Color(0.27f, 0.64f, 1f, 0.16f), 14f);
 
                 var gold = new Color(1f, 0.84f, 0.32f);
                 var oldXp = GUI.color;
                 GUI.color = gold;
-                GUI.Label(new Rect(panel.x + 12f, panel.y, 150f, panel.height), "+" + myReward.gain + " XP", rankStyle);
+                GUI.Label(new Rect(panel.x + 12f, panel.y, 140f, panel.height), "+" + myReward.gain + " XP", rankStyle);
+
+                // Sağ taraf: seviye (atlandıysa altın renkli duyuru), çubuğun üstünde "110 / 220 XP", çubuk
+                float rx = panel.x + 150f;
+                float rw = panel.width - 162f;
+                float line = panel.y + 4f;
+                if (myReward.leveledUp)
+                {
+                    GUI.color = gold;
+                    GUI.Label(new Rect(rx - 40f, line, rw + 40f, 22f), T("levelUp"), rowTagStyle);
+                    line += 22f;
+                }
                 GUI.color = myReward.leveledUp ? gold : Color.white;
-                GUI.Label(new Rect(panel.x + 150f, panel.y + 4f, panel.width - 162f, 28f), myReward.leveledUp ? T("levelUp") : T("level") + " " + myReward.level, rowTagStyle);
+                GUI.Label(new Rect(rx, line, rw, 22f), T("level") + " " + myReward.level, rowTagStyle);
+                GUI.color = new Color(1f, 1f, 1f, 0.85f);
+                GUI.Label(new Rect(rx, line + 22f, rw, 20f), myReward.xpIntoLevel + " / " + myReward.xpForNext + " XP", rowTagStyle);
                 GUI.color = oldXp;
-                if (myReward.leveledUp) GUI.Label(new Rect(panel.x + 150f, panel.y + 30f, panel.width - 162f, 20f), T("level") + " " + myReward.level, rowTagStyle);
-                else DrawXpBar(new Rect(panel.x + 170f, panel.yMax - 22f, panel.width - 182f, 10f), profile.xpIntoLevel, profile.xpForNext);
+                DrawXpBar(new Rect(rx, panel.yMax - 22f, rw, 10f), myReward.xpIntoLevel, myReward.xpForNext);
                 y = panel.yMax;
             }
 
@@ -1678,7 +1692,7 @@ namespace TextRun.Game
 
         public void DevShowFakeResults(int myRank, string myStatus = "finished", bool levelUp = false, bool guestView = false)
         {
-            myReward = new RewardDto { userId = net.UserId, gain = 20 + new[] { 50, 35, 25, 15, 10 }[Mathf.Clamp(myRank - 1, 0, 4)], xp = 410, level = levelUp ? 5 : 4, leveledUp = levelUp };
+            myReward = new RewardDto { userId = net.UserId, gain = 20 + new[] { 50, 35, 25, 15, 10 }[Mathf.Clamp(myRank - 1, 0, 4)], xp = 410, level = levelUp ? 5 : 4, xpIntoLevel = levelUp ? 25 : 110, xpForNext = levelUp ? 220 : 220, leveledUp = levelUp };
             if (guestView)
             {
                 myReward = null; // misafir: XP kutusu yok, hesap açma notu var

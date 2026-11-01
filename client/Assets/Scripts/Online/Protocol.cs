@@ -123,6 +123,8 @@ namespace TextRun.Online
         public int gain;
         public int xp;
         public int level;
+        public int xpIntoLevel; // yeni seviyede biriktirilen XP
+        public int xpForNext;   // yeni seviyeyi geçmek için gereken XP
         public bool leveledUp;
     }
 

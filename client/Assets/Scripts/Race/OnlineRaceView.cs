@@ -202,7 +202,7 @@ namespace TextRun.Race
                 if (screen.z <= 0f) continue;
 
                 string label = names[i];
-                if (i == localSlot) label = youLabel;
+                if (i == localSlot && youLabel != null) label = youLabel; // youLabel boşsa oyuncunun kendi adı yazılır
                 else if (isBot[i]) label = botLabel;
 
                 Color fill = i == localSlot ? new Color(1f, 0.92f, 0.4f) : Color.white;

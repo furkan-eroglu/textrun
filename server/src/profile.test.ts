@@ -31,18 +31,17 @@ test("yarış XP'si: bitiren her zaman bitirmeyenden fazla alır", () => {
   for (let rank = 1; rank <= 5; rank++) assert.ok(xpForRace(rank, "finished") > xpForRace(rank, "dnf"));
 });
 
-test("özel oda: tek başına ya da yalnızca botlarla XP yok, 2 gerçek oyuncuyla var; herkese açık hep var", () => {
-  assert.equal(racePaysXp("private", 1), false);
-  assert.equal(racePaysXp("private", 2), true);
-  assert.equal(racePaysXp("public", 1), true);
+test("özel oda XP vermez (kaç oyuncu olursa olsun); herkese açık yarış verir", () => {
+  assert.equal(racePaysXp("private"), false);
+  assert.equal(racePaysXp("public"), true);
 });
 
 test("yarış işleme: XP, yarış sayısı, galibiyet ve seviye atlama", () => {
   const profile = emptyProfile();
   let reward = applyRace(profile, 1, "finished");
-  assert.deepEqual(reward, { gain: 70, xp: 70, level: 1, leveledUp: false });
+  assert.deepEqual(reward, { gain: 70, xp: 70, level: 1, xpIntoLevel: 70, xpForNext: 100, leveledUp: false });
   reward = applyRace(profile, 2, "finished");
-  assert.deepEqual(reward, { gain: 55, xp: 125, level: 2, leveledUp: true });
+  assert.deepEqual(reward, { gain: 55, xp: 125, level: 2, xpIntoLevel: 25, xpForNext: 140, leveledUp: true });
   applyRace(profile, 4, "dnf");
   assert.equal(profile.races, 3);
   assert.equal(profile.wins, 1);

@@ -63,7 +63,7 @@ function snapshotOf(state: RaceState, now: number) {
 function awardRewards(nk: nkruntime.Nakama, logger: nkruntime.Logger, state: RaceState): Array<Reward & { userId: string }> {
   const rewards: Array<Reward & { userId: string }> = [];
   const humans = (state.results || []).filter((r) => !r.isBot);
-  if (!racePaysXp(state.kind, humans.length)) return rewards;
+  if (!racePaysXp(state.kind)) return rewards; // özel oda XP vermez
   for (const result of humans) {
     // Misafirler XP kazanmaz (seviye, para, XP yalnızca kalıcı hesapta)
     let registered = false;

@@ -45,9 +45,9 @@ export function xpForRace(rank: number, status: "finished" | "dnf" | "disqualifi
   return 20 + (PLACE_BONUS[rank - 1] ?? 0);
 }
 
-// Herkese açık yarışlar her zaman XP verir. Özel odada tek başına ya da yalnızca botlarla oynayarak XP kasılamaz: en az 2 gerçek oyuncu gerekir.
-export function racePaysXp(kind: string, humans: number): boolean {
-  return kind === "public" || humans >= 2;
+// Yalnızca herkese açık (eşleşmeli) yarışlar XP verir. Özel oda XP vermez: iki telefonla birbirini yenerek XP kasılamaz.
+export function racePaysXp(kind: string): boolean {
+  return kind === "public";
 }
 
 const NAME_ALLOWED = /^[A-Za-z0-9çğıöşüÇĞİÖŞÜ _.\-]+$/;
@@ -66,6 +66,8 @@ export interface Reward {
   gain: number;
   xp: number; // yeni toplam
   level: number;
+  xpIntoLevel: number; // yeni seviyede biriktirilen XP (çubuk için)
+  xpForNext: number; // yeni seviyeyi geçmek için gereken XP
   leveledUp: boolean;
 }
 
@@ -76,6 +78,6 @@ export function applyRace(profile: Profile, rank: number, status: "finished" | "
   profile.xp += gain;
   profile.races += 1;
   if (rank === 1 && status === "finished") profile.wins += 1;
-  const after = levelOf(profile.xp).level;
-  return { gain, xp: profile.xp, level: after, leveledUp: after > before };
+  const after = levelOf(profile.xp);
+  return { gain, xp: profile.xp, level: after.level, xpIntoLevel: after.xpIntoLevel, xpForNext: after.xpForNext, leveledUp: after.level > before };
 }

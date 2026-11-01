@@ -84,7 +84,7 @@ Veri, UTF-8 JSON metnidir.
 
 `status`: `finished` (bitirdi), `dnf` (bitiremedi), `disqualified` (insan için imkansız hız).
 
-`RESULTS` ayrıca `rewards` taşır: gerçek oyunculara verilen XP, `[{ "userId", "gain", "xp", "level", "leveledUp" }]`. Özel odada 2'den az gerçek oyuncu varsa boştur.
+`RESULTS` ayrıca `rewards` taşır: gerçek oyunculara verilen XP, `[{ "userId", "gain", "xp", "level", "leveledUp" }]`. Özel odalar XP vermez (`rewards` boş); misafirlere de verilmez. Ödül `xpIntoLevel` ve `xpForNext` ile seviye çubuğunu da taşır.
 
 ## Profil (RPC)
 
