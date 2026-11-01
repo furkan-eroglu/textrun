@@ -361,8 +361,7 @@ namespace TextRun.Game
         {
             if (input == null || typing == null) return;
             input.Begin(typing.Finished ? "" : typing.WordAt(typing.CurrentIndex));
-            keyboard.Text = "";
-            tracker.Reset();
+            tracker.Sync(keyboard.Text); // klavye metni silinmez; o ana kadar yazılanlar (ör. ışıklar yanarken) yeni sayılmaz
         }
 
         void SyncLocalIndex()
@@ -377,6 +376,7 @@ namespace TextRun.Game
             if (typing == null) return;
             screen = Page.Racing;
             goFlashUntil = Time.realtimeSinceStartup + 0.8f;
+            pendingAcks = 0;
             typing.MarkStarted(Time.realtimeSinceStartup);
             view.SetRacing(true);
             BeginInput();
@@ -400,9 +400,13 @@ namespace TextRun.Game
             lastAlertSecond = int.MinValue;
         }
 
+        string lastAckInfo = "";
+        int pendingAcks;               // gönderilmiş ama sunucu cevabı gelmemiş kelime sayısı
+
         void OnAck(AckDto ack)
         {
             if (typing == null) return;
+            lastAckInfo = ack.kind + " srv=" + ack.index + " yerel=" + typing.CurrentIndex;
             if (ack.kind == AckKind.Disqualified) noticeText = T("disqualifiedNotice");
             if (ack.kind == AckKind.Finished)
             {
@@ -412,9 +416,11 @@ namespace TextRun.Game
                 sound.Applause(); // bitirdiğin hemen anlaşılsın
                 fireworks.Launch(finishOrder.IndexOf(net.UserId) < 3); // ilk üç: büyük gösteri, diğerleri: küçük
             }
-            if (ack.index != typing.CurrentIndex)
+            if (pendingAcks > 0) pendingAcks--;
+            if (TypingSession.ShouldResync(ack.index, typing.CurrentIndex, pendingAcks, ack.kind == AckKind.Wrong))
             {
                 typing.SyncTo(ack.index);
+                pendingAcks = 0;
                 BeginInput();
             }
         }
@@ -503,7 +509,7 @@ namespace TextRun.Game
             // Klavye yeniden açıldıysa (ör. kelime kutusuna dokunuldu) klavye metni boştur; ilerleme korunur
             if (trackerGeneration != keyboard.Generation)
             {
-                tracker.Reset();
+                tracker.Sync(keyboard.Text);
                 trackerGeneration = keyboard.Generation;
             }
 
@@ -522,7 +528,7 @@ namespace TextRun.Game
 
                 case KeyResult.Submit:
                     SubmitCurrentWord();
-                    return true;
+                    return false; // boşluk girişte bir harf değildir; silinirse geri alınacak bir şey yok
 
                 case KeyResult.Accepted:
                     return true;
@@ -541,8 +547,10 @@ namespace TextRun.Game
             typing.Submit(word, Time.realtimeSinceStartup);
             typing.RegisterMistakes(mistakes);
             net.SubmitWord(word, mistakes);
+            pendingAcks++;
 
             input.Begin(typing.Finished ? "" : typing.WordAt(typing.CurrentIndex));
+            tracker.Boundary(); // gönderilen kelimenin harfleri klavye metninde kalır ama yeni kelimeyi etkilemez
         }
 
         // ---------- Arayüz ----------
@@ -1089,7 +1097,7 @@ namespace TextRun.Game
             {
                 var old = GUI.color;
                 GUI.color = new Color(1f, 1f, 1f, 0.45f);
-                GUI.Label(new Rect(8f, box.y - 22f, width - 16f, 20f), "kb '" + keyboard.Text + "'  giris '" + input.Entered + "'", smallStyle);
+                GUI.Label(new Rect(8f, box.y - 22f, width - 16f, 20f), "kb '" + keyboard.Text + "'  giris '" + input.Entered + "'  idx=" + typing.CurrentIndex + "  ack: " + lastAckInfo, smallStyle);
                 GUI.color = old;
             }
             DrawSimulatedKeyboard(width, height, scale, devButtonY);

@@ -76,6 +76,17 @@ namespace TextRun.Typing
             wrongChars += Math.Max(0, count);
         }
 
+        // Sunucu cevabı (ACK) geldiğinde yerel ilerleme sunucuyla eşitlenmeli mi?
+        // Hızlı yazarken birden çok kelime gönderilmiş olabilir; sunucunun eski cevapları yerelden geride görünür ama hata değildir.
+        // Bu durumda (cevap beklenen başka gönderimler varken, yanlış kelime değilken) geri sarılmaz; son cevap gelince eşitlenir.
+        public static bool ShouldResync(int serverIndex, int localIndex, int pendingAfterThisAck, bool serverSaidWrong)
+        {
+            if (serverIndex == localIndex) return false;
+            bool localAhead = serverIndex < localIndex;
+            if (localAhead && pendingAfterThisAck > 0 && !serverSaidWrong) return false;
+            return true;
+        }
+
         // Sunucu farklı bir sıra bildirirse (ör. yeniden bağlanma) yerel durumu ona eşitler.
         public void SyncTo(int serverIndex)
         {

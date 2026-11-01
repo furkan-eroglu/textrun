@@ -70,11 +70,22 @@ namespace TextRun.EditorTools
             TestFireworks(Check);
             TestKeyboardDiff(Check);
             TestKeyboardTracker(Check);
+            TestAckResync(Check);
             TestAudio(Check);
             TestWordDatabase(Check);
 
             Debug.Log(failures == 0 ? "TUM TESTLER GECTI" : failures + " TEST BASARISIZ");
             EditorApplication.Exit(failures == 0 ? 0 : 1);
+        }
+
+        // Sunucu cevabı (ACK) gecikince hızlı yazan oyuncunun ilerlemesi geri sarılmamalı
+        static void TestAckResync(Action<bool, string> check)
+        {
+            check(!TypingSession.ShouldResync(5, 5, 0, false), "ack: esitse eslestirme yok");
+            check(!TypingSession.ShouldResync(4, 5, 1, false), "ack: yerel onde ve baska cevap bekleniyorsa geri sarilmaz (gecikmis cevap)");
+            check(TypingSession.ShouldResync(4, 5, 0, false), "ack: son cevap hala geride ise eslestirilir");
+            check(TypingSession.ShouldResync(4, 5, 1, true), "ack: sunucu yanlis dediyse hemen eslestirilir");
+            check(TypingSession.ShouldResync(7, 5, 2, false), "ack: sunucu onde ise (yeniden baglanma) hemen eslestirilir");
         }
 
         // Klavye izleyicisi: telefon klavyesinin metni nasıl değişirse değişsin giriş kilitlenmemeli (kavun hatası)
@@ -106,8 +117,8 @@ namespace TextRun.EditorTools
                 {
                     submits++;
                     input.Begin(next < queue.Length ? queue[next++] : "");
-                    tracker.Reset();
-                    return true;
+                    tracker.Boundary();
+                    return false;
                 }
                 return result == KeyResult.Accepted;
             }
@@ -158,18 +169,35 @@ namespace TextRun.EditorTools
             Type("ab");
             Type("ab c");
             check(submits == 1 && input.Entered == "c", "izleyici: bosluk kelimeyi gonderir, sonraki harf yeni kelimeye gider");
-            Type(""); // gercek klavye metni kelime gecisinde sifirlanir
-            Type("d");
-            check(input.Entered == "cd", "izleyici: kelime gecisinden sonra klavye metni sifirlanir ve devam edilir");
+            Type("ab cd"); // klavye metni silinmez, yazilmaya devam edilir
+            check(input.Entered == "cd", "izleyici: kelime gecisinden sonra klavye metni silinmeden devam edilir");
+
+            // 6b) Eski kelimenin harflerini silmek yeni kelimeyi etkilemez
+            Start("ab", "cd");
+            Type("ab");
+            Type("ab ");
+            Type("ab c");
+            Type("ab ");
+            check(input.Entered == "", "izleyici: yeni kelimenin harfi silinince geri alinir");
+            Type("a");
+            check(input.Entered == "" && submits == 1, "izleyici: eski kelimenin harflerini silmek yeni kelimeyi bozmaz");
 
             // 7) Klavye yeniden açıldı: ilerleme korunur
             Start("kavun", "çorba");
             Type("kav");
-            tracker.Reset(); // klavye yeniden açıldı, metin boş
+            tracker.Sync(""); // klavye yeniden açıldı, metin boş
             Type("");
             Type("u");
             Type("un");
             check(input.Entered == "kavun", "izleyici: klavye yeniden acilinca ilerleme korunur");
+
+            // 8) Isiklar yanarken yazilan harfler yaris basinda sayilmaz (Sync)
+            Start("kavun", "corba");
+            tracker.Sync("xx");
+            Type("xx");
+            check(input.Entered == "", "izleyici: erken yazilan harfler sayilmaz");
+            Type("xxk");
+            check(input.Entered == "k", "izleyici: yaris basladiktan sonra yazilan harf sayilir");
         }
 
         // Klavye metni beklenmedik değişince yeni harfler doğru bulunmalı (ı/İ dahil)

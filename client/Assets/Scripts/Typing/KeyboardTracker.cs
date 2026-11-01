@@ -5,26 +5,32 @@ namespace TextRun.Typing
 {
     // Klavyenin (telefonda sistem klavyesi) metnini izler ve yalnızca DEĞİŞİKLİĞİ bildirir: yeni yazılan harfler ve silinen harfler.
     //
-    // Klavyenin metni oyun tarafından ASLA üzerine yazılmaz (kelime geçişi dışında). Telefon klavyeleri (öneri, otomatik düzeltme,
-    // yazım alanı) yazılan metni hemen kabul etmeyebilir; üzerine yazmak aynı harfin her karede yeniden sayılmasına ve girişin
-    // kilitlenmesine yol açıyordu. Burada yanlış harfler klavye metninde kalır ama giriş tarafından yok sayılır.
+    // Klavyenin metni oyun tarafından ASLA üzerine yazılmaz. Telefon klavyeleri (öneri, otomatik düzeltme, yazım alanı) yazılan
+    // metni hemen kabul etmeyebilir; üzerine yazmak aynı harfin her karede yeniden sayılmasına ve girişin kilitlenmesine yol açıyordu.
+    // Yanlış harfler ve geçmiş kelimelerin harfleri klavye metninde kalır ama giriş tarafından yok sayılır.
     public class KeyboardTracker
     {
         string text = "";
-        readonly List<bool> accepted = new List<bool>(); // klavye metnindeki her harf için: giriş tarafından kabul edildi mi
+        readonly List<bool> accepted = new List<bool>(); // klavye metnindeki her harf için: şu anki kelimeye kabul edildi mi (silinirse geri alınır)
 
         public string Text => text;
-        public int ResetCount { get; private set; }
 
-        // Yeni kelime ya da klavye yeniden açıldığında: klavye metni boştur, geçmiş unutulur.
-        public void Reset()
+        // Klavye metnini "zaten işlenmiş" kabul eder (yarış başlarken, klavye yeniden açılınca, sunucu kelimeyi geri alınca):
+        // metindeki harfler yeni yazılmış sayılmaz, silinirse girişi etkilemez.
+        public void Sync(string raw)
         {
-            text = "";
+            text = raw ?? "";
             accepted.Clear();
-            ResetCount++;
+            for (int i = 0; i < text.Length; i++) accepted.Add(false);
         }
 
-        // raw: klavyenin şu anki metni. press: yeni harfi girişe verir, kabul edildiyse true döner.
+        // Kelime değişti: o ana kadarki harfler artık eski kelimeye aittir; silinirlerse yeni kelimeyi etkilememeli.
+        public void Boundary()
+        {
+            for (int i = 0; i < accepted.Count; i++) accepted[i] = false;
+        }
+
+        // raw: klavyenin şu anki metni. press: yeni harfi girişe verir, giriş harfi kabul ettiyse true döner.
         // undo: kabul edilmiş son harf silindi, girişten de bir harf geri alınmalı.
         public void Update(string raw, GameLanguage language, Func<char, bool> press, Action undo)
         {
@@ -44,20 +50,9 @@ namespace TextRun.Typing
                 if (wasAccepted) undo();
             }
 
-            // Yeni harfler sırayla girişe verilir. Kelime bitip yeni kelimeye geçilirse (Reset) kalan harfler yeni kelimeye aittir.
+            // Yeni harfler sırayla girişe verilir. press içinde kelime gönderilirse Boundary() çağrılır, o ana kadarki harfler eski kelimeye ait olur.
             text = raw;
-            int resets = ResetCount;
-            for (int i = common; i < raw.Length; i++)
-            {
-                bool ok = press(raw[i]);
-                if (ResetCount == resets) accepted.Add(ok);
-            }
-
-            if (ResetCount != resets)
-            {
-                text = "";
-                accepted.Clear();
-            }
+            for (int i = common; i < raw.Length; i++) accepted.Add(press(raw[i]));
         }
     }
 }
