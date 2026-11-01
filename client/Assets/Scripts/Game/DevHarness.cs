@@ -118,6 +118,7 @@ namespace TextRun.Game
             yield return new WaitForSeconds(13.8f);
             yield return Shot("4-racing");
 
+            KeyboardInput.SimulateInEditor = true; // telefon klavyesinin kaplayacağı yeri taklit eder
             yield return new WaitForSeconds(1f);
             yield return Shot("5-racing-keyboard");
 

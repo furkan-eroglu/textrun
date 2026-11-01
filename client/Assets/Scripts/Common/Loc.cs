@@ -31,7 +31,6 @@ namespace TextRun.Common
             { "roomNotFound", new[] { "Oda bulunamadı", "Room not found" } },
             { "roomStarted", new[] { "Bu odada yarış başlamış", "The race in this room has started" } },
             { "roomIsFull", new[] { "Oda dolu", "Room is full" } },
-            { "space", new[] { "boşluk", "space" } },
             { "roomLang", new[] { "Oda dili", "Room language" } },
             { "players", new[] { "Oyuncular", "Players" } },
             { "searching", new[] { "Karşılaşma aranıyor", "Searching for a match" } },

@@ -26,6 +26,3 @@ Bu dosya projede alınan önemli kararları kaydeder. Yeni karar alındıkça ek
 - Yerel klavyenin iPhone ve Xiaomi'deki davranışı prototipte test edilecek.
 - Apple Developer hesabı iPhone testine gelmeden açılacak.
 - Test için kullanılacak Xiaomi modeli ve klavyesi öğrenilecek.
-
-## Klavye: oyunun kendi ekran klavyesi (2026-11-01)
-Telefonun sistem klavyesinin metnini okumak gercek cihazda (Xiaomi, Gboard) guvenilmez cikti: metin otomatik duzeltme ve yazim alani yuzunden bozuluyor, kelimeler basa sariyordu. Karar: oyun kendi ekran klavyesini cizer (Turkce Q / Ingilizce QWERTY, silme tusu yok cunku yanlis harfler yok sayilir). Dokunuslar dogrudan oyuna gider. Bilgisayarda fiziksel klavye de calisir. Eski KeyboardInput yalnizca KeyboardTest prototipinde kaldi.
