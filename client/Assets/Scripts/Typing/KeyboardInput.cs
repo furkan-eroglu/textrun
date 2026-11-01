@@ -62,8 +62,10 @@ namespace TextRun.Typing
 
             TouchScreenKeyboard.hideInput = true;
             var type = kind == KeyboardKind.AsciiCapable ? TouchScreenKeyboardType.ASCIICapable : TouchScreenKeyboardType.Default;
-            // otomatik düzeltme kapalı, tek satır, gizli değil
-            native = TouchScreenKeyboard.Open("", type, false, false, false, false, "", 0);
+            // Otomatik düzeltme kapalı, tek satır. secure=true: Android'de "şifre" tipi giriş alanı; telefon klavyeleri (Gboard) bu alanda
+            // öneri, otomatik düzeltme ve yazım alanı (composing) kullanmaz, her tuş metne doğrudan yazılır. Normal alanda klavye metni
+            // kendi kafasına göre değiştirip (ör. "forty" -> "örtü.") oyunun okuduğu metni bozuyordu.
+            native = TouchScreenKeyboard.Open("", type, false, false, true, false, "", 0);
         }
 
         // Klavyeyi kapatır (oyuncu yarışı bitirince artık yazacak bir şey kalmaz).
