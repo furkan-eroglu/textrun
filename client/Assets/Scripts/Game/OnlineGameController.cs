@@ -517,6 +517,25 @@ namespace TextRun.Game
             tracker.Update(keyboard.Text, raceLanguage, c => !typing.Finished && HandleKey(c), () => input.TrimTo(input.Entered.Length - 1));
         }
 
+        GUIStyle debugStyle;
+
+        // Geliştirme sürümü (telefon): klavye ve giriş durumunu okunur küçük bir kutuda gösterir; takılma olursa ekran görüntüsünden teşhis için
+        void DrawKeyboardDebug(float width, float top)
+        {
+            if (debugStyle == null) debugStyle = new GUIStyle(smallStyle) { fontSize = 12, wordWrap = false, clipping = TextClipping.Clip };
+            UiKit.SetAllTextColors(debugStyle, Color.white);
+
+            string kb = keyboard.Text ?? "";
+            if (kb.Length > 28) kb = "..." + kb.Substring(kb.Length - 28);
+            string expected = typing.Finished ? "-" : typing.WordAt(typing.CurrentIndex);
+
+            var rect = new Rect(8f, top + 38f, width - 16f, 50f);
+            UiKit.Panel(rect, 0.8f, 8f);
+            GUI.Label(new Rect(rect.x + 6f, rect.y + 2f, rect.width - 12f, 16f), "kb[" + (keyboard.Text ?? "").Length + "] '" + kb + "'", debugStyle);
+            GUI.Label(new Rect(rect.x + 6f, rect.y + 17f, rect.width - 12f, 16f), "giris '" + input.Entered + "'  beklenen '" + expected + "'  idx " + typing.CurrentIndex, debugStyle);
+            GUI.Label(new Rect(rect.x + 6f, rect.y + 32f, rect.width - 12f, 16f), "ack: " + lastAckInfo, debugStyle);
+        }
+
         // Harfi girişe verir; giriş tarafından kabul edildiyse (doğru harf ya da kelime gönderimi) true döner.
         bool HandleKey(char c)
         {
@@ -550,7 +569,8 @@ namespace TextRun.Game
             pendingAcks++;
 
             input.Begin(typing.Finished ? "" : typing.WordAt(typing.CurrentIndex));
-            tracker.Boundary(); // gönderilen kelimenin harfleri klavye metninde kalır ama yeni kelimeyi etkilemez
+            tracker.Boundary(); // gönderilen kelimenin harfleri yeni kelimeyi etkilemez
+            keyboard.Text = ""; // klavye metni kısa kalsın: uzayan metinde telefon klavyesi takılıyordu. Yalnızca kelime sınırında silinir, yanlış harfte asla.
         }
 
         // ---------- Arayüz ----------
@@ -1093,13 +1113,7 @@ namespace TextRun.Game
                 if (wordView.Draw(box, typing, input.Entered)) keyboard.Open(KeyboardKind.Default);
             }
             // Geliştirme sürümü (telefon): klavye metni ve giriş küçük gri yazıyla gösterilir; takılma olursa ekran görüntüsünden teşhis için
-            if (Debug.isDebugBuild && !Application.isEditor && input != null)
-            {
-                var old = GUI.color;
-                GUI.color = new Color(1f, 1f, 1f, 0.45f);
-                GUI.Label(new Rect(8f, box.y - 22f, width - 16f, 20f), "kb '" + keyboard.Text + "'  giris '" + input.Entered + "'  idx=" + typing.CurrentIndex + "  ack: " + lastAckInfo, smallStyle);
-                GUI.color = old;
-            }
+            if (Debug.isDebugBuild && !Application.isEditor && input != null) DrawKeyboardDebug(width, top);
             DrawSimulatedKeyboard(width, height, scale, devButtonY);
             DrawEndingBadge(width, top);
 

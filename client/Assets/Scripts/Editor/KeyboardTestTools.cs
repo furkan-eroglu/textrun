@@ -182,6 +182,14 @@ namespace TextRun.EditorTools
             Type("a");
             check(input.Entered == "" && submits == 1, "izleyici: eski kelimenin harflerini silmek yeni kelimeyi bozmaz");
 
+            // 6c) Kelime gönderilince klavye metni temizlenir: boşalma ve yeni harfler sorunsuz işlenir
+            Start("ab", "cd");
+            Type("ab ");
+            Type("");
+            Type("c");
+            Type("cd");
+            check(submits == 1 && input.Entered == "cd" && input.MistakesThisWord == 0, "izleyici: gonderim sonrasi klavye metni temizlenince devam edilir");
+
             // 7) Klavye yeniden açıldı: ilerleme korunur
             Start("kavun", "çorba");
             Type("kav");
