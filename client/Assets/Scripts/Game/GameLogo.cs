@@ -13,6 +13,9 @@ namespace TextRun.Game
         static readonly Color RunBottom = new Color(1f, 0.45f, 0.12f);
 
         GUIStyle style;
+        float[] widths;
+        float total;
+        Texture2D checker;
 
         // Logonun kapladığı yükseklik (altındaki öğeleri yerleştirmek için)
         public const float Height = 120f;
@@ -23,16 +26,21 @@ namespace TextRun.Game
             float size = Mathf.Min(62f, width * 0.15f);
             if (style == null)
                 style = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.BoldAndItalic, alignment = TextAnchor.MiddleCenter, wordWrap = false, clipping = TextClipping.Overflow };
-            style.fontSize = Mathf.RoundToInt(size);
-
             const string text = "TEXTRUN";
             const int split = 4; // "TEXT" | "RUN"
-            var widths = new float[text.Length];
-            float total = 0f;
-            for (int i = 0; i < text.Length; i++)
+            if (widths == null || style.fontSize != Mathf.RoundToInt(size))
             {
-                widths[i] = style.CalcSize(new GUIContent(text[i].ToString())).x - 2f; // harfler biraz sıkı dursun
-                total += widths[i];
+                // Ölçüler ve harf şekilleri yalnızca boyut değişince hesaplanır (her karede hesaplamak animasyonu takıltıyordu)
+                style.fontSize = Mathf.RoundToInt(size);
+                var font = style.font != null ? style.font : GUI.skin.font;
+                if (font != null) font.RequestCharactersInTexture(text, style.fontSize, FontStyle.BoldAndItalic);
+                widths = new float[text.Length];
+                total = 0f;
+                for (int i = 0; i < text.Length; i++)
+                {
+                    widths[i] = style.CalcSize(new GUIContent(text[i].ToString())).x - 2f; // harfler biraz sıkı dursun
+                    total += widths[i];
+                }
             }
 
             float x = width / 2f - total / 2f;
@@ -61,14 +69,19 @@ namespace TextRun.Game
             float stripY = top + height * 0.9f;
             int columns = Mathf.Max(0, Mathf.FloorToInt(stripWidth / cell));
             float stripX = width / 2f - columns * cell / 2f;
-            for (int row = 0; row < 2; row++)
+            if (columns > 0)
             {
-                for (int col = 0; col < columns; col++)
+                // 2x2'lik küçük dama dokusu tekrarlanarak tek çizimde şerit olur (önceden yüzlerce ayrı kare çiziliyordu)
+                if (checker == null)
                 {
-                    bool dark = (row + col) % 2 == 0;
-                    GUI.color = dark ? new Color(0.03f, 0.07f, 0.20f, 0.95f) : new Color(1f, 1f, 1f, 0.95f);
-                    GUI.DrawTexture(new Rect(stripX + col * cell, stripY + row * cell, cell, cell), Texture2D.whiteTexture);
+                    checker = new Texture2D(2, 2, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Repeat, hideFlags = HideFlags.HideAndDontSave };
+                    var dark = new Color(0.03f, 0.07f, 0.20f, 0.95f);
+                    var light = new Color(1f, 1f, 1f, 0.95f);
+                    checker.SetPixels(new[] { light, dark, dark, light }); // alt sıra, üst sıra; sol üst koyu
+                    checker.Apply();
                 }
+                GUI.color = Color.white;
+                GUI.DrawTextureWithTexCoords(new Rect(stripX, stripY, columns * cell, 2f * cell), checker, new Rect(0f, 0f, columns / 2f, 1f));
             }
 
             GUI.color = old;

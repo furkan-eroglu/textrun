@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using TextRun.Audio;
 using TextRun.Common;
@@ -480,8 +480,8 @@ namespace TextRun.Game
             // Pist ve karakterler yalnızca geri sayım ve yarışta görünür
             bool wantTrack = screen == Page.Countdown || screen == Page.Racing;
 
-            // Menü ve eşleşme ekranlarında 30 FPS yeter (pil ve ısınma); yarışta 60
-            int targetFps = wantTrack ? 60 : 30;
+            // Tüm ekranlarda 60 FPS (animasyonlar akıcı olsun)
+            const int targetFps = 60;
             if (Application.targetFrameRate != targetFps) Application.targetFrameRate = targetFps;
             if (view.IsVisible != wantTrack) view.SetVisible(wantTrack);
 
@@ -669,7 +669,7 @@ namespace TextRun.Game
             GUI.Label(new Rect(30f, height / 2f - 65f, width - 60f, 90f), errorText, smallStyle);
 
             bool dev = Application.isEditor || Debug.isDebugBuild;
-            if (UiKit.PrimaryButton(new Rect(30f, height / 2f + 30f, width - 60f, 56f), T("retry")))
+            if (UiKit.SecondaryButton(new Rect(30f, height / 2f + 30f, width - 60f, 56f), T("retry"), 24))
             {
                 if (dev) ServerSettings.Host = hostInput; // yazılan adres de denenir
                 Connect();
@@ -696,10 +696,15 @@ namespace TextRun.Game
             FullViewport();
 
             // Logo: menü her açıldığında harfler yeniden kayarak gelir
+            // Animasyon saati kare kare ilerler ve tek karede en fazla 1/30 sn atlar: takılan bir kare animasyonu "zıplatmaz"
             float now = Time.realtimeSinceStartup;
-            if (now - lastMenuDrawAt > 0.5f) menuShownAt = now;
-            lastMenuDrawAt = now;
-            logo.Draw(width, top + 80f, now - menuShownAt);
+            if (now - lastMenuDrawAt > 0.5f) menuShownAt = 0f;
+            if (Event.current.type == EventType.Repaint)
+            {
+                menuShownAt += Mathf.Min(now - lastMenuDrawAt, 1f / 30f);
+                lastMenuDrawAt = now;
+            }
+            logo.Draw(width, top + 80f, menuShownAt);
 
             DrawSoundButton(new Rect(width - 54f, top + 8f, 42f, 42f));
 
@@ -709,7 +714,7 @@ namespace TextRun.Game
             if (clickedLanguage >= 0) SetLanguage((GameLanguage)clickedLanguage);
             y += 86f;
 
-            if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 76f), T("normalGame"), 26, true)) StartSearch();
+            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 76f), T("normalGame"), 26)) StartSearch();
             y += 96f;
 
             if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 56f), T("privateGame"), 20))
@@ -765,7 +770,7 @@ namespace TextRun.Game
             GUI.Label(new Rect(0f, top + 30f, width, 44f), T("privateGame"), headingStyle);
 
             float y = top + 120f;
-            if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 76f), T("createRoom"), 26)) CreateRoom();
+            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 76f), T("createRoom"), 26)) CreateRoom();
             y += 96f;
             if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 64f), T("joinWithCode"), 22)) { codeNotice = ""; screen = Page.JoinCode; }
             y += 100f;
@@ -788,7 +793,7 @@ namespace TextRun.Game
             if (codeNotice.Length > 0) GUI.Label(new Rect(0f, y, width, 26f), codeNotice, smallCenterStyle);
             y += 40f;
 
-            if (joinCodeInput.Length == 5) { if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 64f), T("join"), 24)) JoinRoom(); }
+            if (joinCodeInput.Length == 5) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 64f), T("join"), 24)) JoinRoom(); }
             else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 64f), T("join"), 24);
             y += 84f;
 
@@ -850,7 +855,7 @@ namespace TextRun.Game
             if (iAmHost)
             {
                 bool canStart = players.Length >= 2 || roomBots;
-                if (canStart) { if (UiKit.PrimaryButton(new Rect(24f, bottom - 66f, width - 48f, 66f), T("startRace"), 24, true)) net.StartRoom(roomBots); }
+                if (canStart) { if (UiKit.SecondaryButton(new Rect(24f, bottom - 66f, width - 48f, 66f), T("startRace"), 24)) net.StartRoom(roomBots); }
                 else UiKit.DisabledButton(new Rect(24f, bottom - 66f, width - 48f, 66f), T("needTwo"), 20);
                 bottom -= 80f;
 
@@ -1260,11 +1265,11 @@ namespace TextRun.Game
             y = Mathf.Max(y + 10f, height - 148f);
             if (isPrivateRoom)
             {
-                if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 62f), T("menu"), 22)) BackToMenu();
+                if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 62f), T("menu"), 22)) BackToMenu();
             }
             else
             {
-                if (UiKit.PrimaryButton(new Rect(24f, y, width - 48f, 62f), T("playAgain"), 22, true)) AgainAfterResults();
+                if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 62f), T("playAgain"), 22)) AgainAfterResults();
                 if (UiKit.SecondaryButton(new Rect(24f, y + 76f, width - 48f, 50f), T("menu"), 20)) BackToMenu();
             }
         }
