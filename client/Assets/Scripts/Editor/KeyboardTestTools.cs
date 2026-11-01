@@ -68,11 +68,24 @@ namespace TextRun.EditorTools
             TestWordInput(Check);
             TestSoundIcon(Check);
             TestFireworks(Check);
+            TestKeyboardDiff(Check);
             TestAudio(Check);
             TestWordDatabase(Check);
 
             Debug.Log(failures == 0 ? "TUM TESTLER GECTI" : failures + " TEST BASARISIZ");
             EditorApplication.Exit(failures == 0 ? 0 : 1);
+        }
+
+        // Klavye metni beklenmedik değişince yeni harfler doğru bulunmalı (ı/İ dahil)
+        static void TestKeyboardDiff(Action<bool, string> check)
+        {
+            var tr = GameLanguage.Turkish;
+            check(KeyboardInput.CommonPrefixLength("denizyıldı", "denizyıld", tr) == 9, "klavye farki: normal ekleme (ortak 9)");
+            check(KeyboardInput.CommonPrefixLength("DENİZYILD", "denizyıld", tr) == 9, "klavye farki: büyük harf (İ->i, I->ı) aynı sayılır (ortak 9)");
+            check(KeyboardInput.CommonPrefixLength("denizyildi", "denizyıld", tr) == 6, "klavye farki: noktalı i ile ı karışmaz (ortak 6)");
+            check(KeyboardInput.CommonPrefixLength("xdeniz", "deniz", tr) == 0, "klavye farki: basa harf eklenirse ortak yok");
+            check(KeyboardInput.CommonPrefixLength("denizyıldızı", "denizyıld", tr) == 9, "klavye farki: öneri tamamlarsa kalan harfler yeni tuş (ortak 9)");
+            check(KeyboardInput.CommonPrefixLength("", "deniz", tr) == 0, "klavye farki: boş metin");
         }
 
         // Havai fişek: başlatılınca etkin, Clear ile hemen söner, küçük gösteri daha kısa

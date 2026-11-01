@@ -10,6 +10,10 @@ namespace TextRun.Common
         // Bunun yerine Resources içindeki bir malzeme dosyası kullanılır: Unity bu dosyanın shader'ını derlemeye dahil eder.
         const string BaseMaterialPath = "Materials/Base";
 
+        // CreatePrimitive her şekil için bir collider ekler. Android'de kullanılmayan fizik sınıfları derlemeden ayıklandığı için
+        // "Can't add component ... doesn't exist" hataları yazılıyordu. Türlere burada başvurmak ayıklanmalarını önler.
+        static readonly System.Type[] KeepPhysicsClasses = { typeof(BoxCollider), typeof(SphereCollider), typeof(CapsuleCollider), typeof(MeshCollider) };
+
         static readonly Dictionary<Color, Material> cache = new Dictionary<Color, Material>();
         static Material baseMaterial;
 

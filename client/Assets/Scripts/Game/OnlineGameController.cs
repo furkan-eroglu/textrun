@@ -63,6 +63,8 @@ namespace TextRun.Game
         bool isPrivateRoom;
         string roomCode = "";
         string roomHost = "";
+        string roomLang = "tr";
+        bool keyboardRequested;        // yarış ekranında klavye istendi mi (ışıklar başlayınca açılır, yarış bitince kapanır)
         bool roomBots;                 // kurucu: boş yerleri botla doldur
         string joinCodeInput = "";
         string codeNotice = "";
@@ -74,6 +76,7 @@ namespace TextRun.Game
         void Start()
         {
             Application.targetFrameRate = 60;
+            Debug.developerConsoleVisible = false; // geliştirme sürümünde ekrana basılan hata yazıları gizli (günlüğe yazılmaya devam eder)
             language = (GameLanguage)PlayerPrefs.GetInt(LanguageKey, (int)GameLanguage.Turkish);
             raceLanguage = language;
             hostInput = ServerSettings.Host;
@@ -100,6 +103,9 @@ namespace TextRun.Game
         // --- Geliştirme araçları: yalnızca DevHarness (-devharness komut satırı seçeneği) kullanır ---
         public string DevPageName => screen.ToString();
 
+        public int DevPlayerCount => players.Length;
+        public void DevCreateRoom() { screen = Page.PrivateMenu; CreateRoom(); }
+        public void DevLeaveRoom() { LeaveRoom(); }
         public void DevBackToMenu() { isPrivateRoom = false; screen = Page.Menu; }
 
         public void DevStartSearch()
@@ -198,13 +204,15 @@ namespace TextRun.Game
             searchBusy = true;
             ResetForRoom();
             raceLanguage = language;
+            roomCode = "";
+            roomHost = "";
+            isPrivateRoom = true;
+            screen = Page.RoomLobby; // sunucudan gelen oyuncu listesi bu ekranda karşılanır (kurucu da listede görünür)
 
             try
             {
                 var room = await net.CreateRoomAsync(language);
                 roomCode = room.code;
-                isPrivateRoom = true;
-                screen = Page.RoomLobby;
             }
             catch (Exception e)
             {
@@ -222,17 +230,20 @@ namespace TextRun.Game
             searchBusy = true;
             codeNotice = "";
             ResetForRoom();
+            roomCode = joinCodeInput;
+            roomHost = "";
+            isPrivateRoom = true;
+            screen = Page.RoomLobby;
 
             try
             {
                 var room = await net.JoinRoomAsync(joinCodeInput);
                 raceLanguage = room.lang == "en" ? GameLanguage.English : GameLanguage.Turkish; // yarış odanın dilindedir
                 roomCode = room.code;
-                isPrivateRoom = true;
-                screen = Page.RoomLobby;
             }
             catch (Exception e)
             {
+                isPrivateRoom = false;
                 screen = Page.JoinCode;
                 if (OnlineRaceClient.IsError(e, "room_closed")) codeNotice = T("roomStarted");
                 else if (OnlineRaceClient.IsError(e, "room_full")) codeNotice = T("roomIsFull");
@@ -277,7 +288,7 @@ namespace TextRun.Game
         {
             if (screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.Error) return;
 
-            if (s.kind == "private") { isPrivateRoom = true; roomCode = s.code ?? ""; roomHost = s.host ?? ""; }
+            if (s.kind == "private") { isPrivateRoom = true; roomCode = s.code ?? ""; roomHost = s.host ?? ""; roomLang = s.lang ?? "tr"; }
 
             players = s.players ?? new PlayerDto[0];
             view.SetRoster(players, net.UserId);
@@ -323,8 +334,7 @@ namespace TextRun.Game
                     view.SetProgress(players, wordCount);
                     view.SetRacing(true);
                     screen = Page.Racing;
-                    keyboard.Open(KeyboardKind.Default);
-                    break;
+                    break; // klavye Update içinde açılır
 
                 case Phase.Finished:
                     results = s.results ?? new ResultDto[0];
@@ -366,7 +376,6 @@ namespace TextRun.Game
             goFlashUntil = Time.realtimeSinceStartup + 0.8f;
             typing.MarkStarted(Time.realtimeSinceStartup);
             view.SetRacing(true);
-            keyboard.Open(KeyboardKind.Default);
             BeginInput();
             sound.Go();
         }
@@ -412,6 +421,8 @@ namespace TextRun.Game
             results = r.results ?? new ResultDto[0];
             view.SetRacing(false);
             fireworks.Clear();
+            keyboard.Close();
+            keyboardRequested = false;
             endingEndsLocal = 0f;
             resultsBackdrop.Restart(); // ekran açılınca konfeti yukarıdan süzülmeye başlar
             screen = Page.Results;
@@ -465,6 +476,19 @@ namespace TextRun.Game
             if (Application.targetFrameRate != targetFps) Application.targetFrameRate = targetFps;
             if (view.IsVisible != wantTrack) view.SetVisible(wantTrack);
 
+            // Klavye pist ekranı gelir gelmez (ışıklar yanarken) açılır; oyuncu bitirince ya da yarış sona erince kapanır
+            bool wantKeyboard = screen == Page.Countdown || (screen == Page.Racing && typing != null && !typing.Finished);
+            if (wantKeyboard && !keyboardRequested)
+            {
+                keyboard.Open(KeyboardKind.Default);
+                keyboardRequested = true;
+            }
+            else if (!wantKeyboard && keyboardRequested)
+            {
+                keyboard.Close();
+                keyboardRequested = false;
+            }
+
             if (screen != Page.Racing || typing == null || input == null) return;
             PollTyping();
         }
@@ -483,6 +507,15 @@ namespace TextRun.Game
             else if (raw.Length < input.Entered.Length && StartsWithIgnoreCase(input.Entered, raw))
             {
                 input.TrimTo(raw.Length); // silme tuşu
+            }
+            else
+            {
+                // Klavye metni beklenmedik biçimde değişti (öneri, otomatik düzeltme, yazım alanı): ortak başlangıçtan sonrası yeni tuş sayılır.
+                // Eskiden bu durumda harf sessizce yutuluyordu ve klavye yeniden açılana kadar düzelmiyordu.
+                Debug.LogWarning("[klavye] beklenmeyen metin: '" + raw + "' (beklenen baslangic: '" + input.Entered + "')");
+                int common = KeyboardInput.CommonPrefixLength(raw, input.Entered, raceLanguage);
+                input.TrimTo(common);
+                for (int i = common; i < raw.Length && !typing.Finished; i++) HandleKey(raw[i]);
             }
 
             if (keyboard.Text != input.Entered) keyboard.Text = input.Entered;
@@ -773,6 +806,7 @@ namespace TextRun.Game
             // Oyuncu listesi
             float y = top + 168f;
             GUI.Label(new Rect(24f, y, width - 48f, 24f), T("players") + "  " + players.Length + " / 5", smallStyle);
+            GUI.Label(new Rect(24f, y, width - 48f, 24f), T("roomLang") + ": " + (roomLang == "en" ? "English" : "Türkçe"), rowTagStyle);
             y += 30f;
 
             bool iAmHost = net != null && roomHost == net.UserId;

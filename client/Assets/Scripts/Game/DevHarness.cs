@@ -85,6 +85,15 @@ namespace TextRun.Game
             controller.DevShowPrivateScreen("lobby");
             yield return new WaitForSeconds(0.4f);
             yield return Shot("1e-private-lobby");
+            // Gerçek özel oda: kurucu kendini listede görmeli (1 / 5)
+            controller.DevCreateRoom();
+            yield return WaitForPage("RoomLobby", 10f);
+            yield return new WaitForSeconds(1.2f);
+            yield return Shot("1g-room-real");
+            if (controller.DevPlayerCount != 1)
+                File.WriteAllText(Path.Combine(dir, "FAILED.txt"), "Ozel oda lobisinde oyuncu sayisi 1 olmali, " + controller.DevPlayerCount);
+            controller.DevLeaveRoom();
+            yield return new WaitForSeconds(0.8f);
             controller.DevBackToMenu();
             yield return new WaitForSeconds(0.4f);
 

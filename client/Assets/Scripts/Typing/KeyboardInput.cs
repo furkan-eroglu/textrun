@@ -62,10 +62,56 @@ namespace TextRun.Typing
             native = TouchScreenKeyboard.Open("", type, false, false, false, false, "", 0);
         }
 
-        // Klavyeyi kapatır (oyuncu yarışı bitirince artık yazacak bir şey kalmaz)
+        // Klavyeyi kapatır (oyuncu yarışı bitirince artık yazacak bir şey kalmaz).
+        // Bazı Android cihazlarda active=false klavyeyi gizlemez; bu yüzden sistemden de gizlemesi istenir.
         public void Close()
         {
-            if (IsNative && native != null) native.active = false;
+            if (!IsNative) return;
+            if (native != null)
+            {
+                native.active = false;
+                native = null;
+            }
+#if UNITY_ANDROID && !UNITY_EDITOR
+            HideAndroidKeyboard();
+#endif
+        }
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+        static void HideAndroidKeyboard()
+        {
+            try
+            {
+                var player = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+                var activity = player.GetStatic<AndroidJavaObject>("currentActivity"); // arayüz iş parçacığında kullanılacağı için serbest bırakılmaz
+                activity.Call("runOnUiThread", new AndroidJavaRunnable(() =>
+                {
+                    try
+                    {
+                        var service = activity.Call<AndroidJavaObject>("getSystemService", "input_method");
+                        var decor = activity.Call<AndroidJavaObject>("getWindow").Call<AndroidJavaObject>("getDecorView");
+                        service.Call<bool>("hideSoftInputFromWindow", decor.Call<AndroidJavaObject>("getWindowToken"), 0);
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogWarning("Klavye gizlenemedi: " + e.Message);
+                    }
+                }));
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("Klavye gizlenemedi: " + e.Message);
+            }
+        }
+#endif
+
+        // İki metnin ortak başlangıç uzunluğu; harf büyüklüğü dile göre (Türkçe I/ı, İ/i) yok sayılır.
+        // Klavye metni beklenmedik biçimde değiştiğinde (öneri, otomatik düzeltme) yazılan yeni harfleri bulmak için kullanılır.
+        public static int CommonPrefixLength(string raw, string entered, GameLanguage language)
+        {
+            int n = 0;
+            while (n < raw.Length && n < entered.Length && TextNormalizer.ToLower(raw[n], language) == entered[n]) n++;
+            return n;
         }
 
         // Editörde OnGUI olaylarından karakter toplar.
