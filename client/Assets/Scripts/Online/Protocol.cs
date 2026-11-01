@@ -113,6 +113,36 @@ namespace TextRun.Online
     {
         public long serverNow;
         public ResultDto[] results;
+        public RewardDto[] rewards; // gerçek oyunculara verilen XP (özel odada tek başına oynanırsa boş)
+    }
+
+    [Serializable]
+    public class RewardDto
+    {
+        public string userId;
+        public int gain;
+        public int xp;
+        public int level;
+        public bool leveledUp;
+    }
+
+    // Oyuncu profili (sunucuda tutulur). name boşsa oyuncu henüz ad seçmemiştir.
+    [Serializable]
+    public class ProfileDto
+    {
+        public string name;
+        public int xp;
+        public int level = 1;
+        public int xpIntoLevel;
+        public int xpForNext = 100;
+        public int races;
+        public int wins;
+    }
+
+    [Serializable]
+    public class NameRequest
+    {
+        public string name;
     }
 
     [Serializable]

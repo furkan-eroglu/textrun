@@ -60,6 +60,15 @@ namespace TextRun.Game
             var audio = GetComponent<TextRun.Audio.RaceAudio>();
             audio.Enabled = true; // önceki yarım kalan çalıştırmadan kalan ayar sonucu bozmasın
 
+            // Yeni cihazda önce karşılama ve ad ekranı gelir: gerçek sunucuya ad kaydedilerek menüye geçilir
+            float waited = Time.realtimeSinceStartup;
+            while (controller.DevPageName != "Welcome" && controller.DevPageName != "Menu" && Time.realtimeSinceStartup - waited < 30f) yield return null;
+            if (controller.DevPageName == "Welcome")
+            {
+                yield return new WaitForSeconds(0.5f);
+                yield return Shot("0-welcome-real");
+                controller.DevSetNameAndContinue("Harness");
+            }
             yield return WaitForPage("Menu", 30f);
             yield return new WaitForSeconds(0.25f);
             yield return Shot("1a-menu-logo-intro"); // harfler kayarak geliyor
@@ -71,6 +80,16 @@ namespace TextRun.Game
             yield return new WaitForSeconds(0.3f);
             yield return Shot("1b-menu-muted");
             audio.Enabled = true;
+
+            foreach (var which in new[] { "welcome", "name", "settings" })
+            {
+                controller.DevShowAccountScreen(which);
+                yield return new WaitForSeconds(1.2f);
+                yield return Shot("1h-account-" + which);
+            }
+            controller.DevBackToMenu();
+            yield return new WaitForSeconds(0.4f);
+            yield return Shot("1i-menu-profile");
 
             controller.DevShowError();
             yield return new WaitForSeconds(0.4f);
@@ -133,6 +152,10 @@ namespace TextRun.Game
             controller.DevShowFakeResults(1);
             yield return new WaitForSeconds(0.6f);
             yield return Shot("6-results-first");
+            controller.DevShowFakeResults(2, "finished", true);
+            yield return new WaitForSeconds(0.6f);
+            yield return Shot("6c-results-levelup");
+            controller.DevShowFakeResults(1);
             yield return new WaitForSeconds(1.2f);
             yield return Shot("6b-results-first-later"); // konfeti daha aşağıda olmalı
             controller.DevShowFakeResults(4);

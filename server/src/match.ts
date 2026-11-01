@@ -59,14 +59,14 @@ function snapshotOf(state: RaceState, now: number) {
   };
 }
 
-// Yarış bitince gerçek oyunculara XP verilir; { oyuncuKimliği: { gain, xp, level, leveledUp } } döner (botlar yok)
-function awardRewards(nk: nkruntime.Nakama, logger: nkruntime.Logger, state: RaceState): { [userId: string]: Reward } {
-  const rewards: { [userId: string]: Reward } = {};
+// Yarış bitince gerçek oyunculara XP verilir; [{ userId, gain, xp, level, leveledUp }] döner (botlar yok)
+function awardRewards(nk: nkruntime.Nakama, logger: nkruntime.Logger, state: RaceState): Array<Reward & { userId: string }> {
+  const rewards: Array<Reward & { userId: string }> = [];
   const humans = (state.results || []).filter((r) => !r.isBot);
   if (!racePaysXp(state.kind, humans.length)) return rewards;
   for (const result of humans) {
     const reward = awardRace(nk, logger, result.userId, result.rank, result.status);
-    if (reward) rewards[result.userId] = reward;
+    if (reward) rewards.push({ userId: result.userId, ...reward });
   }
   return rewards;
 }

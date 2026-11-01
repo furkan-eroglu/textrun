@@ -84,6 +84,14 @@ Veri, UTF-8 JSON metnidir.
 
 `status`: `finished` (bitirdi), `dnf` (bitiremedi), `disqualified` (insan için imkansız hız).
 
+`RESULTS` ayrıca `rewards` taşır: gerçek oyunculara verilen XP, `[{ "userId", "gain", "xp", "level", "leveledUp" }]`. Özel odada 2'den az gerçek oyuncu varsa boştur.
+
+## Profil (RPC)
+
+- `get_profile` → `{ name, xp, level, xpIntoLevel, xpForNext, races, wins }` (`name` null = ad seçilmemiş).
+- `set_name` `{ name }` → profil. Geçersiz ad: 400 `name_invalid` (3-12 karakter; harf, rakam, boşluk, `_ . -`).
+- XP yalnızca sunucuda hesaplanır: bitirmek 20 + sıra bonusu (50/35/25/15/10); bitirmeyen 5; hile 0. Seviye 1→2 100 XP, her seviyede gereken 40 artar.
+
 ## Kurallar
 
 - **Dil:** Türkçe ve İngilizce asla aynı odada olmaz. Oda dili sunucuda sabittir ve katılma sırasında doğrulanır.

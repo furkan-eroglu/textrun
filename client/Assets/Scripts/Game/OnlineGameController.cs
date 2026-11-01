@@ -14,7 +14,7 @@ namespace TextRun.Game
     // burada yalnızca yazma girişi alınır, sunucudan gelenler gösterilir.
     public class OnlineGameController : MonoBehaviour
     {
-        enum Page { Connecting, Menu, PrivateMenu, JoinCode, RoomLobby, Searching, MatchFound, Countdown, Racing, Results, Error }
+        enum Page { Connecting, Welcome, NameEntry, Settings, Menu, PrivateMenu, JoinCode, RoomLobby, Searching, MatchFound, Countdown, Racing, Results, Error }
 
         const string LanguageKey = "textrun.language";
 
@@ -69,11 +69,16 @@ namespace TextRun.Game
         bool keyboardRequested;        // yarış ekranında klavye istendi mi (ışıklar başlayınca açılır, yarış bitince kapanır)
         bool roomBots;                 // kurucu: boş yerleri botla doldur
         string joinCodeInput = "";
+        ProfileDto profile = new ProfileDto();   // sunucudaki oyuncu profili (ad, XP, seviye)
+        string nameInput = "";
+        string nameNotice = "";
+        bool nameBusy;
+        RewardDto myReward;                      // son yarıştan kazanılan XP (sonuç ekranında gösterilir)
         string codeNotice = "";
         float copiedUntil;
         float matchFoundSeconds;
 
-        GUIStyle rowNameStyle, rowTagStyle, codeStyle, codeFieldStyle, titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle, searchTitleStyle, positionStyle;
+        GUIStyle nameFieldStyle, rowNameStyle, rowTagStyle, codeStyle, codeFieldStyle, titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle, searchTitleStyle, positionStyle;
 
         void Start()
         {
@@ -136,7 +141,10 @@ namespace TextRun.Game
             try
             {
                 await net.ConnectAsync();
-                screen = Page.Menu;
+                try { profile = await net.GetProfileAsync(); }
+                catch (Exception e) { Debug.LogWarning("Profil okunamadi: " + e.Message); }
+                // Adı olmayan (yeni) oyuncu önce karşılama ve ad ekranından geçer
+                screen = string.IsNullOrEmpty(profile.name) ? Page.Welcome : Page.Menu;
             }
             catch (Exception e)
             {
@@ -153,7 +161,8 @@ namespace TextRun.Game
 
         void OnClosed(string reason)
         {
-            if (screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.Connecting || screen == Page.Error) return;
+            if (screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.Connecting || screen == Page.Error
+                || screen == Page.Welcome || screen == Page.NameEntry || screen == Page.Settings) return;
             sound.StopMusic();
             errorText = T("connectionLost");
             screen = Page.Error;
@@ -428,6 +437,11 @@ namespace TextRun.Game
         void OnResults(ResultsDto r)
         {
             results = r.results ?? new ResultDto[0];
+            myReward = null;
+            if (r.rewards != null)
+                foreach (var reward in r.rewards)
+                    if (reward.userId == net.UserId) myReward = reward;
+            RefreshProfile();
             view.SetRacing(false);
             fireworks.Clear();
             keyboard.Close();
@@ -437,6 +451,20 @@ namespace TextRun.Game
             screen = Page.Results;
 
             sound.Finish(PodiumRank() <= 3);
+        }
+
+        // Yarış sonrası menüdeki seviye çubuğu güncel olsun diye profil sessizce yeniden okunur
+        async void RefreshProfile()
+        {
+            try
+            {
+                var fresh = await net.GetProfileAsync();
+                if (!string.IsNullOrEmpty(fresh.name)) profile = fresh;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("Profil yenilenemedi: " + e.Message);
+            }
         }
 
         // Yarış bitiş geri sayımında saniye değiştikçe gerilim tiki; son 3 saniyede daha tiz
@@ -590,6 +618,7 @@ namespace TextRun.Game
             UiKit.SetAllTextColors(codeStyle, new Color(1f, 0.84f, 0.32f));
             codeFieldStyle = new GUIStyle(GUI.skin.textField) { fontSize = 40, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             UiKit.SetAllTextColors(codeFieldStyle, Color.white);
+            nameFieldStyle = new GUIStyle(codeFieldStyle) { fontSize = 30 };
             rowNameStyle = new GUIStyle(labelStyle) { alignment = TextAnchor.MiddleLeft };
             rowTagStyle = new GUIStyle(smallStyle) { alignment = TextAnchor.MiddleRight };
             searchTitleStyle = new GUIStyle(GUI.skin.label) { fontSize = 28, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, clipping = TextClipping.Overflow };
@@ -630,6 +659,9 @@ namespace TextRun.Game
             {
                 case Page.Connecting: DrawCenterMessage(width, height, T("connecting")); break;
                 case Page.Error: DrawError(width, height); break;
+                case Page.Welcome: DrawWelcome(width, height, top); break;
+                case Page.NameEntry: DrawNameEntry(width, height, top); break;
+                case Page.Settings: DrawSettings(width, height, top); break;
                 case Page.Menu: DrawMenu(width, height, top); break;
                 case Page.PrivateMenu: DrawPrivateMenu(width, height, top); break;
                 case Page.JoinCode: DrawJoinCode(width, height, top); break;
@@ -695,21 +727,17 @@ namespace TextRun.Game
         {
             FullViewport();
 
-            // Logo: menü her açıldığında harfler yeniden kayarak gelir
-            // Animasyon saati kare kare ilerler ve tek karede en fazla 1/30 sn atlar: takılan bir kare animasyonu "zıplatmaz"
-            float now = Time.realtimeSinceStartup;
-            if (now - lastMenuDrawAt > 0.5f) menuShownAt = 0f;
-            if (Event.current.type == EventType.Repaint)
-            {
-                menuShownAt += Mathf.Min(now - lastMenuDrawAt, 1f / 30f);
-                lastMenuDrawAt = now;
-            }
-            logo.Draw(width, top + 80f, menuShownAt);
+            logo.Draw(width, top + 130f, LogoElapsed());
 
             DrawSoundButton(new Rect(width - 54f, top + 8f, 42f, 42f));
 
+            // Oyuncu kartı (ad, seviye, XP çubuğu): dokununca ayarlar açılır
+            var card = new Rect(12f, top + 8f, width - 76f, 58f);
+            DrawProfileCard(card);
+            if (GUI.Button(card, GUIContent.none, GUIStyle.none)) OpenSettings();
+
             // Dil seçimi: başlık yok, yalnızca iki seçenek
-            float y = top + 160f;
+            float y = top + 220f;
             int clickedLanguage = UiKit.Segmented(new Rect(24f, y, width - 48f, 52f), new[] { "Türkçe", "English" }, language == GameLanguage.Turkish ? 0 : 1, 21);
             if (clickedLanguage >= 0) SetLanguage((GameLanguage)clickedLanguage);
             y += 86f;
@@ -735,6 +763,167 @@ namespace TextRun.Game
                     ServerSettings.Host = hostInput;
                     Connect();
                 }
+            }
+        }
+
+        // Logo animasyon saati: menü/karşılama her açıldığında harfler yeniden kayarak gelir.
+        // Saat kare kare ilerler ve tek karede en fazla 1/30 sn atlar: takılan bir kare animasyonu "zıplatmaz".
+        float LogoElapsed()
+        {
+            float now = Time.realtimeSinceStartup;
+            if (now - lastMenuDrawAt > 0.5f) menuShownAt = 0f;
+            if (Event.current.type == EventType.Repaint)
+            {
+                menuShownAt += Mathf.Min(now - lastMenuDrawAt, 1f / 30f);
+                lastMenuDrawAt = now;
+            }
+            return menuShownAt;
+        }
+
+        // ---------- Hesap: karşılama, ad, ayarlar, seviye ----------
+
+        // Ad, seviye ve XP çubuğu olan kart
+        void DrawProfileCard(Rect r)
+        {
+            UiKit.Card(r, new Color(1f, 1f, 1f, 0.08f), 14f);
+
+            string name = string.IsNullOrEmpty(profile.name) ? "-" : profile.name;
+            GUI.Label(new Rect(r.x + 12f, r.y + 3f, r.width - 100f, 26f), name, rowNameStyle);
+            GUI.Label(new Rect(r.xMax - 118f, r.y + 3f, 106f, 26f), T("level") + " " + profile.level, rowTagStyle);
+
+            var bar = new Rect(r.x + 12f, r.yMax - 20f, r.width - 24f, 10f);
+            DrawXpBar(bar, profile.xpIntoLevel, profile.xpForNext);
+        }
+
+        static void DrawXpBar(Rect bar, int into, int needed)
+        {
+            UiKit.Card(bar, new Color(0f, 0f, 0f, 0.35f), 5f);
+            float t = needed > 0 ? Mathf.Clamp01(into / (float)needed) : 0f;
+            if (t > 0f) UiKit.Card(new Rect(bar.x, bar.y, Mathf.Max(bar.height, bar.width * t), bar.height), new Color(0.27f, 0.64f, 1f), 5f);
+        }
+
+        // Adı kurallara uygun mu (sunucudaki kuralın aynısı; son karar sunucunundur)
+        static string CleanName(string raw)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (char c in raw ?? "")
+                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || " çğıöşüÇĞİÖŞÜ_.-".IndexOf(c) >= 0) sb.Append(c);
+            return sb.ToString();
+        }
+
+        static bool NameIsValid(string raw)
+        {
+            string name = System.Text.RegularExpressions.Regex.Replace((raw ?? "").Trim(), @"\s+", " ");
+            if (name.Length < 3 || name.Length > 12) return false;
+            foreach (char c in name)
+                if (char.IsLetterOrDigit(c)) return true;
+            return false;
+        }
+
+        // Karşılama (yalnızca adı olmayan yeni oyuncuda): giriş seçenekleri
+        void DrawWelcome(float width, float height, float top)
+        {
+            FullViewport();
+            logo.Draw(width, top + 110f, LogoElapsed());
+
+            float y = top + 220f;
+            GUI.Label(new Rect(0f, y, width, 44f), T("welcomeTitle"), headingStyle);
+            y += 70f;
+
+            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 64f), T("guest"), 22))
+            {
+                nameInput = "";
+                nameNotice = "";
+                screen = Page.NameEntry;
+            }
+            y += 84f;
+            // Google ve Apple girişi, mağaza hesapları bağlanınca açılacak
+            UiKit.DisabledButton(new Rect(24f, y, width - 48f, 56f), T("signGoogle") + " (" + T("soon") + ")", 19);
+            y += 70f;
+            UiKit.DisabledButton(new Rect(24f, y, width - 48f, 56f), T("signApple") + " (" + T("soon") + ")", 19);
+            y += 76f;
+            GUI.Label(new Rect(30f, y, width - 60f, 60f), T("welcomeNote"), smallCenterWrapStyle());
+        }
+
+        GUIStyle smallCenterWrap;
+        GUIStyle smallCenterWrapStyle()
+        {
+            if (smallCenterWrap == null) smallCenterWrap = new GUIStyle(smallCenterStyle) { wordWrap = true, fontSize = 14 };
+            return smallCenterWrap;
+        }
+
+        // İlk ad seçimi
+        void DrawNameEntry(float width, float height, float top)
+        {
+            FullViewport();
+            GUI.Label(new Rect(0f, top + 40f, width, 44f), T("chooseName"), headingStyle);
+
+            float y = top + 130f;
+            nameInput = CleanName(GUI.TextField(new Rect(24f, y, width - 48f, 70f), nameInput ?? "", 12, nameFieldStyle));
+            y += 82f;
+            GUI.Label(new Rect(0f, y, width, 26f), T("nameRule"), smallCenterStyle);
+            y += 30f;
+            if (nameNotice.Length > 0) GUI.Label(new Rect(24f, y, width - 48f, 44f), nameNotice, smallCenterWrapStyle());
+            y += 56f;
+
+            if (NameIsValid(nameInput) && !nameBusy) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 64f), T("continue"), 24)) SubmitName(true); }
+            else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 64f), T("continue"), 24);
+        }
+
+        // Ayarlar / hesap: adı değiştirme, seviye ve istatistikler
+        void DrawSettings(float width, float height, float top)
+        {
+            FullViewport();
+            GUI.Label(new Rect(0f, top + 30f, width, 44f), T("settings"), headingStyle);
+
+            float y = top + 100f;
+            var card = new Rect(16f, y, width - 32f, 58f);
+            DrawProfileCard(card);
+            y += 64f;
+            GUI.Label(new Rect(16f, y, width - 32f, 22f), profile.xpIntoLevel + " / " + profile.xpForNext + " XP     " + T("raceCount") + " " + profile.races + "     " + T("winCount") + " " + profile.wins, smallCenterStyle);
+            y += 50f;
+
+            GUI.Label(new Rect(24f, y, width - 48f, 22f), T("playerName"), smallStyle);
+            y += 24f;
+            nameInput = CleanName(GUI.TextField(new Rect(24f, y, width - 48f, 64f), nameInput ?? "", 12, nameFieldStyle));
+            y += 70f;
+            GUI.Label(new Rect(24f, y, width - 48f, 44f), nameNotice.Length > 0 ? nameNotice : T("nameRule"), smallCenterWrapStyle());
+            y += 52f;
+
+            bool changed = NameIsValid(nameInput) && nameInput.Trim() != profile.name;
+            if (changed && !nameBusy) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 58f), T("save"), 22)) SubmitName(false); }
+            else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 58f), T("save"), 22);
+            y += 76f;
+
+            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 50f), T("back"), 20)) screen = Page.Menu;
+        }
+
+        void OpenSettings()
+        {
+            nameInput = profile.name ?? "";
+            nameNotice = "";
+            screen = Page.Settings;
+        }
+
+        async void SubmitName(bool first)
+        {
+            if (nameBusy) return;
+            nameBusy = true;
+            nameNotice = "";
+            try
+            {
+                profile = await net.SetNameAsync(nameInput);
+                if (first) screen = Page.Menu;
+                else { nameInput = profile.name; nameNotice = T("saved"); }
+            }
+            catch (Exception e)
+            {
+                if (OnlineRaceClient.IsError(e, "name_invalid")) nameNotice = T("nameInvalid");
+                else Fail(e);
+            }
+            finally
+            {
+                nameBusy = false;
             }
         }
 
@@ -1262,6 +1451,24 @@ namespace TextRun.Game
                 y += 56f;
             }
 
+            // Kazanılan XP ve seviye
+            if (myReward != null)
+            {
+                var panel = new Rect(16f, y + 4f, width - 32f, 66f);
+                UiKit.Card(panel, new Color(0.27f, 0.64f, 1f, 0.16f), 14f);
+
+                var gold = new Color(1f, 0.84f, 0.32f);
+                var oldXp = GUI.color;
+                GUI.color = gold;
+                GUI.Label(new Rect(panel.x + 12f, panel.y, 150f, panel.height), "+" + myReward.gain + " XP", rankStyle);
+                GUI.color = myReward.leveledUp ? gold : Color.white;
+                GUI.Label(new Rect(panel.x + 150f, panel.y + 4f, panel.width - 162f, 28f), myReward.leveledUp ? T("levelUp") : T("level") + " " + myReward.level, rowTagStyle);
+                GUI.color = oldXp;
+                if (myReward.leveledUp) GUI.Label(new Rect(panel.x + 150f, panel.y + 30f, panel.width - 162f, 20f), T("level") + " " + myReward.level, rowTagStyle);
+                else DrawXpBar(new Rect(panel.x + 170f, panel.yMax - 22f, panel.width - 182f, 10f), profile.xpIntoLevel, profile.xpForNext);
+                y = panel.yMax;
+            }
+
             y = Mathf.Max(y + 10f, height - 148f);
             if (isPrivateRoom)
             {
@@ -1275,8 +1482,28 @@ namespace TextRun.Game
         }
 
         // Geliştirme: sahte sonuç göstererek ekranı doğrular (yalnızca DevHarness kullanır)
-        public void DevShowFakeResults(int myRank, string myStatus = "finished")
+        public void DevSetNameAndContinue(string name)
         {
+            nameInput = name;
+            SubmitName(true);
+        }
+
+        public void DevShowAccountScreen(string which)
+        {
+            profile = new ProfileDto { name = "Furkan", xp = 410, level = 4, xpIntoLevel = 110, xpForNext = 220, races = 9, wins = 3 };
+            nameInput = which == "name" ? "Fur" : profile.name;
+            nameNotice = "";
+            switch (which)
+            {
+                case "welcome": screen = Page.Welcome; break;
+                case "name": screen = Page.NameEntry; break;
+                default: screen = Page.Settings; break;
+            }
+        }
+
+        public void DevShowFakeResults(int myRank, string myStatus = "finished", bool levelUp = false)
+        {
+            myReward = new RewardDto { userId = net.UserId, gain = 20 + new[] { 50, 35, 25, 15, 10 }[Mathf.Clamp(myRank - 1, 0, 4)], xp = 410, level = levelUp ? 5 : 4, leveledUp = levelUp };
             var list = new ResultDto[5];
             for (int i = 0; i < 5; i++)
             {

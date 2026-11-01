@@ -407,7 +407,7 @@ await test('profil: ad secilir, yarista gorunur, yarisi bitirince XP verilir ve 
   await p.typeAll(countdown.body.words, 120);
   const res = await p.waitFor(OP.RESULTS, 20000);
   const me = res.body.results.find((r) => r.userId === p.userId);
-  const reward = res.body.rewards[p.userId];
+  const reward = res.body.rewards.find((r) => r.userId === p.userId);
   assert.ok(reward && reward.gain >= 20, 'bitiren XP kazanir');
   assert.equal(reward.gain, 20 + [50, 35, 25, 15, 10][me.rank - 1]);
 

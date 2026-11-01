@@ -173,6 +173,20 @@ namespace TextRun.Online
             matchId = match.Id;
         }
 
+        // Oyuncu profili (ad, XP, seviye) sunucudan okunur
+        public async Task<ProfileDto> GetProfileAsync()
+        {
+            var rpc = await client.RpcAsync(session, "get_profile", "{}");
+            return JsonUtility.FromJson<ProfileDto>(rpc.Payload);
+        }
+
+        // Oyuncu adını değiştirir. Geçersizse istisna fırlatır: IsError(e, "name_invalid")
+        public async Task<ProfileDto> SetNameAsync(string name)
+        {
+            var rpc = await client.RpcAsync(session, "set_name", JsonUtility.ToJson(new NameRequest { name = name }));
+            return JsonUtility.FromJson<ProfileDto>(rpc.Payload);
+        }
+
         // Sunucunun fırlattığı hata metni (ör. room_not_found) istisnanın ya da iç istisnalarının metninde aranır.
         public static bool IsError(Exception e, string code)
         {
