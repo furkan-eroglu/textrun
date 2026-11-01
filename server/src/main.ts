@@ -3,7 +3,7 @@
 import { matchInit, matchJoin, matchJoinAttempt, matchLeave, matchLoop, matchSignal, matchTerminate } from "./match.ts";
 import { isSupportedLang } from "./words.ts";
 import { cleanName } from "./profile.ts";
-import { profileView, readProfile, saveProfile } from "./profileStore.ts";
+import { isRegistered, profileView, readProfile, saveProfile } from "./profileStore.ts";
 
 export function pingRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
   return JSON.stringify({ ok: true, message: "TextRun sunucusu calisiyor", time: Date.now() });
@@ -145,7 +145,8 @@ export function joinRoomRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk
 // ---------- Profil ----------
 export function getProfileRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
   if (!ctx.userId) throw new Error("giris gerekli");
-  return JSON.stringify(profileView(readProfile(nk, ctx.userId).profile));
+  if (!isRegistered(nk, ctx.userId)) return JSON.stringify(profileView(readProfile(nk, ctx.userId).profile, true));
+  return JSON.stringify(profileView(readProfile(nk, ctx.userId).profile, false));
 }
 
 // Oyuncu adı (ilk açılışta ve ayarlardan). Geçersizse 400 ile "name_invalid" döner.
@@ -158,13 +159,14 @@ export function setNameRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk:
   } catch (e) {
     throw new Error("gecersiz istek");
   }
+  if (!isRegistered(nk, ctx.userId)) fail("guest_account", CODE_INVALID_ARGUMENT); // misafir takma ad seçemez
   const name = cleanName(raw);
   if (name === null) fail("name_invalid", CODE_INVALID_ARGUMENT);
 
   const stored = readProfile(nk, ctx.userId);
   stored.profile.name = name;
   saveProfile(nk, ctx.userId, stored);
-  return JSON.stringify(profileView(stored.profile));
+  return JSON.stringify(profileView(stored.profile, false));
 }
 
 export function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, initializer: nkruntime.Initializer): void {

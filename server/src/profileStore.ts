@@ -42,10 +42,17 @@ export function saveProfile(nk: nkruntime.Nakama, userId: string, stored: Stored
   nk.storageWrite([writeRequest(userId, stored)]);
 }
 
-// İstemciye giden profil görünümü
-export function profileView(profile: Profile) {
+// Hesap kullanıcı adı + şifre ile açıldıysa (e-posta alanı dolu) kalıcı hesaptır. Misafir (cihaz kimliği) hesabın e-postası yoktur.
+export function isRegistered(nk: nkruntime.Nakama, userId: string): boolean {
+  return !!nk.accountGetId(userId).email;
+}
+
+// İstemciye giden profil görünümü. Misafirin seviyesi hep 1'dir; XP, para, seviye yalnızca kalıcı hesapta vardır.
+export function profileView(profile: Profile, guest: boolean) {
+  if (guest) return { guest: true, name: null, xp: 0, level: 1, xpIntoLevel: 0, xpForNext: levelOf(0).xpForNext, races: 0, wins: 0 };
   const info = levelOf(profile.xp);
   return {
+    guest: false,
     name: profile.name,
     xp: profile.xp,
     level: info.level,

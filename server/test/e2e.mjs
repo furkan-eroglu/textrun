@@ -50,6 +50,15 @@ class Player {
     return this;
   }
 
+  // Kullanıcı adı + şifre ile kalıcı hesap (istemcideki gibi: giriş adı -> sahte e-posta)
+  async loginAccount(loginName, password) {
+    const basic = Buffer.from('defaultkey:').toString('base64');
+    const auth = await post(`/v2/account/authenticate/email?create=true&username=${loginName}`, { Authorization: `Basic ${basic}` }, JSON.stringify({ email: `${loginName}@textrun.local`, password }));
+    this.token = auth.token;
+    this.userId = JSON.parse(Buffer.from(auth.token.split('.')[1], 'base64url').toString()).uid;
+    return this;
+  }
+
   async connect() {
     this.ws = new WebSocket(`ws://${HOST}/ws?token=${this.token}&format=json`);
     this.ws.onmessage = (m) => this.onMessage(JSON.parse(m.data));
@@ -389,8 +398,11 @@ await test('ozel oda: botlu baslatinca bosluklar dolar; ayni dil kurali (yanlis 
 });
 
 await test('profil: ad secilir, yarista gorunur, yarisi bitirince XP verilir ve kaydedilir', async () => {
-  const [p] = await makePlayers('prof', 'en', 1);
+  const p = new Player(`prof1${runId}`, 'en');
+  await p.loginAccount(`prof1${runId}`, 'sifre12345');
+  await p.connect();
   const fresh = await p.rpc('get_profile', {});
+  assert.equal(fresh.guest, false);
   assert.equal(fresh.name, null, 'yeni hesapta ad yok');
   assert.equal(fresh.xp, 0);
   assert.equal(fresh.level, 1);
@@ -416,6 +428,25 @@ await test('profil: ad secilir, yarista gorunur, yarisi bitirince XP verilir ve 
   assert.equal(after.races, 1);
   assert.equal(after.name, 'Hizli Ali');
   p.close();
+});
+
+await test('misafir: takma ad secemez, yarisi bitirse de XP/seviye kazanmaz', async () => {
+  const [g] = await makePlayers('misafir', 'en', 1);
+  const profile = await g.rpc('get_profile', {});
+  assert.equal(profile.guest, true);
+  assert.equal(profile.level, 1);
+  await assert.rejects(() => g.rpc('set_name', { name: 'Ahmet' }), /guest_account/, 'misafir ad secemez');
+
+  await g.findAndJoin();
+  const countdown = await g.waitFor(OP.COUNTDOWN, 10000);
+  await g.waitFor(OP.GO);
+  await g.typeAll(countdown.body.words, 120);
+  const res = await g.waitFor(OP.RESULTS, 20000);
+  assert.equal(res.body.rewards.length, 0, 'misafire odul verilmez');
+  const after = await g.rpc('get_profile', {});
+  assert.equal(after.xp, 0);
+  assert.equal(after.races, 0);
+  g.close();
 });
 
 // Hile testi yalnızca sunucu varsayılan hız sınırıyla (250 WPM) çalışırken anlamlıdır: E2E_CHEAT=1

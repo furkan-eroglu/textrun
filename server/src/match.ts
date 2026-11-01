@@ -21,7 +21,7 @@ import {
 import type { RaceState } from "./race.ts";
 import { racePaysXp } from "./profile.ts";
 import type { Reward } from "./profile.ts";
-import { awardRace, readProfile } from "./profileStore.ts";
+import { awardRace, isRegistered, readProfile } from "./profileStore.ts";
 
 const TICK_RATE = 10;
 const EMPTY_LOBBY_TIMEOUT_MS = 30000;
@@ -65,6 +65,14 @@ function awardRewards(nk: nkruntime.Nakama, logger: nkruntime.Logger, state: Rac
   const humans = (state.results || []).filter((r) => !r.isBot);
   if (!racePaysXp(state.kind, humans.length)) return rewards;
   for (const result of humans) {
+    // Misafirler XP kazanmaz (seviye, para, XP yalnızca kalıcı hesapta)
+    let registered = false;
+    try {
+      registered = isRegistered(nk, result.userId);
+    } catch (e) {
+      logger.warn("Hesap okunamadi: %s", String(e));
+    }
+    if (!registered) continue;
     const reward = awardRace(nk, logger, result.userId, result.rank, result.status);
     if (reward) rewards.push({ userId: result.userId, ...reward });
   }
