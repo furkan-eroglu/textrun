@@ -2,6 +2,8 @@
 // Nakama, kaydedilen fonksiyonları isimleriyle arar; hepsi bu dosyadan import edilip aynı isimle kullanılmalıdır (bkz. build.mjs).
 import { matchInit, matchJoin, matchJoinAttempt, matchLeave, matchLoop, matchSignal, matchTerminate } from "./match.ts";
 import { isSupportedLang } from "./words.ts";
+import { cleanName } from "./profile.ts";
+import { profileView, readProfile, saveProfile } from "./profileStore.ts";
 
 export function pingRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
   return JSON.stringify({ ok: true, message: "TextRun sunucusu calisiyor", time: Date.now() });
@@ -83,6 +85,7 @@ function normalizeCode(raw: unknown): string {
 }
 
 // Beklenen hatalar (yanlış kod, kapalı oda...) 500 yerine uygun kodla döner; istemci kitaplığı 500'leri tekrar deneyip oyuncuyu bekletir.
+const CODE_INVALID_ARGUMENT = 3;
 const CODE_NOT_FOUND = 5;
 const CODE_FAILED_PRECONDITION = 9;
 
@@ -139,11 +142,38 @@ export function joinRoomRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk
   return JSON.stringify({ matchId: match.matchId, code: code, lang: label.lang });
 }
 
+// ---------- Profil ----------
+export function getProfileRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+  if (!ctx.userId) throw new Error("giris gerekli");
+  return JSON.stringify(profileView(readProfile(nk, ctx.userId).profile));
+}
+
+// Oyuncu adı (ilk açılışta ve ayarlardan). Geçersizse 400 ile "name_invalid" döner.
+export function setNameRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+  if (!ctx.userId) throw new Error("giris gerekli");
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(payload).name;
+  } catch (e) {
+    throw new Error("gecersiz istek");
+  }
+  const name = cleanName(raw);
+  if (name === null) fail("name_invalid", CODE_INVALID_ARGUMENT);
+
+  const stored = readProfile(nk, ctx.userId);
+  stored.profile.name = name;
+  saveProfile(nk, ctx.userId, stored);
+  return JSON.stringify(profileView(stored.profile));
+}
+
 export function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, initializer: nkruntime.Initializer): void {
   initializer.registerRpc("ping", pingRpc);
   initializer.registerRpc("find_race", findRaceRpc);
   initializer.registerRpc("create_room", createRoomRpc);
   initializer.registerRpc("join_room", joinRoomRpc);
+  initializer.registerRpc("get_profile", getProfileRpc);
+  initializer.registerRpc("set_name", setNameRpc);
   initializer.registerMatch("race", { matchInit, matchJoinAttempt, matchJoin, matchLeave, matchLoop, matchTerminate, matchSignal });
   logger.info("TextRun modulu yuklendi");
 }

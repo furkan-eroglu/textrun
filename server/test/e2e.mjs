@@ -388,6 +388,36 @@ await test('ozel oda: botlu baslatinca bosluklar dolar; ayni dil kurali (yanlis 
   wrongLang.close();
 });
 
+await test('profil: ad secilir, yarista gorunur, yarisi bitirince XP verilir ve kaydedilir', async () => {
+  const [p] = await makePlayers('prof', 'en', 1);
+  const fresh = await p.rpc('get_profile', {});
+  assert.equal(fresh.name, null, 'yeni hesapta ad yok');
+  assert.equal(fresh.xp, 0);
+  assert.equal(fresh.level, 1);
+
+  await assert.rejects(() => p.rpc('set_name', { name: 'a' }), /name_invalid/, 'cok kisa ad reddedilir');
+  await assert.rejects(() => p.rpc('set_name', { name: '<b>x</b>' }), /name_invalid/, 'yasak karakter reddedilir');
+  const named = await p.rpc('set_name', { name: '  Hizli   Ali ' });
+  assert.equal(named.name, 'Hizli Ali');
+
+  await p.findAndJoin();
+  const countdown = await p.waitFor(OP.COUNTDOWN, 10000);
+  assert.ok(countdown.body.players.some((x) => x.name === 'Hizli Ali'), 'yarista secilen ad gorunur');
+  await p.waitFor(OP.GO);
+  await p.typeAll(countdown.body.words, 120);
+  const res = await p.waitFor(OP.RESULTS, 20000);
+  const me = res.body.results.find((r) => r.userId === p.userId);
+  const reward = res.body.rewards[p.userId];
+  assert.ok(reward && reward.gain >= 20, 'bitiren XP kazanir');
+  assert.equal(reward.gain, 20 + [50, 35, 25, 15, 10][me.rank - 1]);
+
+  const after = await p.rpc('get_profile', {});
+  assert.equal(after.xp, reward.gain);
+  assert.equal(after.races, 1);
+  assert.equal(after.name, 'Hizli Ali');
+  p.close();
+});
+
 // Hile testi yalnızca sunucu varsayılan hız sınırıyla (250 WPM) çalışırken anlamlıdır: E2E_CHEAT=1
 if (process.env.E2E_CHEAT) {
   await test('hile: insan icin imkansiz hizda yazan oyuncu diskalifiye edilir', async () => {

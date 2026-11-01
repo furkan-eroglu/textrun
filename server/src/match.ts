@@ -19,6 +19,9 @@ import {
   updateRaceEnd,
 } from "./race.ts";
 import type { RaceState } from "./race.ts";
+import { racePaysXp } from "./profile.ts";
+import type { Reward } from "./profile.ts";
+import { awardRace, readProfile } from "./profileStore.ts";
 
 const TICK_RATE = 10;
 const EMPTY_LOBBY_TIMEOUT_MS = 30000;
@@ -54,6 +57,18 @@ function snapshotOf(state: RaceState, now: number) {
     players: publicPlayers(state),
     results: state.results,
   };
+}
+
+// Yarış bitince gerçek oyunculara XP verilir; { oyuncuKimliği: { gain, xp, level, leveledUp } } döner (botlar yok)
+function awardRewards(nk: nkruntime.Nakama, logger: nkruntime.Logger, state: RaceState): { [userId: string]: Reward } {
+  const rewards: { [userId: string]: Reward } = {};
+  const humans = (state.results || []).filter((r) => !r.isBot);
+  if (!racePaysXp(state.kind, humans.length)) return rewards;
+  for (const result of humans) {
+    const reward = awardRace(nk, logger, result.userId, result.rank, result.status);
+    if (reward) rewards[result.userId] = reward;
+  }
+  return rewards;
 }
 
 export function matchInit(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, params: { [key: string]: string }) {
@@ -98,7 +113,14 @@ export function matchJoin(
 ) {
   const now = Date.now();
   for (const presence of presences) {
-    addHuman(state, presence.userId, presence.username, now);
+    // Yarışta oyuncunun seçtiği ad görünür; ad seçilmemişse (eski hesap) Nakama kullanıcı adı kalır
+    let name = presence.username;
+    try {
+      name = readProfile(nk, presence.userId).profile.name || presence.username;
+    } catch (e) {
+      logger.warn("Profil okunamadi: %s", String(e));
+    }
+    addHuman(state, presence.userId, name, now);
     send(dispatcher, OP.SNAPSHOT, snapshotOf(state, now), [presence]);
   }
   if (state.phase === "lobby") send(dispatcher, OP.ROSTER, snapshotOf(state, now));
@@ -195,7 +217,7 @@ export function matchLoop(
 
       if (ended) {
         send(dispatcher, OP.PROGRESS, { t: now, players: publicPlayers(state) });
-        send(dispatcher, OP.RESULTS, { serverNow: now, results: state.results });
+        send(dispatcher, OP.RESULTS, { serverNow: now, results: state.results, rewards: awardRewards(nk, logger, state) });
         logger.info("Yaris bitti: dil=%s", state.lang);
       } else if (progressChanged) {
         send(dispatcher, OP.PROGRESS, { t: now, players: publicPlayers(state) });
