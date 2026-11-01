@@ -60,14 +60,14 @@ namespace TextRun.Game
             var audio = GetComponent<TextRun.Audio.RaceAudio>();
             audio.Enabled = true; // önceki yarım kalan çalıştırmadan kalan ayar sonucu bozmasın
 
-            // Yeni cihazda önce karşılama ve ad ekranı gelir: gerçek sunucuya ad kaydedilerek menüye geçilir
+            // Oyun açılınca karşılama gelir: misafir olarak girilir (gerçek sunucuda geçici hesap + otomatik ad)
             float waited = Time.realtimeSinceStartup;
             while (controller.DevPageName != "Welcome" && controller.DevPageName != "Menu" && Time.realtimeSinceStartup - waited < 30f) yield return null;
             if (controller.DevPageName == "Welcome")
             {
                 yield return new WaitForSeconds(0.5f);
                 yield return Shot("0-welcome-real");
-                controller.DevSetNameAndContinue("Harness");
+                controller.DevContinueAsGuest();
             }
             yield return WaitForPage("Menu", 30f);
             yield return new WaitForSeconds(0.25f);
@@ -81,7 +81,7 @@ namespace TextRun.Game
             yield return Shot("1b-menu-muted");
             audio.Enabled = true;
 
-            foreach (var which in new[] { "welcome", "name", "settings" })
+            foreach (var which in new[] { "welcome", "settings" })
             {
                 controller.DevShowAccountScreen(which);
                 yield return new WaitForSeconds(1.2f);

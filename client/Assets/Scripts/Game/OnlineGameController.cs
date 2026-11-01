@@ -14,7 +14,7 @@ namespace TextRun.Game
     // burada yalnızca yazma girişi alınır, sunucudan gelenler gösterilir.
     public class OnlineGameController : MonoBehaviour
     {
-        enum Page { Connecting, Welcome, NameEntry, Settings, Menu, PrivateMenu, JoinCode, RoomLobby, Searching, MatchFound, Countdown, Racing, Results, Error }
+        enum Page { Connecting, Welcome, Settings, Menu, PrivateMenu, JoinCode, RoomLobby, Searching, MatchFound, Countdown, Racing, Results, Error }
 
         const string LanguageKey = "textrun.language";
 
@@ -70,15 +70,12 @@ namespace TextRun.Game
         bool roomBots;                 // kurucu: boş yerleri botla doldur
         string joinCodeInput = "";
         ProfileDto profile = new ProfileDto();   // sunucudaki oyuncu profili (ad, XP, seviye)
-        string nameInput = "";
-        string nameNotice = "";
-        bool nameBusy;
         RewardDto myReward;                      // son yarıştan kazanılan XP (sonuç ekranında gösterilir)
         string codeNotice = "";
         float copiedUntil;
         float matchFoundSeconds;
 
-        GUIStyle nameFieldStyle, rowNameStyle, rowTagStyle, codeStyle, codeFieldStyle, titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle, searchTitleStyle, positionStyle;
+        GUIStyle rowNameStyle, rowTagStyle, codeStyle, codeFieldStyle, titleStyle, bigButton, labelStyle, centerStyle, smallStyle, smallCenterStyle, stopwatchStyle, headingStyle, rankStyle, searchTitleStyle, positionStyle;
 
         void Start()
         {
@@ -102,7 +99,7 @@ namespace TextRun.Game
             view.SetVisible(false); // menü ve eşleşme ekranlarında pist görünmez; yalnızca arka plan ve arayüz vardır
             view.ResetToStart();
 
-            Connect();
+            screen = Page.Welcome; // önce giriş seçimi; sunucuya misafir olarak girilince bağlanılır
         }
 
         string T(string key) => Loc.T(key, language);
@@ -127,7 +124,8 @@ namespace TextRun.Game
             screen = Page.Connecting;
             if (net != null) await net.CloseAsync();
 
-            net = new OnlineRaceClient();
+            // Misafir hesabı geçicidir: her bağlanışta yeni kimlik, cihaza kaydedilmez (oyun kapanınca hesap kaybolur)
+            net = new OnlineRaceClient(Guid.NewGuid().ToString(), false);
             net.Snapshot += OnSnapshot;
             net.Roster += OnSnapshot;
             net.Countdown += OnSnapshot;
@@ -141,10 +139,8 @@ namespace TextRun.Game
             try
             {
                 await net.ConnectAsync();
-                try { profile = await net.GetProfileAsync(); }
-                catch (Exception e) { Debug.LogWarning("Profil okunamadi: " + e.Message); }
-                // Adı olmayan (yeni) oyuncu önce karşılama ve ad ekranından geçer
-                screen = string.IsNullOrEmpty(profile.name) ? Page.Welcome : Page.Menu;
+                profile = await net.SetNameAsync("Misafir" + UnityEngine.Random.Range(1000, 10000));
+                screen = Page.Menu;
             }
             catch (Exception e)
             {
@@ -162,7 +158,7 @@ namespace TextRun.Game
         void OnClosed(string reason)
         {
             if (screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.Connecting || screen == Page.Error
-                || screen == Page.Welcome || screen == Page.NameEntry || screen == Page.Settings) return;
+                || screen == Page.Welcome || screen == Page.Settings) return;
             sound.StopMusic();
             errorText = T("connectionLost");
             screen = Page.Error;
@@ -618,7 +614,6 @@ namespace TextRun.Game
             UiKit.SetAllTextColors(codeStyle, new Color(1f, 0.84f, 0.32f));
             codeFieldStyle = new GUIStyle(GUI.skin.textField) { fontSize = 40, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             UiKit.SetAllTextColors(codeFieldStyle, Color.white);
-            nameFieldStyle = new GUIStyle(codeFieldStyle) { fontSize = 30 };
             rowNameStyle = new GUIStyle(labelStyle) { alignment = TextAnchor.MiddleLeft };
             rowTagStyle = new GUIStyle(smallStyle) { alignment = TextAnchor.MiddleRight };
             searchTitleStyle = new GUIStyle(GUI.skin.label) { fontSize = 28, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, clipping = TextClipping.Overflow };
@@ -660,7 +655,6 @@ namespace TextRun.Game
                 case Page.Connecting: DrawCenterMessage(width, height, T("connecting")); break;
                 case Page.Error: DrawError(width, height); break;
                 case Page.Welcome: DrawWelcome(width, height, top); break;
-                case Page.NameEntry: DrawNameEntry(width, height, top); break;
                 case Page.Settings: DrawSettings(width, height, top); break;
                 case Page.Menu: DrawMenu(width, height, top); break;
                 case Page.PrivateMenu: DrawPrivateMenu(width, height, top); break;
@@ -802,24 +796,6 @@ namespace TextRun.Game
             if (t > 0f) UiKit.Card(new Rect(bar.x, bar.y, Mathf.Max(bar.height, bar.width * t), bar.height), new Color(0.27f, 0.64f, 1f), 5f);
         }
 
-        // Adı kurallara uygun mu (sunucudaki kuralın aynısı; son karar sunucunundur)
-        static string CleanName(string raw)
-        {
-            var sb = new System.Text.StringBuilder();
-            foreach (char c in raw ?? "")
-                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || " çğıöşüÇĞİÖŞÜ_.-".IndexOf(c) >= 0) sb.Append(c);
-            return sb.ToString();
-        }
-
-        static bool NameIsValid(string raw)
-        {
-            string name = System.Text.RegularExpressions.Regex.Replace((raw ?? "").Trim(), @"\s+", " ");
-            if (name.Length < 3 || name.Length > 12) return false;
-            foreach (char c in name)
-                if (char.IsLetterOrDigit(c)) return true;
-            return false;
-        }
-
         // Karşılama (yalnızca adı olmayan yeni oyuncuda): giriş seçenekleri
         void DrawWelcome(float width, float height, float top)
         {
@@ -831,11 +807,7 @@ namespace TextRun.Game
             y += 70f;
 
             if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 64f), T("guest"), 22))
-            {
-                nameInput = "";
-                nameNotice = "";
-                screen = Page.NameEntry;
-            }
+                ContinueAsGuest();
             y += 84f;
             // Google ve Apple girişi, mağaza hesapları bağlanınca açılacak
             UiKit.DisabledButton(new Rect(24f, y, width - 48f, 56f), T("signGoogle") + " (" + T("soon") + ")", 19);
@@ -852,79 +824,35 @@ namespace TextRun.Game
             return smallCenterWrap;
         }
 
-        // İlk ad seçimi
-        void DrawNameEntry(float width, float height, float top)
-        {
-            FullViewport();
-            GUI.Label(new Rect(0f, top + 40f, width, 44f), T("chooseName"), headingStyle);
-
-            float y = top + 130f;
-            nameInput = CleanName(GUI.TextField(new Rect(24f, y, width - 48f, 70f), nameInput ?? "", 12, nameFieldStyle));
-            y += 82f;
-            GUI.Label(new Rect(0f, y, width, 26f), T("nameRule"), smallCenterStyle);
-            y += 30f;
-            if (nameNotice.Length > 0) GUI.Label(new Rect(24f, y, width - 48f, 44f), nameNotice, smallCenterWrapStyle());
-            y += 56f;
-
-            if (NameIsValid(nameInput) && !nameBusy) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 64f), T("continue"), 24)) SubmitName(true); }
-            else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 64f), T("continue"), 24);
-        }
-
-        // Ayarlar / hesap: adı değiştirme, seviye ve istatistikler
+        // Ayarlar / hesap: seviye, istatistikler ve hesap durumu
         void DrawSettings(float width, float height, float top)
         {
             FullViewport();
             GUI.Label(new Rect(0f, top + 30f, width, 44f), T("settings"), headingStyle);
 
             float y = top + 100f;
-            var card = new Rect(16f, y, width - 32f, 58f);
-            DrawProfileCard(card);
+            DrawProfileCard(new Rect(16f, y, width - 32f, 58f));
             y += 64f;
             GUI.Label(new Rect(16f, y, width - 32f, 22f), profile.xpIntoLevel + " / " + profile.xpForNext + " XP     " + T("raceCount") + " " + profile.races + "     " + T("winCount") + " " + profile.wins, smallCenterStyle);
             y += 50f;
 
-            GUI.Label(new Rect(24f, y, width - 48f, 22f), T("playerName"), smallStyle);
-            y += 24f;
-            nameInput = CleanName(GUI.TextField(new Rect(24f, y, width - 48f, 64f), nameInput ?? "", 12, nameFieldStyle));
-            y += 70f;
-            GUI.Label(new Rect(24f, y, width - 48f, 44f), nameNotice.Length > 0 ? nameNotice : T("nameRule"), smallCenterWrapStyle());
-            y += 52f;
-
-            bool changed = NameIsValid(nameInput) && nameInput.Trim() != profile.name;
-            if (changed && !nameBusy) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 58f), T("save"), 22)) SubmitName(false); }
-            else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 58f), T("save"), 22);
-            y += 76f;
+            GUI.Label(new Rect(30f, y, width - 60f, 80f), T("guestNote"), smallCenterWrapStyle());
+            y += 110f;
 
             if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 50f), T("back"), 20)) screen = Page.Menu;
         }
 
         void OpenSettings()
         {
-            nameInput = profile.name ?? "";
-            nameNotice = "";
             screen = Page.Settings;
         }
 
-        async void SubmitName(bool first)
+        // Misafir olarak girer: her seferinde yeni, geçici bir hesap (cihaza kaydedilmez, oyun kapanınca kaybolur) ve otomatik ad
+        void ContinueAsGuest()
         {
-            if (nameBusy) return;
-            nameBusy = true;
-            nameNotice = "";
-            try
-            {
-                profile = await net.SetNameAsync(nameInput);
-                if (first) screen = Page.Menu;
-                else { nameInput = profile.name; nameNotice = T("saved"); }
-            }
-            catch (Exception e)
-            {
-                if (OnlineRaceClient.IsError(e, "name_invalid")) nameNotice = T("nameInvalid");
-                else Fail(e);
-            }
-            finally
-            {
-                nameBusy = false;
-            }
+            if (screen == Page.Connecting) return;
+            if (Debug.isDebugBuild || Application.isEditor) ServerSettings.Host = hostInput; // yazılan sunucu adresi de denenir
+            Connect();
         }
 
         // Hoparlör simgesi: dokununca ses açılır/kapanır; kapalıyken simgenin üstünde kırmızı çarpı görünür.
@@ -1482,21 +1410,14 @@ namespace TextRun.Game
         }
 
         // Geliştirme: sahte sonuç göstererek ekranı doğrular (yalnızca DevHarness kullanır)
-        public void DevSetNameAndContinue(string name)
-        {
-            nameInput = name;
-            SubmitName(true);
-        }
+        public void DevContinueAsGuest() { ContinueAsGuest(); }
 
         public void DevShowAccountScreen(string which)
         {
             profile = new ProfileDto { name = "Furkan", xp = 410, level = 4, xpIntoLevel = 110, xpForNext = 220, races = 9, wins = 3 };
-            nameInput = which == "name" ? "Fur" : profile.name;
-            nameNotice = "";
             switch (which)
             {
                 case "welcome": screen = Page.Welcome; break;
-                case "name": screen = Page.NameEntry; break;
                 default: screen = Page.Settings; break;
             }
         }
