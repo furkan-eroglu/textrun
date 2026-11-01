@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using System;
 using System.IO;
 using TextRun.Audio;
+using TextRun.Game;
 using TextRun.KeyboardTest;
 using TextRun.Typing;
 using UnityEditor;
@@ -69,7 +71,7 @@ namespace TextRun.EditorTools
             TestSoundIcon(Check);
             TestFireworks(Check);
             TestKeyboardDiff(Check);
-            TestKeyboardTracker(Check);
+            TestOnScreenKeyboard(Check);
             TestAckResync(Check);
             TestAudio(Check);
             TestWordDatabase(Check);
@@ -88,124 +90,49 @@ namespace TextRun.EditorTools
             check(TypingSession.ShouldResync(7, 5, 2, false), "ack: sunucu onde ise (yeniden baglanma) hemen eslestirilir");
         }
 
-        // Klavye izleyicisi: telefon klavyesinin metni nasıl değişirse değişsin giriş kilitlenmemeli (kavun hatası)
-        static void TestKeyboardTracker(Action<bool, string> check)
+        // Ekran klavyesi: tüm kelime harfleri tuşlarda olmalı, tuşlar ekrana sığmalı, dokunma doğru tuşu bulmalı
+        static void TestOnScreenKeyboard(Action<bool, string> check)
         {
-            var tr = GameLanguage.Turkish;
-
-            // Sistem klavyesini taklit eden küçük sınama düzeneği
-            WordInput input = null;
-            KeyboardTracker tracker = null;
-            int submits = 0;
-            string[] queue = null;
-            int next = 0;
-
-            void Start(params string[] words)
+            foreach (var language in new[] { GameLanguage.Turkish, GameLanguage.English })
             {
-                queue = words;
-                next = 0;
-                submits = 0;
-                input = new WordInput(tr);
-                tracker = new KeyboardTracker();
-                input.Begin(queue[next++]);
-            }
+                string name = language == GameLanguage.Turkish ? "TR" : "EN";
+                var onKeyboard = new HashSet<char>();
+                foreach (var row in OnScreenKeyboard.Rows(language)) foreach (char c in row) onKeyboard.Add(c);
 
-            bool Press(char c)
-            {
-                var result = input.Press(c);
-                if (result == KeyResult.Submit)
+                var missing = new HashSet<char>();
+                foreach (var word in WordDatabase.Load(language).Generate(3000, 3))
+                    foreach (char c in word) if (!onKeyboard.Contains(c)) missing.Add(c);
+                check(missing.Count == 0, "ekran klavyesi " + name + ": kelimelerdeki her harf tuslarda var" + (missing.Count > 0 ? " (eksik: " + string.Join("", missing) + ")" : ""));
+
+                foreach (float width in new[] { 320f, 360f, 411f, 480f })
                 {
-                    submits++;
-                    input.Begin(next < queue.Length ? queue[next++] : "");
-                    tracker.Boundary();
-                    return false;
+                    float height = width * 2.1f;
+                    var keys = OnScreenKeyboard.BuildKeys(width, height, 0f, language, "space");
+                    float top = height - OnScreenKeyboard.HeightUnits(width, 0f);
+                    bool inside = true, noOverlap = true, bigEnough = true;
+                    for (int i = 0; i < keys.Count; i++)
+                    {
+                        var r = keys[i].rect;
+                        if (r.xMin < 0f || r.xMax > width || r.yMin < top || r.yMax > height) inside = false;
+                        if (r.width < 20f || r.height < 38f) bigEnough = false;
+                        for (int j = i + 1; j < keys.Count; j++) if (r.Overlaps(keys[j].rect)) noOverlap = false;
+                    }
+                    check(inside && noOverlap && bigEnough, "ekran klavyesi " + name + " genislik " + width + ": tuslar sigiyor, cakismiyor, yeterince buyuk");
+
+                    bool hits = true;
+                    for (int i = 0; i < keys.Count; i++)
+                    {
+                        int hit = OnScreenKeyboard.HitTest(keys, keys[i].rect.center);
+                        if (hit != i) hits = false;
+                    }
+                    check(hits, "ekran klavyesi " + name + " genislik " + width + ": her tusun ortasina dokununca o tus bulunur");
+                    check(OnScreenKeyboard.HitTest(keys, new Vector2(width / 2f, top - 40f)) == -1, "ekran klavyesi " + name + ": klavyenin disina dokunmak tus sayilmaz");
                 }
-                return result == KeyResult.Accepted;
             }
 
-            void Type(string raw) => tracker.Update(raw, tr, Press, () => input.TrimTo(input.Entered.Length - 1));
-
-            // 1) Normal yazma
-            Start("kavun", "çorba");
-            foreach (var raw in new[] { "k", "ka", "kav", "kavu", "kavun" }) Type(raw);
-            check(input.Entered == "kavun" && input.MistakesThisWord == 0, "izleyici: normal yazma kavun");
-
-            // 2) Yanlış harf: klavye metni üzerine yazılmadığı için aynı yanlış harf her karede yeniden sayılmaz, sonra devam edilir
-            Start("kavun", "çorba");
-            Type("kav");
-            Type("kavx");
-            for (int i = 0; i < 10; i++) Type("kavx"); // klavye aynı metni göstermeye devam ediyor (eski hata: her karede sayılıyordu)
-            check(input.MistakesThisWord == 1 && input.Entered == "kav", "izleyici: ayni yanlis harf tekrar tekrar sayilmaz");
-            Type("kavxu");
-            Type("kavxun");
-            check(input.Entered == "kavun", "izleyici: yanlis harften sonra yazmaya devam edilebilir (kavun)");
-
-            // 3) Boşluk basıp kelime bitmeden devam
-            Start("kavun", "çorba");
-            Type("kav");
-            Type("kav ");
-            Type("kav u");
-            Type("kav un");
-            check(input.Entered == "kavun", "izleyici: erken bosluk girisi bozmaz");
-
-            // 4) Silme: kabul edilmiş harf geri alınır, reddedilmiş harf girişi etkilemez
-            Start("kavun", "çorba");
-            Type("kav");
-            Type("ka");
-            check(input.Entered == "ka", "izleyici: silme tusu kabul edilen harfi geri alir");
-            Type("kax");
-            Type("ka");
-            check(input.Entered == "ka", "izleyici: reddedilen harfi silmek girisi etkilemez");
-
-            // 5) Büyük harf (otomatik büyük harf) ve öneri tamamlaması
-            Start("kavun", "çorba");
-            Type("K");
-            Type("Ka");
-            Type("Kavun");
-            check(input.Entered == "kavun", "izleyici: otomatik buyuk harf sorun cikarmaz");
-
-            // 6) Boşlukla gönderme ve aynı karede yeni kelimenin harfleri
-            Start("ab", "cd");
-            Type("ab");
-            Type("ab c");
-            check(submits == 1 && input.Entered == "c", "izleyici: bosluk kelimeyi gonderir, sonraki harf yeni kelimeye gider");
-            Type("ab cd"); // klavye metni silinmez, yazilmaya devam edilir
-            check(input.Entered == "cd", "izleyici: kelime gecisinden sonra klavye metni silinmeden devam edilir");
-
-            // 6b) Eski kelimenin harflerini silmek yeni kelimeyi etkilemez
-            Start("ab", "cd");
-            Type("ab");
-            Type("ab ");
-            Type("ab c");
-            Type("ab ");
-            check(input.Entered == "", "izleyici: yeni kelimenin harfi silinince geri alinir");
-            Type("a");
-            check(input.Entered == "" && submits == 1, "izleyici: eski kelimenin harflerini silmek yeni kelimeyi bozmaz");
-
-            // 6c) Kelime gönderilince klavye metni temizlenir: boşalma ve yeni harfler sorunsuz işlenir
-            Start("ab", "cd");
-            Type("ab ");
-            Type("");
-            Type("c");
-            Type("cd");
-            check(submits == 1 && input.Entered == "cd" && input.MistakesThisWord == 0, "izleyici: gonderim sonrasi klavye metni temizlenince devam edilir");
-
-            // 7) Klavye yeniden açıldı: ilerleme korunur
-            Start("kavun", "çorba");
-            Type("kav");
-            tracker.Sync(""); // klavye yeniden açıldı, metin boş
-            Type("");
-            Type("u");
-            Type("un");
-            check(input.Entered == "kavun", "izleyici: klavye yeniden acilinca ilerleme korunur");
-
-            // 8) Isiklar yanarken yazilan harfler yaris basinda sayilmaz (Sync)
-            Start("kavun", "corba");
-            tracker.Sync("xx");
-            Type("xx");
-            check(input.Entered == "", "izleyici: erken yazilan harfler sayilmaz");
-            Type("xxk");
-            check(input.Entered == "k", "izleyici: yaris basladiktan sonra yazilan harf sayilir");
+            var turkish = OnScreenKeyboard.BuildKeys(360f, 760f, 0f, GameLanguage.Turkish, "bosluk");
+            check(turkish[turkish.Count - 1].character == ' ', "ekran klavyesi: son tus bosluk");
+            check(OnScreenKeyboard.HeightUnits(360f, 20f) - OnScreenKeyboard.HeightUnits(360f, 0f) == 20f, "ekran klavyesi: alttaki guvenli alan yukseklige eklenir");
         }
 
         // Klavye metni beklenmedik değişince yeni harfler doğru bulunmalı (ı/İ dahil)
