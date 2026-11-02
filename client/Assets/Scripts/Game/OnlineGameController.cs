@@ -76,6 +76,12 @@ namespace TextRun.Game
         string passInput = "";
         string passAgainInput = "";
         bool showPassword;
+
+        // Giriş/kayıt formundaki her şeyi siler (çıkışta, sekme değişince ve ekrandan ayrılınca eski bilgi kalmasın)
+        void ClearLoginForm()
+        {
+            loginInput = ""; passInput = ""; passAgainInput = ""; showPassword = false; loginNotice = "";
+        }
         GUIStyle passwordToggleStyle;
         GUIStyle PasswordToggleStyle()
         {
@@ -173,8 +179,7 @@ namespace TextRun.Game
                 await net.ConnectAsync();
                 profile = await net.GetProfileAsync();
                 if (entry != Entry.Guest) lastEntry = Entry.Saved; // yeniden denemede kayıtlı oturum kullanılır (şifre bellekte tutulmaz)
-                passInput = "";
-                passAgainInput = "";
+                ClearLoginForm(); // şifre bellekte kalmaz, kullanıcı adı da bir sonraki girişe taşınmaz
                 if (entry == Entry.Guest || !string.IsNullOrEmpty(profile.name)) screen = Page.Menu;
                 else { nameInput = ""; nameNotice = ""; screen = Page.NameEntry; } // yeni hesap: önce oyun içi ad
             }
@@ -551,6 +556,7 @@ namespace TextRun.Game
             // Ekran değişince yazı kutusunun odağı bırakılır, telefon klavyesi kapanır (yarışın kendi klavyesi hariç)
             if (screen != lastScreen)
             {
+                if (lastScreen == Page.Login && screen != Page.Connecting) ClearLoginForm(); // Geri'ye basıldı: form boşalır (bağlanırken kalır, hata olursa düzeltilebilsin)
                 lastScreen = screen;
                 GUIUtility.keyboardControl = 0;
                 focusField = null;
@@ -941,8 +947,8 @@ namespace TextRun.Game
             if (tab >= 0 && (tab == 1) != registerMode)
             {
                 registerMode = tab == 1;
-                loginNotice = "";
-                passAgainInput = "";
+                ClearLoginForm();
+                focusField = null;
             }
             y += 70f;
 
@@ -1203,7 +1209,7 @@ namespace TextRun.Game
             OnlineRaceClient.ForgetAccount();
             lastEntry = Entry.Guest;
             profile = new ProfileDto();
-            loginNotice = "";
+            ClearLoginForm();
             screen = Page.Welcome;
             if (net != null) await net.CloseAsync();
         }
