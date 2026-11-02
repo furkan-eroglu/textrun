@@ -2,8 +2,10 @@
 // Nakama, kaydedilen fonksiyonları isimleriyle arar; hepsi bu dosyadan import edilip aynı isimle kullanılmalıdır (bkz. build.mjs).
 import { matchInit, matchJoin, matchJoinAttempt, matchLeave, matchLoop, matchSignal, matchTerminate } from "./match.ts";
 import { isSupportedLang } from "./words.ts";
-import { cleanName } from "./profile.ts";
-import { isRegistered, profileView, readProfile, saveProfile } from "./profileStore.ts";
+import { itemById } from "./economy.ts";
+import type { ChestTier } from "./economy.ts";
+import { cleanName, isChestTier } from "./profile.ts";
+import { inventoryView, isRegistered, openChestFor, profileView, readProfile, saveProfile } from "./profileStore.ts";
 
 export function pingRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
   return JSON.stringify({ ok: true, message: "TextRun sunucusu calisiyor", time: Date.now() });
@@ -174,6 +176,42 @@ export function setNameRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk:
   return JSON.stringify(profileView(stored.profile, false));
 }
 
+// Sahip olunan eşyalar (envanter ekranı). Misafirin envanteri yoktur.
+export function getInventoryRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+  if (!ctx.userId) throw new Error("giris gerekli");
+  if (!isRegistered(nk, ctx.userId)) return JSON.stringify({ items: [] });
+  return JSON.stringify(inventoryView(readProfile(nk, ctx.userId).profile));
+}
+
+// Envanterdeki bir sandığı açar. Sandık yoksa "no_chest", geçersiz tür "bad_chest", misafirse "guest_account".
+export function openChestRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+  if (!ctx.userId) throw new Error("giris gerekli");
+
+  let tier: unknown;
+  try {
+    tier = JSON.parse(payload).tier;
+  } catch (e) {
+    throw new Error("gecersiz istek");
+  }
+  if (!isChestTier(tier)) fail("bad_chest", CODE_INVALID_ARGUMENT);
+  if (!isRegistered(nk, ctx.userId)) fail("guest_account", CODE_INVALID_ARGUMENT);
+
+  const result = openChestFor(nk, logger, ctx.userId, tier as ChestTier);
+  if (!result) fail("no_chest", CODE_FAILED_PRECONDITION);
+  const won = itemById(result!.opening.itemId)!;
+  return JSON.stringify({
+    tier: tier,
+    itemId: won.id,
+    category: won.category,
+    rarity: won.rarity,
+    tr: won.tr,
+    en: won.en,
+    duplicate: result!.opening.duplicate,
+    goldRefund: result!.opening.goldRefund,
+    profile: profileView(result!.profile, false),
+  });
+}
+
 export function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, initializer: nkruntime.Initializer): void {
   initializer.registerRpc("ping", pingRpc);
   initializer.registerRpc("find_race", findRaceRpc);
@@ -181,6 +219,8 @@ export function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk:
   initializer.registerRpc("join_room", joinRoomRpc);
   initializer.registerRpc("get_profile", getProfileRpc);
   initializer.registerRpc("set_name", setNameRpc);
+  initializer.registerRpc("get_inventory", getInventoryRpc);
+  initializer.registerRpc("open_chest", openChestRpc);
   initializer.registerMatch("race", { matchInit, matchJoinAttempt, matchJoin, matchLeave, matchLoop, matchTerminate, matchSignal });
   logger.info("TextRun modulu yuklendi");
 }

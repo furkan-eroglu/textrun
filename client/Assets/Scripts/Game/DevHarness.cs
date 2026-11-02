@@ -104,6 +104,22 @@ namespace TextRun.Game
             yield return new WaitForSeconds(0.4f);
             yield return Shot("1i-menu-profile");
 
+            // Envanter: eşyalı liste, sallanan sandık, nadirliğe göre eşya açılışı
+            controller.DevShowInventory(true);
+            yield return new WaitForSeconds(0.4f);
+            yield return Shot("1j-inventory");
+            controller.DevShowChestShaking();
+            yield return new WaitForSeconds(1.0f);
+            yield return Shot("1k-chest-shaking");
+            controller.DevShowInventory(true, "legendary");
+            yield return new WaitForSeconds(0.5f);
+            yield return Shot("1l-chest-legendary");
+            controller.DevShowInventory(true, "common");
+            yield return new WaitForSeconds(0.5f);
+            yield return Shot("1m-chest-common");
+            controller.DevBackToMenu();
+            yield return new WaitForSeconds(0.3f);
+
             controller.DevShowError();
             yield return new WaitForSeconds(0.4f);
             yield return Shot("1f-error-screen");

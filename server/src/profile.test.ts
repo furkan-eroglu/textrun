@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { applyRace, cleanName, emptyProfile, levelOf, racePaysXp, xpForNextLevel, xpForRace } from "./profile.ts";
+import { applyRace, cleanName, emptyProfile, levelOf, openChest, racePaysXp, xpForNextLevel, xpForRace } from "./profile.ts";
+
+// Verilen seviyeye ulaşmak için gereken toplam XP
+function xpToReach(level: number): number {
+  let total = 0;
+  for (let l = 1; l < level; l++) total += xpForNextLevel(l);
+  return total;
+}
 
 test("seviye: 0 XP seviye 1, 100 XP seviye 2", () => {
   assert.deepEqual(levelOf(0), { level: 1, xpIntoLevel: 0, xpForNext: 100 });
@@ -39,13 +46,50 @@ test("özel oda XP vermez (kaç oyuncu olursa olsun); herkese açık yarış ver
 test("yarış işleme: XP, yarış sayısı, galibiyet ve seviye atlama", () => {
   const profile = emptyProfile();
   let reward = applyRace(profile, 1, "finished");
-  assert.deepEqual(reward, { gain: 70, xp: 70, level: 1, xpIntoLevel: 70, xpForNext: 100, leveledUp: false });
+  assert.deepEqual(reward, { gain: 70, xp: 70, level: 1, xpIntoLevel: 70, xpForNext: 100, leveledUp: false, gold: 35, chests: [] });
   reward = applyRace(profile, 2, "finished");
-  assert.deepEqual(reward, { gain: 55, xp: 125, level: 2, xpIntoLevel: 25, xpForNext: 140, leveledUp: true });
+  assert.deepEqual(reward, { gain: 55, xp: 125, level: 2, xpIntoLevel: 25, xpForNext: 140, leveledUp: true, gold: 25, chests: ["bronze"] });
   applyRace(profile, 4, "dnf");
   assert.equal(profile.races, 3);
   assert.equal(profile.wins, 1);
   assert.equal(profile.xp, 130);
+  assert.equal(profile.gold, 60, "bitirmeyen altın almaz");
+  assert.deepEqual(profile.chests, { bronze: 1, silver: 0, gold: 0 });
+});
+
+test("her seviye atlamada tam bir sandık; sandığın türü ulaşılan seviyeye göre", () => {
+  const profile = emptyProfile();
+  profile.xp = 99;
+  assert.deepEqual(applyRace(profile, 1, "finished").chests, ["bronze"]);
+
+  // 9. seviyeden 10'a geçiş gümüş sandık verir
+  const silver = emptyProfile();
+  silver.xp = xpToReach(10) - 1;
+  assert.deepEqual(applyRace(silver, 1, "finished").chests, ["silver"]);
+  assert.equal(silver.chests.silver, 1);
+
+  // seviye atlanmazsa sandık yok
+  const none = emptyProfile();
+  assert.deepEqual(applyRace(none, 5, "dnf").chests, []);
+});
+
+test("sandık açma: sayı düşer, eşya envantere girer; sandık yoksa açılmaz", () => {
+  const profile = emptyProfile();
+  assert.equal(openChest(profile, "bronze", () => 0), null);
+
+  profile.chests.bronze = 2;
+  const first = openChest(profile, "bronze", () => 0)!;
+  assert.equal(first.duplicate, false);
+  assert.deepEqual(profile.items, [first.itemId]);
+  assert.equal(profile.chests.bronze, 1);
+
+  // aynı rastgele sayı aynı eşyayı verir: tekrar eşya envantere girmez, altın verir
+  const second = openChest(profile, "bronze", () => 0)!;
+  assert.equal(second.duplicate, true);
+  assert.equal(profile.items.length, 1);
+  assert.equal(profile.gold, second.goldRefund);
+  assert.ok(second.goldRefund > 0);
+  assert.equal(profile.chests.bronze, 0);
 });
 
 test("ad: geçerli adlar düzenlenerek kabul edilir", () => {

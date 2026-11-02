@@ -343,6 +343,20 @@ namespace TextRun.Online
             return JsonUtility.FromJson<ProfileDto>(rpc.Payload);
         }
 
+        // Sahip olunan eşyalar
+        public async Task<InventoryDto> GetInventoryAsync()
+        {
+            var rpc = await client.RpcAsync(session, "get_inventory", "{}");
+            return JsonUtility.FromJson<InventoryDto>(rpc.Payload);
+        }
+
+        // Bir sandık açar (tier: bronze | silver | gold). Sandık yoksa istisna: IsError(e, "no_chest")
+        public async Task<ChestResultDto> OpenChestAsync(string tier)
+        {
+            var rpc = await client.RpcAsync(session, "open_chest", JsonUtility.ToJson(new ChestRequest { tier = tier }));
+            return JsonUtility.FromJson<ChestResultDto>(rpc.Payload);
+        }
+
         // Oyuncu adını değiştirir. Geçersizse istisna fırlatır: IsError(e, "name_invalid")
         public async Task<ProfileDto> SetNameAsync(string name)
         {

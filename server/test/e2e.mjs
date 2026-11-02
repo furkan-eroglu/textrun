@@ -93,6 +93,13 @@ class Player {
     return JSON.parse(res.payload);
   }
 
+  // Yarisi birakir ve gecmis olaylari siler (ayni oyuncu ikinci yaris icin tekrar katilabilsin)
+  async leave() {
+    await this.request({ match_leave: { match_id: this.matchId } });
+    this.events = [];
+    this.matchId = null;
+  }
+
   async findAndJoin() {
     const found = await this.rpc('find_race', { lang: this.lang });
     return this.join(found.matchId, this.lang);
@@ -429,6 +436,38 @@ await test('profil: ad secilir, yarista gorunur, yarisi bitirince XP verilir ve 
   assert.equal(after.xp, reward.gain);
   assert.equal(after.races, 1);
   assert.equal(after.name, 'Hizli Ali');
+
+  // Altin: bitirmek 10 + sira bonusu; sandik yalnizca seviye atlayinca gelir
+  assert.equal(reward.gold, 10 + [25, 15, 10, 5, 0][me.rank - 1]);
+  assert.equal(after.gold, reward.gold);
+  assert.equal(after.chestBronze + after.chestSilver + after.chestGold, after.level - 1, 'her seviye atlama icin bir sandik');
+
+  // Seviye atlayana kadar yaris (her yaris en az 20 XP); sonra sandik acilir
+  for (let race = 0; race < 6 && (await p.rpc('get_profile', {})).level < 2; race++) {
+    await p.findAndJoin();
+    const c = await p.waitFor(OP.COUNTDOWN, 10000);
+    await p.waitFor(OP.GO);
+    await p.typeAll(c.body.words, 120);
+    const r = await p.waitFor(OP.RESULTS, 20000);
+    const mine = r.body.rewards.find((x) => x.userId === p.userId);
+    if (mine.leveledUp) assert.deepEqual(mine.chests, ['bronze'], 'seviye atlayinca bronz sandik');
+    await p.leave();
+  }
+  const levelled = await p.rpc('get_profile', {});
+  assert.ok(levelled.level >= 2, 'seviye atlandi');
+  assert.equal(levelled.chestBronze, levelled.level - 1);
+
+  await assert.rejects(() => p.rpc('open_chest', { tier: 'diamond' }), /bad_chest/);
+  await assert.rejects(() => p.rpc('open_chest', { tier: 'gold' }), /no_chest/, 'olmayan sandik acilmaz');
+  const opened = await p.rpc('open_chest', { tier: 'bronze' });
+  assert.ok(opened.itemId && opened.rarity && opened.tr && opened.en && opened.category);
+  assert.equal(opened.duplicate, false);
+  assert.equal(opened.profile.chestBronze, levelled.chestBronze - 1);
+  assert.equal(opened.profile.itemCount, 1);
+  const inventory = await p.rpc('get_inventory', {});
+  assert.equal(inventory.items.length, 1);
+  assert.equal(inventory.items[0].id, opened.itemId);
+  await assert.rejects(() => p.rpc('open_chest', { tier: 'bronze' }), /no_chest/, 'sandik bitince tekrar acilmaz');
   p.close();
 });
 
@@ -448,6 +487,9 @@ await test('misafir: takma ad secemez, yarisi bitirse de XP/seviye kazanmaz', as
   const after = await g.rpc('get_profile', {});
   assert.equal(after.xp, 0);
   assert.equal(after.races, 0);
+  assert.equal(after.gold, 0, 'misafir altin kazanmaz');
+  await assert.rejects(() => g.rpc('open_chest', { tier: 'bronze' }), /guest_account/);
+  assert.deepEqual((await g.rpc('get_inventory', {})).items, []);
   g.close();
 });
 

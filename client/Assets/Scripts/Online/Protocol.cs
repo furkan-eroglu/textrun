@@ -126,6 +126,8 @@ namespace TextRun.Online
         public int xpIntoLevel; // yeni seviyede biriktirilen XP
         public int xpForNext;   // yeni seviyeyi geçmek için gereken XP
         public bool leveledUp;
+        public int gold;        // bu yarıştan kazanılan altın
+        public string[] chests; // atlanan her seviye için bir sandık: "bronze" | "silver" | "gold"
     }
 
     // Oyuncu profili (sunucuda tutulur). name boşsa oyuncu henüz ad seçmemiştir.
@@ -140,6 +142,52 @@ namespace TextRun.Online
         public int xpForNext = 100;
         public int races;
         public int wins;
+        public int gold;
+        public int chestBronze;
+        public int chestSilver;
+        public int chestGold;
+        public int itemCount;
+
+        public int ChestCount(string tier) => tier == "gold" ? chestGold : tier == "silver" ? chestSilver : chestBronze;
+        public int TotalChests => chestBronze + chestSilver + chestGold;
+    }
+
+    // Eşya (sunucudaki listeden): kimlik, kategori, nadirlik ve iki dilde ad
+    [Serializable]
+    public class ItemDto
+    {
+        public string id;
+        public string category;
+        public string rarity; // common | uncommon | rare | epic | legendary
+        public string tr;
+        public string en;
+    }
+
+    [Serializable]
+    public class InventoryDto
+    {
+        public ItemDto[] items;
+    }
+
+    [Serializable]
+    public class ChestRequest
+    {
+        public string tier;
+    }
+
+    // Sandık açma sonucu: kazanılan eşya, tekrar eşyaysa altın karşılığı ve güncel profil
+    [Serializable]
+    public class ChestResultDto
+    {
+        public string tier;
+        public string itemId;
+        public string category;
+        public string rarity;
+        public string tr;
+        public string en;
+        public bool duplicate;
+        public int goldRefund;
+        public ProfileDto profile;
     }
 
     [Serializable]

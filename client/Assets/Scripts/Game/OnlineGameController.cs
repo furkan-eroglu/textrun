@@ -13,9 +13,9 @@ namespace TextRun.Game
     // Oynanabilir ana akış: bağlanma -> menü -> rakip arama -> geri sayım -> yarış -> sonuç.
     // Arayüz geçici olarak OnGUI ile çizilir (şık arayüz sonraki aşamada). Yarış mantığı sunucudadır;
     // burada yalnızca yazma girişi alınır, sunucudan gelenler gösterilir.
-    public class OnlineGameController : MonoBehaviour
+    public partial class OnlineGameController : MonoBehaviour
     {
-        enum Page { Connecting, Welcome, Login, NameEntry, Settings, Menu, PrivateMenu, JoinCode, RoomLobby, Searching, MatchFound, Countdown, Racing, Results, Error }
+        enum Page { Connecting, Welcome, Login, NameEntry, Settings, Menu, PrivateMenu, JoinCode, RoomLobby, Searching, MatchFound, Countdown, Racing, Results, Error, Inventory }
 
         const string LanguageKey = "textrun.language";
 
@@ -336,7 +336,7 @@ namespace TextRun.Game
         void OnClosed(string reason)
         {
             if (screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.Connecting || screen == Page.Error
-                || screen == Page.Welcome || screen == Page.Login || screen == Page.NameEntry || screen == Page.Settings || screen == Page.Results) return;
+                || screen == Page.Welcome || screen == Page.Login || screen == Page.NameEntry || screen == Page.Settings || screen == Page.Results || screen == Page.Inventory) return;
 
             // Başlamış yarış sürerken kopma: hata ekranı yerine yarışa geri dönülür
             if (screen == Page.MatchFound || screen == Page.Countdown || screen == Page.Racing)
@@ -866,7 +866,7 @@ namespace TextRun.Game
             float height = UnityEngine.Screen.height / scale;
             float top = (UnityEngine.Screen.height - UnityEngine.Screen.safeArea.yMax) / scale + 6f;
 
-            if (screen == Page.Connecting || screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.RoomLobby || screen == Page.Searching || screen == Page.MatchFound || screen == Page.Error)
+            if (screen == Page.Connecting || screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.RoomLobby || screen == Page.Searching || screen == Page.MatchFound || screen == Page.Error || screen == Page.Inventory)
                 backdrop.Draw(width, height);
 
             switch (screen)
@@ -878,6 +878,7 @@ namespace TextRun.Game
                 case Page.NameEntry: DrawNameEntry(width, height, top); break;
                 case Page.Settings: DrawSettings(width, height, top); break;
                 case Page.Menu: DrawMenu(width, height, top); break;
+                case Page.Inventory: DrawInventory(width, height, top); break;
                 case Page.PrivateMenu: DrawPrivateMenu(width, height, top); break;
                 case Page.JoinCode: DrawJoinCode(width, height, top); break;
                 case Page.RoomLobby: DrawRoomLobby(width, height, top); break;
@@ -947,7 +948,7 @@ namespace TextRun.Game
             DrawSoundButton(new Rect(width - 54f, top + 8f, 42f, 42f));
 
             // Oyuncu kartı (ad, seviye, XP çubuğu): dokununca ayarlar açılır
-            var card = new Rect(12f, top + 8f, width - 76f, 58f);
+            var card = new Rect(12f, top + 8f, width - 76f, profile.guest ? 58f : 76f);
             DrawProfileCard(card);
             if (GUI.Button(card, GUIContent.none, GUIStyle.none)) OpenSettings();
 
@@ -965,6 +966,15 @@ namespace TextRun.Game
                 joinCodeInput = "";
                 codeNotice = "";
                 screen = Page.PrivateMenu;
+            }
+            y += 72f;
+
+            // Envanter: yalnızca hesaplı oyuncuda (misafirin altını, sandığı, eşyası yoktur); açılmamış sandık sayısı yanında görünür
+            if (!profile.guest)
+            {
+                int chests = profile.TotalChests;
+                string label = T("inventory") + (chests > 0 ? "  (" + chests + ")" : "");
+                if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 56f), label, 20)) OpenInventory();
             }
 
             // Geliştirme: telefonda sunucu adresini (bilgisayarın yerel IP'si) girmek için
@@ -1010,6 +1020,13 @@ namespace TextRun.Game
                 return;
             }
             GUI.Label(new Rect(r.xMax - 118f, r.y + 3f, 106f, 26f), T("level") + " " + profile.level, rowTagStyle);
+
+            // Yüksek kartta (menü) altın da gösterilir
+            if (r.height >= 70f)
+            {
+                DrawCoin(new Rect(r.x + 12f, r.y + 32f, 18f, 18f));
+                GUI.Label(new Rect(r.x + 36f, r.y + 29f, r.width - 100f, 24f), profile.gold.ToString(), rowNameStyle);
+            }
 
             var bar = new Rect(r.x + 12f, r.yMax - 20f, r.width - 24f, 10f);
             DrawXpBar(bar, profile.xpIntoLevel, profile.xpForNext);
@@ -1874,7 +1891,7 @@ namespace TextRun.Game
                 string name = r.isBot ? T("bot") + " (" + r.name + ")" : r.name; // kendi adım sarı renkle ayrılır
                 string status = r.status == "finished" ? "" : r.status == "disqualified" ? T("disqualified") : T("dnf");
 
-                var card = new Rect(16f, y, width - 32f, 50f);
+                var card = new Rect(16f, y, width - 32f, 44f);
                 UiKit.Card(card, mine ? new Color(1f, 0.82f, 0.30f, 0.24f) : new Color(1f, 1f, 1f, 0.07f), 14f);
 
                 GUI.Label(new Rect(card.x + 10f, card.y, 36f, card.height), r.rank.ToString(), rankStyle);
@@ -1886,7 +1903,7 @@ namespace TextRun.Game
 
                 GUI.Label(new Rect(card.x + 52f, card.y + 26f, card.width - 60f, 20f),
                     r.wpm.ToString("0") + " " + T("wpm") + "   %" + (r.accuracy * 100f).ToString("0") + "   " + (r.finishMs > 0 ? (r.finishMs / 1000f).ToString("0.0") + " s" : "") + "   " + status, smallStyle);
-                y += 56f;
+                y += 48f;
             }
 
             // Misafir: XP ve ödül yok, hesap açmaya davet
@@ -1907,7 +1924,14 @@ namespace TextRun.Game
                 var gold = new Color(1f, 0.84f, 0.32f);
                 var oldXp = GUI.color;
                 GUI.color = gold;
-                GUI.Label(new Rect(panel.x + 12f, panel.y, 140f, panel.height), "+" + myReward.gain + " XP", rankStyle);
+                GUI.Label(new Rect(panel.x + 12f, panel.y + 4f, 140f, 34f), "+" + myReward.gain + " XP", rankStyle);
+
+                // Kazanılan altın (XP'nin altında)
+                if (myReward.gold > 0)
+                {
+                    DrawCoin(new Rect(panel.x + 18f, panel.y + 44f, 20f, 20f));
+                    GUI.Label(new Rect(panel.x + 42f, panel.y + 41f, 100f, 26f), "+" + myReward.gold + " " + T("goldWord"), rowNameStyle);
+                }
 
                 // Sağ taraf: seviye (atlandıysa altın renkli duyuru), çubuğun üstünde "110 / 220 XP", çubuk
                 float rx = panel.x + 150f;
@@ -1926,6 +1950,21 @@ namespace TextRun.Game
                 GUI.color = oldXp;
                 DrawXpBar(new Rect(rx, panel.yMax - 22f, rw, 10f), myReward.xpIntoLevel, myReward.xpForNext);
                 y = panel.yMax;
+
+                // Seviye atlayınca her seviye için bir sandık: türleriyle duyurulur (envanterden açılır)
+                if (myReward.chests != null && myReward.chests.Length > 0)
+                {
+                    var banner = new Rect(16f, y + 4f, width - 32f, 32f);
+                    UiKit.Card(banner, new Color(1f, 0.82f, 0.30f, 0.18f), 12f);
+                    var names = new List<string>();
+                    foreach (var tier in myReward.chests) names.Add(T("chest_" + tier));
+                    DrawChestIcon(new Rect(banner.x + 8f, banner.y + 4f, 24f, 24f), myReward.chests[0]);
+                    var oldBanner = GUI.color;
+                    GUI.color = gold;
+                    GUI.Label(new Rect(banner.x + 40f, banner.y, banner.width - 48f, banner.height), T("chestWon") + " (" + string.Join(", ", names) + ")", rowNameStyle);
+                    GUI.color = oldBanner;
+                    y = banner.yMax;
+                }
             }
 
             y = Mathf.Max(y + 10f, height - 148f);
@@ -1946,7 +1985,7 @@ namespace TextRun.Game
 
         public void DevShowAccountScreen(string which)
         {
-            profile = new ProfileDto { name = "Furkan", xp = 410, level = 4, xpIntoLevel = 110, xpForNext = 220, races = 9, wins = 3 };
+            profile = new ProfileDto { name = "Furkan", xp = 410, level = 4, xpIntoLevel = 110, xpForNext = 220, races = 9, wins = 3, gold = 1250, chestBronze = 2, chestSilver = 1 };
             switch (which)
             {
                 case "welcome": screen = Page.Welcome; break;
@@ -1960,7 +1999,7 @@ namespace TextRun.Game
 
         public void DevShowFakeResults(int myRank, string myStatus = "finished", bool levelUp = false, bool guestView = false)
         {
-            myReward = new RewardDto { userId = net.UserId, gain = 20 + new[] { 50, 35, 25, 15, 10 }[Mathf.Clamp(myRank - 1, 0, 4)], xp = 410, level = levelUp ? 5 : 4, xpIntoLevel = levelUp ? 25 : 110, xpForNext = levelUp ? 220 : 220, leveledUp = levelUp };
+            myReward = new RewardDto { userId = net.UserId, gain = 20 + new[] { 50, 35, 25, 15, 10 }[Mathf.Clamp(myRank - 1, 0, 4)], xp = 410, level = levelUp ? 5 : 4, xpIntoLevel = levelUp ? 25 : 110, xpForNext = levelUp ? 220 : 220, leveledUp = levelUp, gold = 10 + new[] { 25, 15, 10, 5, 0 }[Mathf.Clamp(myRank - 1, 0, 4)], chests = levelUp ? new[] { "bronze" } : new string[0] };
             if (guestView)
             {
                 myReward = null; // misafir: XP kutusu yok, hesap açma notu var

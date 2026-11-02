@@ -1,11 +1,18 @@
-// Oyuncu profili: ad, XP ve seviye. Saf kurallar burada; saklama ve RPC'ler main.ts / match.ts içindedir.
-// XP yalnızca sunucuda hesaplanır ve saklanır; istemci bir XP değeri gönderemez.
+// Oyuncu profili: ad, XP, seviye, altın, sandık ve eşyalar. Saf kurallar burada; saklama ve RPC'ler main.ts / match.ts içindedir.
+// XP, altın ve sandıklar yalnızca sunucuda hesaplanır ve saklanır; istemci bu değerleri gönderemez.
+import { CHEST_TIERS, chestTierForLevel, goldForRace, rollChest } from "./economy.ts";
+import type { ChestOpening, ChestTier } from "./economy.ts";
+
+export type Chests = { [tier in ChestTier]: number };
 
 export interface Profile {
   name: string | null; // null = oyuncu henüz ad seçmedi
   xp: number;
   races: number;
   wins: number;
+  gold: number;
+  chests: Chests; // açılmamış sandık sayıları
+  items: string[]; // sahip olunan eşya kimlikleri
 }
 
 export interface LevelInfo {
@@ -17,8 +24,12 @@ export interface LevelInfo {
 export const NAME_MIN = 3;
 export const NAME_MAX = 12;
 
+export function emptyChests(): Chests {
+  return { bronze: 0, silver: 0, gold: 0 };
+}
+
 export function emptyProfile(): Profile {
-  return { name: null, xp: 0, races: 0, wins: 0 };
+  return { name: null, xp: 0, races: 0, wins: 0, gold: 0, chests: emptyChests(), items: [] };
 }
 
 // Seviye 1'den 2'ye 100 XP; her seviyede gereken miktar 40 artar (100, 140, 180, ...)
@@ -69,6 +80,8 @@ export interface Reward {
   xpIntoLevel: number; // yeni seviyede biriktirilen XP (çubuk için)
   xpForNext: number; // yeni seviyeyi geçmek için gereken XP
   leveledUp: boolean;
+  gold: number; // bu yarıştan kazanılan altın
+  chests: ChestTier[]; // bu yarışta atlanan her seviye için bir sandık (türü ulaşılan seviyeye göre)
 }
 
 // Yarış sonucunu profile işler; profili günceller ve ödülü döner.
@@ -79,5 +92,28 @@ export function applyRace(profile: Profile, rank: number, status: "finished" | "
   profile.races += 1;
   if (rank === 1 && status === "finished") profile.wins += 1;
   const after = levelOf(profile.xp);
-  return { gain, xp: profile.xp, level: after.level, xpIntoLevel: after.xpIntoLevel, xpForNext: after.xpForNext, leveledUp: after.level > before };
+
+  const gold = goldForRace(rank, status);
+  profile.gold += gold;
+  const chests: ChestTier[] = [];
+  for (let level = before + 1; level <= after.level; level++) {
+    const tier = chestTierForLevel(level);
+    profile.chests[tier] += 1;
+    chests.push(tier);
+  }
+  return { gain, xp: profile.xp, level: after.level, xpIntoLevel: after.xpIntoLevel, xpForNext: after.xpForNext, leveledUp: after.level > before, gold, chests };
+}
+
+export function isChestTier(value: unknown): value is ChestTier {
+  return typeof value === "string" && (CHEST_TIERS as string[]).indexOf(value) >= 0;
+}
+
+// Bir sandık açar: sandık sayısı düşer; eşya envantere girer, tekrar eşyaysa altın verilir. Sandık yoksa null döner.
+export function openChest(profile: Profile, tier: ChestTier, rng: () => number = Math.random): ChestOpening | null {
+  if (profile.chests[tier] <= 0) return null;
+  const opening = rollChest(tier, profile.items, rng);
+  profile.chests[tier] -= 1;
+  if (opening.duplicate) profile.gold += opening.goldRefund;
+  else profile.items.push(opening.itemId);
+  return opening;
 }
