@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using TextRun.Audio;
 using TextRun.Common;
 using TextRun.Online;
@@ -124,8 +125,11 @@ namespace TextRun.Game
             view.SetVisible(false); // menü ve eşleşme ekranlarında pist görünmez; yalnızca arka plan ve arayüz vardır
             view.ResetToStart();
 
-            // Bu telefonda kayıtlı hesap varsa doğrudan girilir; yoksa giriş seçimi gelir (misafir olarak girilince bağlanılır)
+            // Bu telefonda kayıtlı hesap varsa doğrudan girilir; yoksa giriş seçimi gelir (misafir olarak girilince bağlanılır).
+            // Misafir, sürmekte olan bir yarıştan kopmuşsa (oyun kapandı) aynı geçici hesapla yarışa dönmek için doğrudan bağlanılır.
+            var pendingResume = ResumeStore.Load();
             if (OnlineRaceClient.HasSavedAccount) Connect(Entry.Saved);
+            else if (pendingResume != null && !string.IsNullOrEmpty(pendingResume.guestId)) Connect(Entry.Guest);
             else screen = Page.Welcome;
         }
 
@@ -154,8 +158,15 @@ namespace TextRun.Game
             screen = Page.Connecting;
             if (net != null) await net.CloseAsync();
 
-            // Misafir geçicidir: her bağlanışta yeni kimlik, cihaza kaydedilmez. Hesap girişinde oturum kaydedilir.
-            net = new OnlineRaceClient(Guid.NewGuid().ToString(), false);
+            // Misafir geçicidir: her bağlanışta yeni kimlik, cihaza kaydedilmez. Tek istisna: sürmekte olan yarıştan koptuysa
+            // aynı kimlikle geri girer (kimlik yarış bitince silinir). Hesap girişinde oturum kaydedilir.
+            string guestId = Guid.NewGuid().ToString();
+            if (entry == Entry.Guest)
+            {
+                var pending = ResumeStore.Load();
+                if (pending != null && !string.IsNullOrEmpty(pending.guestId)) guestId = pending.guestId;
+            }
+            net = new OnlineRaceClient(guestId, false);
             if (entry == Entry.Guest) net.GuestName = "Misafir" + UnityEngine.Random.Range(1000, 10000);
             else if (entry == Entry.Saved) net.UseSavedAccount = true;
             else
@@ -182,6 +193,7 @@ namespace TextRun.Game
                 ClearLoginForm(); // şifre bellekte kalmaz, kullanıcı adı da bir sonraki girişe taşınmaz
                 if (entry == Entry.Guest || !string.IsNullOrEmpty(profile.name)) screen = Page.Menu;
                 else { nameInput = ""; nameNotice = ""; screen = Page.NameEntry; } // yeni hesap: önce oyun içi ad
+                if (screen == Page.Menu) StartupResume();
             }
             catch (Exception e)
             {
@@ -211,10 +223,131 @@ namespace TextRun.Game
             screen = Page.Error;
         }
 
+        // ---------- Yarışa geri dönme ----------
+        // Başlamış bir yarıştan her ne sebeple (oyun kapandı, internet koptu, telefon arka plana alındı) çıkan oyuncu
+        // tekrar bağlanınca yarış sürüyorsa kaldığı yerden devam eder; yarış bittiyse uyarısız ana menüye düşer.
+
+        bool resuming;                 // geri dönüş sürüyor, sunucunun ilk durum mesajı bekleniyor
+        bool resumeBusy;               // bir geri dönüş denemesi çalışıyor
+        float resumeDeadline = float.MaxValue;
+        string savedResumeMatch = "";  // telefona yazdığımız yarış numarası (aynısını tekrar yazmayız)
+        float pausedAt;
+
+        void SaveResume(string lang)
+        {
+            if (net == null || string.IsNullOrEmpty(net.MatchId) || savedResumeMatch == net.MatchId) return;
+            savedResumeMatch = net.MatchId;
+            ResumeStore.Save(new ResumeStore.Info
+            {
+                matchId = net.MatchId,
+                lang = string.IsNullOrEmpty(lang) ? raceLanguage.Code() : lang,
+                code = isPrivateRoom ? roomCode : "",
+                userId = net.UserId,
+                guestId = net.IsAccount ? "" : net.DeviceId,
+            });
+        }
+
+        void ClearResume()
+        {
+            savedResumeMatch = "";
+            ResumeStore.Clear();
+        }
+
+        // Oyun açılışında: bağlanıldıktan sonra sürmekte olan yarış kaydı varsa oraya dönülür
+        void StartupResume()
+        {
+            var pending = ResumeStore.Load();
+            if (pending == null) return;
+            if (pending.userId != net.UserId) { ClearResume(); return; } // başka hesabın kaydı
+            ResumeMatch(pending, false);
+        }
+
+        async void ResumeMatch(ResumeStore.Info info, bool reconnect)
+        {
+            if (resumeBusy) return;
+            resumeBusy = true;
+            resuming = true;
+            resumeDeadline = float.MaxValue;
+            raceLanguage = info.lang == "en" ? GameLanguage.English : GameLanguage.Turkish;
+            isPrivateRoom = !string.IsNullOrEmpty(info.code);
+            roomCode = info.code ?? "";
+            if (typing == null) ResetForRoom();
+            screen = Page.Connecting;
+
+            var meta = new Dictionary<string, string> { { "lang", info.lang } };
+            if (isPrivateRoom) meta["code"] = info.code;
+
+            float giveUpAt = Time.realtimeSinceStartup + 25f;
+            bool joined = false;
+            bool networkFailed = false;
+            while (!joined)
+            {
+                try
+                {
+                    if (reconnect) { await net.ReconnectAsync(); reconnect = false; }
+                    await net.ResumeMatchAsync(info.matchId, meta);
+                    joined = true;
+                }
+                catch (Exception)
+                {
+                    // Bağlantı kuruldu ve sunucu yarışı reddettiyse yarış bitmiş ya da kapanmıştır; ağ yoksa tekrar denenir
+                    if (!reconnect && net.IsConnected) break;
+                    if (Time.realtimeSinceStartup > giveUpAt) { networkFailed = true; break; }
+                    reconnect = true;
+                    await Task.Delay(2000);
+                }
+            }
+            resumeBusy = false;
+
+            if (joined) resumeDeadline = Time.realtimeSinceStartup + 8f; // ilk durum mesajı gelmezse vazgeçilir
+            else if (networkFailed)
+            {
+                resuming = false;
+                errorText = T("connectionLost");
+                screen = Page.Error;
+            }
+            else GiveUpResume();
+        }
+
+        // Yarış bitmiş/kapanmış: kayıt silinir, uyarı verilmeden ana menüye geçilir (varsa XP zaten hesaba yazılmıştır)
+        void GiveUpResume()
+        {
+            resuming = false;
+            resumeDeadline = float.MaxValue;
+            ClearResume();
+            _ = net.LeaveAsync();
+            net.ForgetMatch();
+            isPrivateRoom = false;
+            keyboardRequested = false;
+            screen = Page.Menu;
+            RefreshProfile();
+        }
+
+        void OnApplicationPause(bool paused)
+        {
+            if (paused) { pausedAt = Time.realtimeSinceStartup; return; }
+            // Telefon arka plandan döndü: soket ölmüş olabilir (bazen haber de gelmez). Yarıştaysak birkaç saniyeden uzun kaldıysa yenisini açarız.
+            if (net == null || resumeBusy || Time.realtimeSinceStartup - pausedAt < 3f) return;
+            if (screen != Page.MatchFound && screen != Page.Countdown && screen != Page.Racing) return;
+            var pending = ResumeStore.Load();
+            if (pending != null && pending.userId == net.UserId) ResumeMatch(pending, true);
+        }
+
         void OnClosed(string reason)
         {
             if (screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.Connecting || screen == Page.Error
-                || screen == Page.Welcome || screen == Page.Login || screen == Page.NameEntry || screen == Page.Settings) return;
+                || screen == Page.Welcome || screen == Page.Login || screen == Page.NameEntry || screen == Page.Settings || screen == Page.Results) return;
+
+            // Başlamış yarış sürerken kopma: hata ekranı yerine yarışa geri dönülür
+            if (screen == Page.MatchFound || screen == Page.Countdown || screen == Page.Racing)
+            {
+                var pending = ResumeStore.Load();
+                if (pending != null && pending.userId == net.UserId && !resumeBusy)
+                {
+                    ResumeMatch(pending, true);
+                    return;
+                }
+            }
             sound.StopMusic();
             errorText = T("connectionLost");
             screen = Page.Error;
@@ -352,6 +485,15 @@ namespace TextRun.Game
         {
             if (screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.Error) return;
 
+            if (resuming)
+            {
+                // Geri dönüşte yalnızca sürmekte olan yarışa (geri sayım/yarış) alınırız; bekleme odası ya da biten yarış için ana menüye düşülür
+                if (s.phase != Phase.Countdown && s.phase != Phase.Racing) { GiveUpResume(); return; }
+                resuming = false;
+                resumeDeadline = float.MaxValue;
+                if (!string.IsNullOrEmpty(s.lang)) raceLanguage = s.lang == "en" ? GameLanguage.English : GameLanguage.Turkish;
+            }
+
             if (s.kind == "private") { isPrivateRoom = true; roomCode = s.code ?? ""; roomHost = s.host ?? ""; roomLang = s.lang ?? "tr"; }
 
             players = s.players ?? new PlayerDto[0];
@@ -369,6 +511,7 @@ namespace TextRun.Game
                     break;
 
                 case Phase.Countdown:
+                    SaveResume(s.lang);
                     PrepareTyping(s);
                     countdownEndsLocal = now + (s.startAt - s.serverNow) / 1000f;
                     float remaining = (s.startAt - s.serverNow) / 1000f;
@@ -393,6 +536,7 @@ namespace TextRun.Game
 
                 case Phase.Racing:
                     // Yarış sürerken (yeniden bağlanma) kaldığımız yerden devam ederiz
+                    SaveResume(s.lang);
                     PrepareTyping(s);
                     SyncLocalIndex();
                     view.SetProgress(players, wordCount);
@@ -401,6 +545,7 @@ namespace TextRun.Game
                     break; // klavye Update içinde açılır
 
                 case Phase.Finished:
+                    ClearResume();
                     results = s.results ?? new ResultDto[0];
                     resultsBackdrop.Restart();
                     screen = Page.Results;
@@ -489,6 +634,7 @@ namespace TextRun.Game
 
         void OnResults(ResultsDto r)
         {
+            ClearResume(); // yarış bitti: geri dönülecek yarış kalmadı (misafirin saklanan kimliği de silinir)
             results = r.results ?? new ResultDto[0];
             myReward = null;
             if (r.rewards != null)
@@ -566,6 +712,7 @@ namespace TextRun.Game
             ReleaseFieldKeyboardIfUnfocused();
 
             net?.Pump();
+            if (resuming && Time.realtimeSinceStartup > resumeDeadline) GiveUpResume(); // sunucudan durum gelmedi
             if (screen == Page.MatchFound && Time.realtimeSinceStartup >= countdownEndsLocal - countdownTotal) screen = Page.Countdown;
             TickCountdownSound();
             TickEndingSound();
@@ -1209,6 +1356,7 @@ namespace TextRun.Game
         async void Logout()
         {
             OnlineRaceClient.ForgetAccount();
+            ClearResume();
             lastEntry = Entry.Guest;
             profile = new ProfileDto();
             ClearLoginForm();

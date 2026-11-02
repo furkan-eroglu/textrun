@@ -128,7 +128,7 @@ export function matchJoin(
     } catch (e) {
       logger.warn("Profil okunamadi: %s", String(e));
     }
-    addHuman(state, presence.userId, name, now);
+    addHuman(state, presence.userId, name, now, presence.sessionId);
     send(dispatcher, OP.SNAPSHOT, snapshotOf(state, now), [presence]);
   }
   if (state.phase === "lobby") send(dispatcher, OP.ROSTER, snapshotOf(state, now));
@@ -145,7 +145,7 @@ export function matchLeave(
   presences: nkruntime.Presence[]
 ) {
   const now = Date.now();
-  for (const presence of presences) removeHuman(state, presence.userId, now);
+  for (const presence of presences) removeHuman(state, presence.userId, now, presence.sessionId);
   if (state.phase === "lobby") send(dispatcher, OP.ROSTER, snapshotOf(state, now));
   return { state };
 }

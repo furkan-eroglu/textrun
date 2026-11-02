@@ -9,6 +9,57 @@ using UnityEngine;
 
 namespace TextRun.Online
 {
+    // Başlamış (geri sayım ya da yarış aşamasındaki) yarışın bilgisi telefona yazılır. Oyun kapanır, bağlantı kopar ya da
+    // telefon arka plana atılırsa oyuncu yarış sürüyorsa aynı yarışa geri döner; yarış bittiyse ana menüye düşer.
+    // Misafirin gizli kimliği de yalnızca bu süre boyunca saklanır (yarış bitince silinir).
+    public static class ResumeStore
+    {
+        const string Key = "textrun.resume";
+        const long MaxAgeSeconds = 3600; // bir yarış bundan uzun sürmez; eski kayıt yok sayılır
+
+        [Serializable]
+        public class Info
+        {
+            public string matchId;
+            public string lang;
+            public string code;     // özel oda kodu (herkese açık yarışta boş)
+            public string userId;
+            public string guestId;  // yalnızca misafirde: aynı geçici hesaba dönebilmek için cihaz kimliği
+            public long savedAt;    // unix saniye
+        }
+
+        public static Info Load()
+        {
+            try
+            {
+                var json = PlayerPrefs.GetString(Key, "");
+                if (string.IsNullOrEmpty(json)) return null;
+                var info = JsonUtility.FromJson<Info>(json);
+                if (info == null || string.IsNullOrEmpty(info.matchId)) return null;
+                if (DateTimeOffset.UtcNow.ToUnixTimeSeconds() - info.savedAt > MaxAgeSeconds) { Clear(); return null; }
+                return info;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        public static void Save(Info info)
+        {
+            info.savedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            PlayerPrefs.SetString(Key, JsonUtility.ToJson(info));
+            PlayerPrefs.Save();
+        }
+
+        public static void Clear()
+        {
+            if (!PlayerPrefs.HasKey(Key)) return;
+            PlayerPrefs.DeleteKey(Key);
+            PlayerPrefs.Save();
+        }
+    }
+
     // Nakama sunucusuyla konuşur: giriş, yarış bulma, odaya katılma, kelime gönderme, gelen mesajları işleme.
     // Gelen olaylar bir kuyruğa konur ve Pump() çağrılınca ana iş parçacığında dağıtılır (Unity nesnelerine güvenle dokunulabilsin diye).
     public class OnlineRaceClient
@@ -26,6 +77,7 @@ namespace TextRun.Online
         ISession session;
         ISocket socket;
         string matchId;
+        Dictionary<string, string> matchMeta; // odaya girerken gönderilen bilgi (dil, özel oda kodu): yeniden girişte aynısı gerekir
 
         public event Action<SnapshotDto> Snapshot;
         public event Action<SnapshotDto> Roster;
@@ -40,6 +92,8 @@ namespace TextRun.Online
         public string UserId => session?.UserId;
         public string Username => session?.Username;
         public string MatchId => matchId;
+        public string DeviceId => deviceId;
+        public bool IsConnected => socket != null && socket.IsConnected;
 
         // Giriş türü (ConnectAsync'ten önce ayarlanır):
         //   hiçbiri            -> misafir (cihaz kimliği; GuestName ile ad)
@@ -187,11 +241,43 @@ namespace TextRun.Online
 
         async Task OpenSocketAsync()
         {
-            socket = client.NewSocket();
-            socket.ReceivedMatchState += OnMatchState;
-            socket.Closed += reason => queue.Enqueue(() => Closed?.Invoke(reason));
-            await socket.ConnectAsync(session, true);
+            var created = client.NewSocket();
+            // Yalnızca şu anki soketin olayları dikkate alınır (yeniden bağlanınca eski soketin geç gelen olayları karışmasın)
+            created.ReceivedMatchState += state => { if (created == socket) OnMatchState(state); };
+            created.Closed += reason => queue.Enqueue(() => { if (created == socket) Closed?.Invoke(reason); });
+            socket = created;
+            await created.ConnectAsync(session, true);
         }
+
+        // Bağlantı koptuktan sonra aynı hesapla yeni soket açar (süresi dolan oturum yenilenir). Odaya girmez: ResumeMatchAsync çağrılır.
+        public async Task ReconnectAsync()
+        {
+            var old = socket;
+            if (session.HasExpired(DateTime.UtcNow.AddMinutes(1)))
+            {
+                if (IsAccount)
+                {
+                    session = await client.SessionRefreshAsync(session);
+                    SaveAccountSession();
+                }
+                else session = await AuthenticateAsync(); // misafir: aynı cihaz kimliği aynı geçici hesabı verir
+            }
+            await OpenSocketAsync();
+            if (old != null) { try { await old.CloseAsync(); } catch (Exception) { } }
+        }
+
+        // Daha önce girilmiş yarışa yeniden girer (sunucu oyuncuyu kaldığı yerden devam ettirir). Yarış yoksa/kapalıysa istisna fırlatır.
+        public async Task ResumeMatchAsync(string id, Dictionary<string, string> meta)
+        {
+            var match = await socket.JoinMatchAsync(id, meta);
+            matchId = match.Id;
+            matchMeta = meta;
+        }
+
+        public Dictionary<string, string> MatchMeta => matchMeta;
+
+        // Yarış kaydı unutulur (sunucuya "ayrıldım" denmez: bağlantı zaten yoktur)
+        public void ForgetMatch() { matchId = null; matchMeta = null; }
 
         // Seçilen dilde açık bir yarış bulur ve odaya katılır. Oda dolu/kapalıysa birkaç kez yeniden arar.
         public async Task FindAndJoinAsync(GameLanguage language, Action<string> onRetry = null)
@@ -206,8 +292,10 @@ namespace TextRun.Online
 
                 try
                 {
-                    var match = await socket.JoinMatchAsync(found.matchId, new Dictionary<string, string> { { "lang", code } });
+                    var meta = new Dictionary<string, string> { { "lang", code } };
+                    var match = await socket.JoinMatchAsync(found.matchId, meta);
                     matchId = match.Id;
+                    matchMeta = meta;
                     return;
                 }
                 catch (Exception e)
@@ -242,8 +330,10 @@ namespace TextRun.Online
 
         async Task JoinPrivateAsync(RoomResponse room)
         {
-            var match = await socket.JoinMatchAsync(room.matchId, new Dictionary<string, string> { { "lang", room.lang }, { "code", room.code } });
+            var meta = new Dictionary<string, string> { { "lang", room.lang }, { "code", room.code } };
+            var match = await socket.JoinMatchAsync(room.matchId, meta);
             matchId = match.Id;
+            matchMeta = meta;
         }
 
         // Oyuncu profili (ad, XP, seviye) sunucudan okunur
@@ -298,6 +388,7 @@ namespace TextRun.Online
             if (socket == null || matchId == null) return;
             var id = matchId;
             matchId = null;
+            matchMeta = null;
             try { await socket.LeaveMatchAsync(id); } catch (Exception) { }
         }
 

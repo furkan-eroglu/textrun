@@ -353,6 +353,21 @@ test("baglanti kopmasi: sure icinde geri donebilir, sure bitince yarisi kaybeder
   assert.equal(submitWord(state, "u1", state.words[0], start + 26000), "correct");
 });
 
+test("yeni baglantiyla geri giren oyuncu, eski baglantinin gec gelen ayrildi bildiriminden etkilenmez", () => {
+  const state = makeState("en", { disconnectGraceMs: 30000 });
+  fillHumans(state, 2);
+  const start = startRace(state);
+
+  addHuman(state, "u1", "Oyuncu 1", start + 500, "eski");
+  removeHuman(state, "u1", start + 1000, "eski");
+  assert.ok(!state.players.u1.connected);
+  assert.equal(addHuman(state, "u1", "Oyuncu 1", start + 2000, "yeni"), "rejoined");
+  removeHuman(state, "u1", start + 2500, "eski"); // eski bağlantı geç kapandı
+  assert.ok(state.players.u1.connected, "yeni baglanti hala acik sayilmali");
+  removeHuman(state, "u1", start + 3000, "yeni");
+  assert.ok(!state.players.u1.connected);
+});
+
 test("tum insanlar ayrilinca (sure dolunca) yaris biter", () => {
   const state = makeState("en", { disconnectGraceMs: 30000 });
   fillHumans(state, 2);

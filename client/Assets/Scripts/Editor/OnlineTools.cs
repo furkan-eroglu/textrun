@@ -228,6 +228,28 @@ namespace TextRun.EditorTools
             await host.CloseAsync();
             await friend.CloseAsync();
 
+            // --- Test 3: kopan oyuncu sürmekte olan yarışa geri döner (yeni soket, aynı hesap) ---
+            var rc = new OnlineRaceClient("unity-test-" + run + "-resume", false);
+            SnapshotDto rcCountdown = null, rcBack = null;
+            GoDto rcGo = null;
+            rc.Countdown += s => rcCountdown = s;
+            rc.Go += g => rcGo = g;
+            await rc.ConnectAsync();
+            await rc.FindAndJoinAsync(GameLanguage.Turkish);
+            await WaitUntil(rc, () => rcGo != null, 14000, "yaris basladi (yeniden giris testi)");
+            string matchBefore = rc.MatchId;
+            var metaBefore = new Dictionary<string, string>(rc.MatchMeta);
+            rc.Snapshot += s => rcBack = s;
+            await rc.ReconnectAsync();
+            await rc.ResumeMatchAsync(matchBefore, metaBefore);
+            await WaitUntil(rc, () => rcBack != null, 5000, "yeniden giriste durum");
+            Check(rc.MatchId == matchBefore, "ayni yarisa geri girildi");
+            Check(rcBack.phase == "racing" && rcBack.words != null && rcBack.words.Length == rcCountdown.words.Length, "yaris surerken geri giren oyuncu yarisin ortasina alindi");
+            bool seesSelf = false;
+            foreach (var p in rcBack.players) if (p.id == rc.UserId) seesSelf = true;
+            Check(seesSelf, "geri giren oyuncu yarisin oyuncu listesinde");
+            await rc.CloseAsync();
+
             Debug.Log(failures == 0 ? "[ONLINE] TUM TESTLER GECTI" : "[ONLINE] " + failures + " TEST BASARISIZ");
             return failures == 0 ? 0 : 1;
         }

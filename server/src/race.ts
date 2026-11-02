@@ -12,6 +12,7 @@ export interface Player {
   isBot: boolean;
   connected: boolean;
   disconnectedAt: number;
+  sessionId: string; // oyuncunun şu anki bağlantısı (eski bağlantının geç gelen "ayrıldı" bildirimini ayıklamak için)
   slot: number;
   index: number; // sıradaki kelimenin numarası
   correct: number;
@@ -99,11 +100,12 @@ export function humanCount(state: RaceState): number {
 
 // ---------- Lobi ----------
 
-export function addHuman(state: RaceState, id: string, name: string, now: number): JoinOutcome {
+export function addHuman(state: RaceState, id: string, name: string, now: number, sessionId = ""): JoinOutcome {
   const existing = state.players[id];
   if (existing && !existing.isBot) {
     existing.connected = true;
     existing.disconnectedAt = 0;
+    existing.sessionId = sessionId;
     return "rejoined";
   }
   if (state.phase !== "lobby") return "closed";
@@ -111,6 +113,7 @@ export function addHuman(state: RaceState, id: string, name: string, now: number
 
   delete state.reserved[id]; // rezerve edilen koltuk artık gerçek koltuk
   state.players[id] = newPlayer(id, name, false, state.order.length);
+  state.players[id].sessionId = sessionId;
   state.order.push(id);
   state.everHadHuman = true;
   if (state.kind === "private") {
@@ -146,9 +149,11 @@ export function expireReservations(state: RaceState, now: number): void {
   }
 }
 
-export function removeHuman(state: RaceState, id: string, now: number): void {
+export function removeHuman(state: RaceState, id: string, now: number, sessionId = ""): void {
   const player = state.players[id];
   if (!player || player.isBot) return;
+  // Oyuncu yeni bağlantısıyla çoktan geri girdiyse, eski bağlantının geç gelen "ayrıldı" bildirimi yok sayılır
+  if (sessionId !== "" && player.sessionId !== "" && player.sessionId !== sessionId) return;
 
   if (state.phase === "lobby") {
     delete state.players[id];
@@ -210,6 +215,7 @@ function newPlayer(id: string, name: string, isBot: boolean, slot: number): Play
     isBot,
     connected: true,
     disconnectedAt: 0,
+    sessionId: "",
     slot,
     index: 0,
     correct: 0,
