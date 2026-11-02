@@ -74,6 +74,16 @@ namespace TextRun.Game
         Entry lastEntry = Entry.Guest;
         string loginInput = "";
         string passInput = "";
+        string passAgainInput = "";
+        bool showPassword;
+        GUIStyle passwordToggleStyle;
+        GUIStyle PasswordToggleStyle()
+        {
+            if (passwordToggleStyle != null) return passwordToggleStyle;
+            passwordToggleStyle = new GUIStyle(smallStyle) { alignment = TextAnchor.MiddleRight, fontStyle = FontStyle.Bold };
+            UiKit.SetAllTextColors(passwordToggleStyle, new Color(0.45f, 0.75f, 1f));
+            return passwordToggleStyle;
+        }
         string loginNotice = "";
         bool registerMode;
         string nameInput = "";
@@ -164,6 +174,7 @@ namespace TextRun.Game
                 profile = await net.GetProfileAsync();
                 if (entry != Entry.Guest) lastEntry = Entry.Saved; // yeniden denemede kayıtlı oturum kullanılır (şifre bellekte tutulmaz)
                 passInput = "";
+                passAgainInput = "";
                 if (entry == Entry.Guest || !string.IsNullOrEmpty(profile.name)) screen = Page.Menu;
                 else { nameInput = ""; nameNotice = ""; screen = Page.NameEntry; } // yeni hesap: önce oyun içi ad
             }
@@ -542,8 +553,10 @@ namespace TextRun.Game
             {
                 lastScreen = screen;
                 GUIUtility.keyboardControl = 0;
+                focusField = null;
                 if (screen != Page.Countdown && screen != Page.Racing) keyboard.Close();
             }
+            ReleaseFieldKeyboardIfUnfocused();
 
             net?.Pump();
             if (screen == Page.MatchFound && Time.realtimeSinceStartup >= countdownEndsLocal - countdownTotal) screen = Page.Countdown;
@@ -929,6 +942,7 @@ namespace TextRun.Game
             {
                 registerMode = tab == 1;
                 loginNotice = "";
+                passAgainInput = "";
             }
             y += 70f;
 
@@ -937,49 +951,147 @@ namespace TextRun.Game
             loginInput = CleanLogin(DrawField(new Rect(24f, y, width - 48f, 58f), loginInput ?? "", 16, "loginField", nameFieldStyle));
             y += 68f;
             GUI.Label(new Rect(24f, y, width - 48f, 22f), T("password"), smallStyle);
+            if (GUI.Button(new Rect(width - 24f - 120f, y - 4f, 120f, 30f), T(showPassword ? "hidePassword" : "showPassword"), PasswordToggleStyle())) showPassword = !showPassword;
             y += 24f;
             passInput = DrawField(new Rect(24f, y, width - 48f, 58f), passInput ?? "", 32, "passField", nameFieldStyle, true);
             y += 66f;
 
-            GUI.Label(new Rect(24f, y, width - 48f, 44f), loginNotice.Length > 0 ? loginNotice : T("loginRule"), smallCenterWrapStyle());
+            // Şifre tekrarı yalnızca kayıtta istenir
+            bool mismatch = registerMode && passAgainInput.Length > 0 && passAgainInput != passInput;
+            if (registerMode)
+            {
+                GUI.Label(new Rect(24f, y, width - 48f, 22f), T("passwordAgain"), smallStyle);
+                y += 24f;
+                passAgainInput = DrawField(new Rect(24f, y, width - 48f, 58f), passAgainInput ?? "", 32, "passAgainField", nameFieldStyle, true);
+                y += 66f;
+            }
+
+            // Kurallar yalnızca kayıtta yazar; girişte yalnızca hata mesajı çıkar
+            string hint = loginNotice.Length > 0 ? loginNotice : mismatch ? T("passwordMismatch") : registerMode ? T("loginRule") : "";
+            GUI.Label(new Rect(24f, y, width - 48f, 44f), hint, smallCenterWrapStyle());
             y += 52f;
 
             string action = T(registerMode ? "register" : "login");
-            if (LoginIsValid(loginInput, passInput)) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 62f), action, 24)) SubmitLogin(registerMode); }
+            bool canSubmit = registerMode ? LoginIsValid(loginInput, passInput) && passAgainInput == passInput : loginInput.Length > 0 && passInput.Length > 0;
+            if (canSubmit) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 62f), action, 24)) SubmitLogin(registerMode); }
             else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 62f), action, 24);
             y += 80f;
 
             if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 50f), T("back"), 20)) screen = Page.Welcome;
         }
 
-        // Yazı kutusu: yanıp sönen imleç çizer (telefonun yazı kutusu imleç göstermiyor; kutunun seçili olduğu anlaşılsın)
+        // Yazı kutusu. Metni, imleci ve odağı kendimiz yönetiriz; telefonda yalnızca sistemin yerel klavyesini kullanır.
+        //  - İmleç her zaman yazının sonundadır.
+        //  - Kutuya tekrar dokunmak metni silmez (klavye zaten açıksa dokunuş yok sayılır, kapalıysa mevcut metinle yeniden açılır).
         string pendingFocus;
+        string focusField;          // odaktaki kutunun adı (yoksa null)
+        string fieldLast = "";      // odaktaki kutunun son döndürülen metni (çağıranın metni değiştirip değiştirmediğini anlamak için)
+        TouchScreenKeyboard fieldKb;
+        bool fieldKbUsed;           // bu kutular klavye açtı: odak bırakılınca sistemden gizlenir
+        readonly Dictionary<GUIStyle, GUIStyle> rightAlignedStyles = new Dictionary<GUIStyle, GUIStyle>();
+
         string DrawField(Rect r, string text, int maxLength, string controlName, GUIStyle style, bool password = false)
         {
-            GUI.SetNextControlName(controlName);
-            string result = password ? GUI.PasswordField(r, text, '*', maxLength, style) : GUI.TextField(r, text, maxLength, style);
+            var e = Event.current;
+            text = text ?? "";
 
             if (pendingFocus == controlName)
             {
-                GUI.FocusControl(controlName);
+                FocusField(controlName, text);
                 pendingFocus = null;
             }
 
-            bool blinkOn = ((int)(Time.realtimeSinceStartup * 2f) & 1) == 0;
-            if (Event.current.type == EventType.Repaint && blinkOn && GUI.GetNameOfFocusedControl() == controlName)
+            if (e.type == EventType.MouseDown)
             {
-                string shown = password ? new string('*', result.Length) : result;
-                float textWidth = shown.Length == 0 ? 0f : style.CalcSize(new GUIContent(shown)).x;
-                float caretHeight = style.fontSize * 1.25f;
-                var old = GUI.color;
-                GUI.color = Color.white;
-                GUI.DrawTexture(new Rect(r.center.x + textWidth / 2f + 1f, r.center.y - caretHeight / 2f, 2f, caretHeight), Texture2D.whiteTexture);
-                GUI.color = old;
+                if (r.Contains(e.mousePosition))
+                {
+                    if (focusField != controlName) FocusField(controlName, text);
+                    else if (Application.isMobilePlatform && fieldKb == null) FocusField(controlName, text); // klavye kapanmış: aynı metinle yeniden aç
+                    e.Use();
+                }
+                else if (focusField == controlName) focusField = null; // başka yere dokunuldu (başka kutuysa o odağı alır)
             }
-            return result;
+
+            bool focused = focusField == controlName;
+            if (focused)
+            {
+                if (Application.isMobilePlatform)
+                {
+                    if (fieldKb != null)
+                    {
+                        if (text != fieldLast) fieldKb.text = text; // çağıran metni düzeltti (ör. izin verilmeyen harf atıldı)
+                        else text = fieldKb.text ?? "";
+                        if (text.Length > maxLength) { text = text.Substring(0, maxLength); fieldKb.text = text; }
+                        var status = fieldKb.status;
+                        if (status == TouchScreenKeyboard.Status.Done || status == TouchScreenKeyboard.Status.Canceled || status == TouchScreenKeyboard.Status.LostFocus)
+                            focusField = null; // klavye kapatıldı
+                    }
+                }
+                else if (e.type == EventType.KeyDown)
+                {
+                    if (e.keyCode == KeyCode.Backspace) { if (text.Length > 0) text = text.Substring(0, text.Length - 1); e.Use(); }
+                    else if (e.character != '\0' && !char.IsControl(e.character)) { if (text.Length < maxLength) text += e.character; e.Use(); }
+                }
+                fieldLast = text;
+            }
+
+            if (e.type == EventType.Repaint)
+            {
+                string shown = password && !showPassword ? new string('*', text.Length) : text;
+                var content = new GUIContent(shown);
+                var drawStyle = style;
+                if (shown.Length > 0 && style.CalcSize(content).x > r.width - 28f)
+                {
+                    // Uzun metin: sonu görünsün diye sağa yaslanır
+                    if (!rightAlignedStyles.TryGetValue(style, out drawStyle))
+                    {
+                        drawStyle = new GUIStyle(style) { alignment = TextAnchor.MiddleRight, padding = new RectOffset(style.padding.left, style.padding.right + 8, style.padding.top, style.padding.bottom) };
+                        rightAlignedStyles[style] = drawStyle;
+                    }
+                }
+                drawStyle.Draw(r, content, false, false, false, focused);
+
+                if (focused && ((int)(Time.realtimeSinceStartup * 2f) & 1) == 0)
+                {
+                    // İmleç yazının hemen sonunda (yazı boşsa kutunun ortasında)
+                    Vector2 end = shown.Length == 0 ? new Vector2(r.center.x, 0f) : drawStyle.GetCursorPixelPosition(r, content, shown.Length);
+                    float caretHeight = style.fontSize * 1.25f;
+                    var old = GUI.color;
+                    GUI.color = Color.white;
+                    GUI.DrawTexture(new Rect(end.x + 1f, r.center.y - caretHeight / 2f, 2f, caretHeight), Texture2D.whiteTexture);
+                    GUI.color = old;
+                }
+            }
+            return text;
+        }
+
+        void FocusField(string controlName, string text)
+        {
+            focusField = controlName;
+            fieldLast = text;
+            if (!Application.isMobilePlatform) return;
+            if (fieldKb != null) fieldKb.active = false;
+            TouchScreenKeyboard.hideInput = true;
+            // Yarıştaki klavyeyle aynı ayar: otomatik düzeltme kapalı, tek satır, "şifre tipi" (telefon klavyesi metni kendi kafasına göre değiştirmesin)
+            fieldKb = TouchScreenKeyboard.Open(text, TouchScreenKeyboardType.Default, false, false, true, false, "", 0);
+            fieldKbUsed = true;
+        }
+
+        // Odak bırakıldıysa klavyeyi sistemden gizler (başka kutuya geçilmişse odak null değildir, klavye açık kalır)
+        void ReleaseFieldKeyboardIfUnfocused()
+        {
+            if (focusField != null || !fieldKbUsed) return;
+            fieldKbUsed = false;
+            if (fieldKb != null) { fieldKb.active = false; fieldKb = null; }
+            keyboard.Close();
         }
 
         public void DevFocusField(string controlName) { pendingFocus = controlName; }
+        public bool DevCaretOn => ((int)(Time.realtimeSinceStartup * 2f) & 1) == 0;
+        public void DevFillLogin(string user, string pass, string again, bool reveal)
+        {
+            loginInput = user; passInput = pass; passAgainInput = again; showPassword = reveal;
+        }
 
         void SubmitLogin(bool register)
         {

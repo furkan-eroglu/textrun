@@ -84,10 +84,22 @@ namespace TextRun.Game
             foreach (var which in new[] { "welcome", "login", "register", "name", "settings", "guestsettings" })
             {
                 controller.DevShowAccountScreen(which);
+                yield return new WaitForSeconds(0.2f); // ekran değişiminin odak sıfırlaması geçsin
                 if (which == "login") controller.DevFocusField("loginField"); // imlecin göründüğünü doğrulamak için
                 yield return new WaitForSeconds(1.2f);
                 yield return Shot("1h-account-" + which);
             }
+            // Dolu kayıt formu: imleç yazının sonunda mı, şifre gizli/gösterilir mi, uyuşmayan şifre uyarısı
+            controller.DevShowAccountScreen("register");
+            controller.DevFillLogin("furkan_01", "gizlisifre1", "gizlisifre", false);
+            yield return new WaitForSeconds(0.2f);
+            controller.DevFocusField("passAgainField");
+            yield return new WaitForSeconds(0.3f);
+            while (!controller.DevCaretOn) yield return null;
+            yield return Shot("1h-register-filled");
+            controller.DevFillLogin("furkan_01", "gizlisifre1", "gizlisifre1", true);
+            while (!controller.DevCaretOn) yield return null;
+            yield return Shot("1h-register-revealed");
             controller.DevBackToMenu();
             yield return new WaitForSeconds(0.4f);
             yield return Shot("1i-menu-profile");
