@@ -120,11 +120,15 @@ export function joinRoomRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk
   if (!ctx.userId) throw new Error("giris gerekli");
 
   let code = "";
+  let lang: unknown;
   try {
-    code = normalizeCode(JSON.parse(payload).code);
+    const request = JSON.parse(payload);
+    code = normalizeCode(request.code);
+    lang = request.lang;
   } catch (e) {
     throw new Error("gecersiz istek");
   }
+  if (!isSupportedLang(lang)) throw new Error("desteklenmeyen dil");
   if (code.length !== CODE_LENGTH) fail("room_not_found", CODE_NOT_FOUND);
 
   const records = nk.storageRead([{ collection: ROOM_COLLECTION, key: code, userId: SYSTEM_USER }]);
@@ -137,6 +141,7 @@ export function joinRoomRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk
   } catch (e) {
     fail("room_not_found", CODE_NOT_FOUND);
   }
+  if (label.lang !== lang) fail("language_mismatch", CODE_FAILED_PRECONDITION); // yalnızca oda kurucusuyla aynı oyun dilindekiler girebilir
   if (!label.open) fail("room_closed", CODE_FAILED_PRECONDITION);
   if (match.size >= MAX_PLAYERS) fail("room_full", CODE_FAILED_PRECONDITION);
   return JSON.stringify({ matchId: match.matchId, code: code, lang: label.lang });

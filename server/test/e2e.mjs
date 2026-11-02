@@ -352,14 +352,16 @@ await test('ozel oda: kod ile katilinir, yanlis kod/yanlis oda reddedilir, kuruc
   assert.ok(wrongCode.error, 'yanlis kodla giris reddedilmeli');
 
   // Kod ile arayan arkadas bulur (kucuk harf/bosluk onemsiz)
-  const found = await friend.rpc('join_room', { code: ' ' + room.code.toLowerCase() + ' ' });
+  // Farkli oyun dilindeki oyuncu giremez (oda Turkce, oyuncu Ingilizce)
+  await assert.rejects(() => stranger.rpc('join_room', { code: room.code, lang: 'en' }), /language_mismatch/);
+  const found = await friend.rpc('join_room', { code: ' ' + room.code.toLowerCase() + ' ', lang: 'tr' });
   assert.equal(found.matchId, room.matchId);
   assert.equal(found.lang, 'tr');
   const friendJoin = await friend.joinWith(found.matchId, { lang: found.lang, code: room.code });
   assert.ok(friendJoin.match, 'arkadas odaya girdi');
 
   // Var olmayan kod
-  await assert.rejects(() => stranger.rpc('join_room', { code: 'AAAAA' }), /room_not_found/);
+  await assert.rejects(() => stranger.rpc('join_room', { code: 'AAAAA', lang: 'tr' }), /room_not_found/);
 
   // Kurucu olmayan baslatamaz: kisa sure beklenip geri sayim gelmedigi gorulur
   friend.start(false);
@@ -372,7 +374,7 @@ await test('ozel oda: kod ile katilinir, yanlis kod/yanlis oda reddedilir, kuruc
   assert.ok(countdown.body.players.every((p) => !p.isBot));
 
   // Baslayan odaya yeni katilinamaz
-  await assert.rejects(() => stranger.rpc('join_room', { code: room.code }), /room_closed/);
+  await assert.rejects(() => stranger.rpc('join_room', { code: room.code, lang: 'tr' }), /room_closed/);
 
   await host.waitFor(OP.GO);
   await Promise.all([host.typeAll(countdown.body.words), friend.typeAll(countdown.body.words)]);

@@ -204,11 +204,16 @@ namespace TextRun.EditorTools
 
             bool wrongCodeRejected = false;
             string wrongCodeMessage = "";
-            try { await friend.JoinRoomAsync("ZZZZZ"); }
+            try { await friend.JoinRoomAsync("ZZZZZ", GameLanguage.Turkish); }
             catch (Exception e) { wrongCodeMessage = e.GetType().Name + ": " + e.Message; wrongCodeRejected = OnlineRaceClient.IsError(e, "room_not_found"); }
             Check(wrongCodeRejected, "yanlis kod reddedildi (" + wrongCodeMessage + ")");
 
-            var joined = await friend.JoinRoomAsync(room.code.ToLowerInvariant());
+            bool wrongLanguageRejected = false;
+            try { await friend.JoinRoomAsync(room.code, GameLanguage.English); }
+            catch (Exception e) { wrongLanguageRejected = OnlineRaceClient.IsError(e, "language_mismatch"); }
+            Check(wrongLanguageRejected, "farkli oyun dilindeki oyuncu ozel odaya giremedi");
+
+            var joined = await friend.JoinRoomAsync(room.code.ToLowerInvariant(), GameLanguage.Turkish);
             Check(joined.matchId == room.matchId && joined.lang == "tr", "kodla (kucuk harfle de) ayni odaya girildi");
 
             friend.StartRoom(false); // kurucu degil: yok sayilmali

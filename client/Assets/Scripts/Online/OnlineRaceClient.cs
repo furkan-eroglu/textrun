@@ -230,10 +230,11 @@ namespace TextRun.Online
             return room;
         }
 
-        // Kodla özel odaya katılır. Hata iletileri: room_not_found, room_closed, room_full.
-        public async Task<RoomResponse> JoinRoomAsync(string code)
+        // Kodla özel odaya katılır. Hata iletileri: room_not_found, room_closed, room_full, language_mismatch
+        // (oyuncunun oyun dili oda kurucusununkinden farklıysa).
+        public async Task<RoomResponse> JoinRoomAsync(string code, GameLanguage language)
         {
-            var rpc = await client.RpcAsync(session, "join_room", JsonUtility.ToJson(new RoomRequest { code = code }));
+            var rpc = await client.RpcAsync(session, "join_room", JsonUtility.ToJson(new RoomRequest { code = code, lang = language.Code() }));
             var room = JsonUtility.FromJson<RoomResponse>(rpc.Payload);
             await JoinPrivateAsync(room);
             return room;

@@ -300,7 +300,7 @@ namespace TextRun.Game
 
             try
             {
-                var room = await net.JoinRoomAsync(joinCodeInput);
+                var room = await net.JoinRoomAsync(joinCodeInput, language);
                 raceLanguage = room.lang == "en" ? GameLanguage.English : GameLanguage.Turkish; // yarış odanın dilindedir
                 roomCode = room.code;
             }
@@ -308,7 +308,8 @@ namespace TextRun.Game
             {
                 isPrivateRoom = false;
                 screen = Page.JoinCode;
-                if (OnlineRaceClient.IsError(e, "room_closed")) codeNotice = T("roomStarted");
+                if (OnlineRaceClient.IsError(e, "language_mismatch")) codeNotice = T("roomLanguageMismatch");
+                else if (OnlineRaceClient.IsError(e, "room_closed")) codeNotice = T("roomStarted");
                 else if (OnlineRaceClient.IsError(e, "room_full")) codeNotice = T("roomIsFull");
                 else if (OnlineRaceClient.IsError(e, "room_not_found")) codeNotice = T("roomNotFound");
                 else Fail(e);
@@ -887,6 +888,7 @@ namespace TextRun.Game
             if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 64f), T("accountLogin"), 22))
             {
                 loginNotice = "";
+                registerMode = false; // her zaman "Giriş yap" sekmesiyle açılır
                 screen = Page.Login;
             }
             y += 78f;
@@ -1265,8 +1267,8 @@ namespace TextRun.Game
             joinCodeInput = FilterCode(typed);
             y += 86f;
 
-            if (codeNotice.Length > 0) GUI.Label(new Rect(0f, y, width, 26f), codeNotice, smallCenterStyle);
-            y += 40f;
+            if (codeNotice.Length > 0) GUI.Label(new Rect(24f, y, width - 48f, 52f), codeNotice, smallCenterWrapStyle()); // uyarı uzun olabilir (iki satır)
+            y += 60f;
 
             if (joinCodeInput.Length == 5) { if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 64f), T("join"), 24)) JoinRoom(); }
             else UiKit.DisabledButton(new Rect(24f, y, width - 48f, 64f), T("join"), 24);
@@ -1351,7 +1353,7 @@ namespace TextRun.Game
             switch (which)
             {
                 case "menu": screen = Page.PrivateMenu; break;
-                case "join": joinCodeInput = "K7M2P"; codeNotice = T("roomNotFound"); screen = Page.JoinCode; break;
+                case "join": joinCodeInput = "K7M2P"; codeNotice = T("roomLanguageMismatch"); screen = Page.JoinCode; break;
                 case "lobby":
                     roomCode = "K7M2P";
                     roomHost = net.UserId;
