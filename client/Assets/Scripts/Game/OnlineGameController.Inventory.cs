@@ -150,21 +150,21 @@ namespace TextRun.Game
             GUI.Label(new Rect(goldRow.x + 46f, goldRow.y, goldRow.width - 60f, goldRow.height), profile.gold.ToString(), rowNameStyle);
             y += 48f;
 
-            // Sandıklar
+            // Sandıklar: yalnızca sahip olunanlar gösterilir (hiç yoksa kısa bir not)
+            if (profile.TotalChests == 0)
+            {
+                GUI.Label(new Rect(24f, y, width - 48f, 30f), T("noChests"), smallCenterStyle);
+                y += 38f;
+            }
             foreach (var tier in ChestTiers)
             {
                 int count = profile.ChestCount(tier);
+                if (count <= 0) continue;
                 var row = new Rect(16f, y, width - 32f, 52f);
-                UiKit.Card(row, new Color(TierColor(tier).r, TierColor(tier).g, TierColor(tier).b, count > 0 ? 0.20f : 0.08f), 14f);
-                var old = GUI.color;
-                if (count == 0) GUI.color = new Color(1f, 1f, 1f, 0.45f);
+                UiKit.Card(row, new Color(TierColor(tier).r, TierColor(tier).g, TierColor(tier).b, 0.20f), 14f);
                 DrawChestIcon(new Rect(row.x + 8f, row.y + 6f, 40f, 40f), tier);
                 GUI.Label(new Rect(row.x + 56f, row.y, row.width - 156f, row.height), T("chest_" + tier) + "  x" + count, chestNameStyle);
-                GUI.color = old;
-
-                var button = new Rect(row.xMax - 96f, row.y + 6f, 88f, 40f);
-                if (count > 0) { if (UiKit.SecondaryButton(button, T("open"), 18)) BeginOpenChest(tier); }
-                else UiKit.DisabledButton(button, T("open"), 18);
+                if (UiKit.SecondaryButton(new Rect(row.xMax - 96f, row.y + 6f, 88f, 40f), T("open"), 18)) BeginOpenChest(tier);
                 y += 58f;
             }
 
@@ -294,17 +294,17 @@ namespace TextRun.Game
         }
 
         // Geliştirme: sandık açma ekranını örnek veriyle gösterir (DevHarness)
-        public void DevShowInventory(bool withItems, string openRarity = null)
+        public void DevShowInventory(bool withItems, string openRarity = null, bool noChests = false)
         {
-            profile = new ProfileDto { name = "Furkan", level = 4, gold = 1250, chestBronze = 2, chestSilver = 1, chestGold = 0, itemCount = 7 };
+            profile = new ProfileDto { name = "Furkan", level = 4, gold = 1250, chestBronze = noChests ? 0 : 2, chestSilver = noChests ? 0 : 1, chestGold = 0, itemCount = 7 };
             var items = new List<ItemDto>();
             if (withItems)
             {
-                items.Add(new ItemDto { id = "hat_cap", category = "hat", rarity = "common", tr = "Şapka", en = "Cap" });
-                items.Add(new ItemDto { id = "hair_afro", category = "hair", rarity = "uncommon", tr = "Afro", en = "Afro" });
+                items.Add(new ItemDto { id = "hat_cap", category = "head", rarity = "common", tr = "Şapka", en = "Cap" });
+                items.Add(new ItemDto { id = "hair_afro", category = "head", rarity = "uncommon", tr = "Afro", en = "Afro" });
                 items.Add(new ItemDto { id = "glasses_star", category = "glasses", rarity = "rare", tr = "Yıldız Gözlük", en = "Star Glasses" });
                 items.Add(new ItemDto { id = "top_cape", category = "top", rarity = "epic", tr = "Pelerin", en = "Cape" });
-                items.Add(new ItemDto { id = "hat_crown", category = "hat", rarity = "legendary", tr = "Taç", en = "Crown" });
+                items.Add(new ItemDto { id = "hat_crown", category = "head", rarity = "legendary", tr = "Taç", en = "Crown" });
                 items.Add(new ItemDto { id = "shoes_wing", category = "shoes", rarity = "legendary", tr = "Kanatlı Ayakkabı", en = "Winged Shoes" });
                 items.Add(new ItemDto { id = "bottom_jeans", category = "bottom", rarity = "common", tr = "Kot Pantolon", en = "Jeans" });
             }

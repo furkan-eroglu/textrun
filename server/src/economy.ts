@@ -3,7 +3,7 @@
 
 export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 export type ChestTier = "bronze" | "silver" | "gold";
-export type Category = "hat" | "hair" | "glasses" | "face" | "top" | "bottom" | "shoes" | "trail";
+export type Category = "head" | "glasses" | "face" | "top" | "bottom" | "shoes" | "trail";
 
 export interface Item {
   id: string;
@@ -23,16 +23,16 @@ function item(id: string, category: Category, rarity: Rarity, tr: string, en: st
 }
 
 export const CATALOG: Item[] = [
-  item("hat_cap", "hat", "common", "Şapka", "Cap"),
-  item("hat_beanie", "hat", "common", "Bere", "Beanie"),
-  item("hat_cowboy", "hat", "uncommon", "Kovboy Şapkası", "Cowboy Hat"),
-  item("hat_top", "hat", "rare", "Silindir Şapka", "Top Hat"),
-  item("hat_crown", "hat", "legendary", "Taç", "Crown"),
-  item("hair_short", "hair", "common", "Kısa Saç", "Short Hair"),
-  item("hair_long", "hair", "common", "Uzun Saç", "Long Hair"),
-  item("hair_afro", "hair", "uncommon", "Afro", "Afro"),
-  item("hair_mohawk", "hair", "rare", "Mohawk", "Mohawk"),
-  item("hair_flame", "hair", "epic", "Alevli Saç", "Flame Hair"),
+  item("hat_cap", "head", "common", "Şapka", "Cap"),
+  item("hat_beanie", "head", "common", "Bere", "Beanie"),
+  item("hat_cowboy", "head", "uncommon", "Kovboy Şapkası", "Cowboy Hat"),
+  item("hat_top", "head", "rare", "Silindir Şapka", "Top Hat"),
+  item("hat_crown", "head", "legendary", "Taç", "Crown"),
+  item("hair_short", "head", "common", "Kısa Saç", "Short Hair"),
+  item("hair_long", "head", "common", "Uzun Saç", "Long Hair"),
+  item("hair_afro", "head", "uncommon", "Afro", "Afro"),
+  item("hair_mohawk", "head", "rare", "Mohawk", "Mohawk"),
+  item("hair_flame", "head", "epic", "Alevli Saç", "Flame Hair"),
   item("glasses_round", "glasses", "common", "Yuvarlak Gözlük", "Round Glasses"),
   item("glasses_sun", "glasses", "uncommon", "Güneş Gözlüğü", "Sunglasses"),
   item("glasses_star", "glasses", "rare", "Yıldız Gözlük", "Star Glasses"),

@@ -108,6 +108,9 @@ namespace TextRun.Game
             controller.DevShowInventory(true);
             yield return new WaitForSeconds(0.4f);
             yield return Shot("1j-inventory");
+            controller.DevShowInventory(true, null, true);
+            yield return new WaitForSeconds(0.3f);
+            yield return Shot("1j-inventory-nochest");
             controller.DevShowChestShaking();
             yield return new WaitForSeconds(1.0f);
             yield return Shot("1k-chest-shaking");
