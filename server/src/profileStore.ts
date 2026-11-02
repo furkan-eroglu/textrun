@@ -1,7 +1,7 @@
 // Profilin Nakama depolamasına okunup yazılması. Kurallar profile.ts içindedir.
 import { CHEST_TIERS, itemById } from "./economy.ts";
 import type { ChestOpening, ChestTier } from "./economy.ts";
-import { applyRace, emptyProfile, levelOf, openChest } from "./profile.ts";
+import { applyRace, emptyProfile, equipItem, levelOf, lookOf, openChest, unequipCategory } from "./profile.ts";
 import type { Profile, Reward } from "./profile.ts";
 
 const COLLECTION = "profile";
@@ -24,6 +24,13 @@ function parse(value: { [key: string]: any } | undefined): Profile {
     for (const tier of CHEST_TIERS) if (typeof value.chests[tier] === "number") profile.chests[tier] = value.chests[tier];
   }
   if (Array.isArray(value.items)) profile.items = value.items.filter((id: unknown) => typeof id === "string" && !!itemById(id as string));
+  if (value.equipped && typeof value.equipped === "object") {
+    for (const category of Object.keys(value.equipped)) {
+      const id = value.equipped[category];
+      const entry = typeof id === "string" ? itemById(id) : undefined;
+      if (entry && entry.category === category && profile.items.indexOf(id) >= 0) profile.equipped[category] = id;
+    }
+  }
   return profile;
 }
 
@@ -87,6 +94,7 @@ export function inventoryView(profile: Profile) {
       const entry = itemById(id)!;
       return { id: entry.id, category: entry.category, rarity: entry.rarity, tr: entry.tr, en: entry.en };
     }),
+    equipped: lookOf(profile),
   };
 }
 
@@ -126,4 +134,30 @@ export function awardRace(
     }
   }
   return null;
+}
+
+// Oyuncunun takılı eşyaları (yarış odasında herkese gösterilir). Okunamazsa boş döner.
+export function lookFor(nk: nkruntime.Nakama, userId: string): string[] {
+  try {
+    return lookOf(readProfile(nk, userId).profile);
+  } catch (e) {
+    return [];
+  }
+}
+
+// Bir eşyayı takar (itemId) veya bir kategoriyi boşaltır (category). Sürüm çakışırsa yeniden dener.
+// Eşya oyuncunun değilse null döner.
+export function equipFor(nk: nkruntime.Nakama, logger: nkruntime.Logger, userId: string, change: { itemId?: unknown; category?: unknown }): Profile | null {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const stored = readProfile(nk, userId);
+      const ok = change.itemId !== undefined ? equipItem(stored.profile, change.itemId) : unequipCategory(stored.profile, change.category);
+      if (!ok) return null;
+      saveProfile(nk, userId, stored);
+      return stored.profile;
+    } catch (e) {
+      logger.warn("Esya takilamadi (deneme %d): %s", attempt + 1, String(e));
+    }
+  }
+  throw new Error("esya takilamadi");
 }

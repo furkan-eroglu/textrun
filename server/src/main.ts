@@ -5,7 +5,7 @@ import { isSupportedLang } from "./words.ts";
 import { itemById } from "./economy.ts";
 import type { ChestTier } from "./economy.ts";
 import { cleanName, isChestTier } from "./profile.ts";
-import { inventoryView, isRegistered, openChestFor, profileView, readProfile, saveProfile } from "./profileStore.ts";
+import { equipFor, inventoryView, isRegistered, openChestFor, profileView, readProfile, saveProfile } from "./profileStore.ts";
 
 export function pingRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
   return JSON.stringify({ ok: true, message: "TextRun sunucusu calisiyor", time: Date.now() });
@@ -179,8 +179,26 @@ export function setNameRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk:
 // Sahip olunan eşyalar (envanter ekranı). Misafirin envanteri yoktur.
 export function getInventoryRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
   if (!ctx.userId) throw new Error("giris gerekli");
-  if (!isRegistered(nk, ctx.userId)) return JSON.stringify({ items: [] });
+  if (!isRegistered(nk, ctx.userId)) return JSON.stringify({ items: [], equipped: [] });
   return JSON.stringify(inventoryView(readProfile(nk, ctx.userId).profile));
+}
+
+// Bir eşyayı takar ({"itemId"}) veya bir kategoriyi boşaltır ({"category"}). Eşya oyuncunun değilse "not_owned".
+export function equipItemRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+  if (!ctx.userId) throw new Error("giris gerekli");
+
+  let request: { itemId?: unknown; category?: unknown };
+  try {
+    request = JSON.parse(payload);
+  } catch (e) {
+    throw new Error("gecersiz istek");
+  }
+  if (request.itemId === undefined && request.category === undefined) fail("bad_request", CODE_INVALID_ARGUMENT);
+  if (!isRegistered(nk, ctx.userId)) fail("guest_account", CODE_INVALID_ARGUMENT);
+
+  const profile = equipFor(nk, logger, ctx.userId, request);
+  if (!profile) fail("not_owned", CODE_FAILED_PRECONDITION);
+  return JSON.stringify(inventoryView(profile!));
 }
 
 // Envanterdeki bir sandığı açar. Sandık yoksa "no_chest", geçersiz tür "bad_chest", misafirse "guest_account".
@@ -221,6 +239,7 @@ export function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk:
   initializer.registerRpc("set_name", setNameRpc);
   initializer.registerRpc("get_inventory", getInventoryRpc);
   initializer.registerRpc("open_chest", openChestRpc);
+  initializer.registerRpc("equip_item", equipItemRpc);
   initializer.registerMatch("race", { matchInit, matchJoinAttempt, matchJoin, matchLeave, matchLoop, matchTerminate, matchSignal });
   logger.info("TextRun modulu yuklendi");
 }

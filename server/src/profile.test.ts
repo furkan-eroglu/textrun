@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { applyRace, cleanName, emptyProfile, levelOf, openChest, racePaysXp, xpForNextLevel, xpForRace } from "./profile.ts";
+import { applyRace, cleanName, emptyProfile, equipItem, levelOf, lookOf, openChest, racePaysXp, unequipCategory, xpForNextLevel, xpForRace } from "./profile.ts";
 
 // Verilen seviyeye ulaşmak için gereken toplam XP
 function xpToReach(level: number): number {
@@ -109,4 +109,20 @@ test("ad: çok kısa, çok uzun, yasak karakter ve yalnızca simge reddedilir", 
   assert.equal(cleanName(""), null);
   assert.equal(cleanName(undefined), null);
   assert.equal(cleanName(12345), null);
+});
+
+test("esya takma: yalnizca sahip olunan esya takilir, ayni kategoride yenisi eskisini cikarir", () => {
+  const profile = emptyProfile();
+  profile.items = ["hat_cap", "hair_afro", "glasses_sun"];
+  assert.equal(equipItem(profile, "hat_crown"), false, "sahip olunmayan esya takilmaz");
+  assert.equal(equipItem(profile, "yok_boyle_esya"), false);
+  assert.equal(equipItem(profile, 5), false);
+  assert.equal(equipItem(profile, "hat_cap"), true);
+  assert.equal(equipItem(profile, "hair_afro"), true, "sapka ve sac ayni kategori: yenisi eskisini cikarir");
+  assert.equal(profile.equipped.head, "hair_afro");
+  assert.equal(equipItem(profile, "glasses_sun"), true);
+  assert.deepEqual(lookOf(profile), ["glasses_sun", "hair_afro"]);
+  assert.equal(unequipCategory(profile, "head"), true);
+  assert.deepEqual(lookOf(profile), ["glasses_sun"]);
+  assert.equal(unequipCategory(profile, "bilinmeyen"), false);
 });

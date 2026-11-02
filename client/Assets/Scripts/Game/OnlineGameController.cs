@@ -709,6 +709,7 @@ namespace TextRun.Game
                 focusField = null;
                 if (screen != Page.Countdown && screen != Page.Racing) keyboard.Close();
             }
+            if (screen != Page.Inventory) preview.Hide();
             ReleaseFieldKeyboardIfUnfocused();
 
             net?.Pump();
@@ -855,6 +856,7 @@ namespace TextRun.Game
 
         void OnGUI()
         {
+            if (DevSuppressGui) return;
             keyboard.HandleGuiEvent(Event.current);
             EnsureStyles();
             GUI.skin.settings.cursorColor = Color.clear;

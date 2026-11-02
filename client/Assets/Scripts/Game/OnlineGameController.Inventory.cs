@@ -12,11 +12,13 @@ namespace TextRun.Game
     public partial class OnlineGameController
     {
         static readonly string[] ChestTiers = { "bronze", "silver", "gold" };
-        const int ItemsPerPage = 6;
+        const int ItemsPerPage = 4;
         const float ChestShakeSeconds = 1.5f;
 
         InventoryDto inventory;       // null = henüz okunmadı
         int inventoryPage;
+        int inventoryTab;             // 0 eşyalar, 1 sandıklar
+        readonly OutfitPreview preview = new OutfitPreview();
         GUIStyle itemNameStyle, chestNameStyle;
 
         // Sandık açma
@@ -81,6 +83,7 @@ namespace TextRun.Game
         void OpenInventory()
         {
             inventoryPage = 0;
+            inventoryTab = profile.TotalChests > 0 ? 1 : 0;
             openingTier = null;
             screen = Page.Inventory;
             LoadInventory();
@@ -150,11 +153,27 @@ namespace TextRun.Game
             GUI.Label(new Rect(goldRow.x + 46f, goldRow.y, goldRow.width - 60f, goldRow.height), profile.gold.ToString(), rowNameStyle);
             y += 48f;
 
-            // Sandıklar: yalnızca sahip olunanlar gösterilir (hiç yoksa kısa bir not)
+            // İki sekme: eşyalar (karakter önizlemesi + giy/çıkar) ve sandıklar
+            string[] tabs = { T("items"), T("chestsTab") + (profile.TotalChests > 0 ? " (" + profile.TotalChests + ")" : "") };
+            int picked = UiKit.Segmented(new Rect(16f, y, width - 32f, 42f), tabs, inventoryTab, 18);
+            if (picked >= 0) inventoryTab = picked;
+            y += 52f;
+
+            if (inventoryTab == 1) y = DrawChestList(width, y);
+            else y = DrawItemList(width, y);
+
+            float backY = Mathf.Max(y + 8f, height - 70f);
+            if (UiKit.SecondaryButton(new Rect(24f, backY, width - 48f, 52f), T("back"), 20)) screen = Page.Menu;
+        }
+
+        // Sandıklar: yalnızca sahip olunanlar gösterilir (hiç yoksa kısa bir not)
+        float DrawChestList(float width, float y)
+        {
+            preview.Hide();
             if (profile.TotalChests == 0)
             {
-                GUI.Label(new Rect(24f, y, width - 48f, 30f), T("noChests"), smallCenterStyle);
-                y += 38f;
+                GUI.Label(new Rect(24f, y + 10f, width - 48f, 30f), T("noChests"), smallCenterStyle);
+                return y + 48f;
             }
             foreach (var tier in ChestTiers)
             {
@@ -167,47 +186,90 @@ namespace TextRun.Game
                 if (UiKit.SecondaryButton(new Rect(row.xMax - 96f, row.y + 6f, 88f, 40f), T("open"), 18)) BeginOpenChest(tier);
                 y += 58f;
             }
+            return y;
+        }
 
-            // Eşyalar (sayfalı liste, iki sütun)
+        bool IsWorn(string id)
+        {
+            if (inventory?.equipped == null) return false;
+            return Array.IndexOf(inventory.equipped, id) >= 0;
+        }
+
+        // Karakter önizlemesi ve sahip olunan eşyalar (sayfalı, iki sütun). Eşyaya dokunmak giyer / çıkarır.
+        float DrawItemList(float width, float y)
+        {
             int total = inventory?.items?.Length ?? 0;
+
+            float previewHeight = 188f;
+            var previewRect = new Rect(width / 2f - 75f, y, 150f, previewHeight);
+            UiKit.Card(new Rect(16f, y, width - 32f, previewHeight), new Color(1f, 1f, 1f, 0.06f), 18f);
+            preview.Show(inventory?.equipped);
+            if (preview.Texture != null) GUI.DrawTexture(previewRect, preview.Texture, ScaleMode.ScaleToFit, true);
+            y += previewHeight + 8f;
+
             GUI.Label(new Rect(20f, y, width - 40f, 24f), T("myItems") + " (" + total + ")", smallStyle);
-            y += 28f;
+            y += 26f;
 
-            if (inventory == null) GUI.Label(new Rect(20f, y + 20f, width - 40f, 30f), "...", smallCenterStyle);
-            else if (total == 0) GUI.Label(new Rect(24f, y + 12f, width - 48f, 44f), T("noItems"), smallCenterWrapStyle());
-            else
+            if (inventory == null) { GUI.Label(new Rect(20f, y + 20f, width - 40f, 30f), "...", smallCenterStyle); return y + 60f; }
+            if (total == 0) { GUI.Label(new Rect(24f, y + 8f, width - 48f, 44f), T("noItems"), smallCenterWrapStyle()); return y + 60f; }
+
+            int pages = Mathf.Max(1, Mathf.CeilToInt(total / (float)ItemsPerPage));
+            inventoryPage = Mathf.Clamp(inventoryPage, 0, pages - 1);
+            float cellWidth = (width - 32f - 10f) / 2f;
+            for (int i = 0; i < ItemsPerPage; i++)
             {
-                int pages = Mathf.Max(1, Mathf.CeilToInt(total / (float)ItemsPerPage));
-                inventoryPage = Mathf.Clamp(inventoryPage, 0, pages - 1);
-                float cellWidth = (width - 32f - 10f) / 2f;
-                for (int i = 0; i < ItemsPerPage; i++)
-                {
-                    int index = inventoryPage * ItemsPerPage + i;
-                    if (index >= total) break;
-                    var item = inventory.items[index];
-                    var cell = new Rect(16f + (i % 2) * (cellWidth + 10f), y + (i / 2) * 56f, cellWidth, 50f);
-                    Color rarity = RarityColor(item.rarity);
-                    UiKit.Card(cell, new Color(rarity.r, rarity.g, rarity.b, 0.20f), 12f);
-                    UiKit.Card(new Rect(cell.x, cell.y + 6f, 5f, cell.height - 12f), rarity, 2.5f);
-                    GUI.Label(new Rect(cell.x + 12f, cell.y + 3f, cell.width - 18f, 24f), ItemName(item.tr, item.en), itemNameStyle);
-                    var old = GUI.color;
-                    GUI.color = rarity;
-                    GUI.Label(new Rect(cell.x + 12f, cell.y + 26f, cell.width - 18f, 20f), T("rarity_" + item.rarity) + " - " + T("cat_" + item.category), smallStyle);
-                    GUI.color = old;
-                }
-                y += 3 * 56f;
-
-                if (pages > 1)
-                {
-                    if (inventoryPage > 0 && UiKit.SecondaryButton(new Rect(16f, y, 70f, 38f), "<", 20)) inventoryPage--;
-                    GUI.Label(new Rect(0f, y, width, 38f), (inventoryPage + 1) + " / " + pages, smallCenterStyle);
-                    if (inventoryPage < pages - 1 && UiKit.SecondaryButton(new Rect(width - 86f, y, 70f, 38f), ">", 20)) inventoryPage++;
-                    y += 44f;
-                }
+                int index = inventoryPage * ItemsPerPage + i;
+                if (index >= total) break;
+                var item = inventory.items[index];
+                var cell = new Rect(16f + (i % 2) * (cellWidth + 10f), y + (i / 2) * 56f, cellWidth, 50f);
+                Color rarity = RarityColor(item.rarity);
+                bool worn = IsWorn(item.id);
+                UiKit.Card(cell, new Color(rarity.r, rarity.g, rarity.b, worn ? 0.38f : 0.20f), 12f);
+                UiKit.Card(new Rect(cell.x, cell.y + 6f, 5f, cell.height - 12f), rarity, 2.5f);
+                GUI.Label(new Rect(cell.x + 12f, cell.y + 3f, cell.width - 18f, 24f), ItemName(item.tr, item.en), itemNameStyle);
+                var old = GUI.color;
+                GUI.color = rarity;
+                GUI.Label(new Rect(cell.x + 12f, cell.y + 26f, cell.width - 18f, 20f), worn ? T("worn") : T("rarity_" + item.rarity) + " - " + T("cat_" + item.category), smallStyle);
+                GUI.color = old;
+                if (GUI.Button(cell, GUIContent.none, GUIStyle.none)) ToggleWear(item);
             }
+            y += ((Mathf.Min(ItemsPerPage, total - inventoryPage * ItemsPerPage) + 1) / 2) * 56f;
 
-            float backY = Mathf.Max(y + 8f, height - 70f);
-            if (UiKit.SecondaryButton(new Rect(24f, backY, width - 48f, 52f), T("back"), 20)) screen = Page.Menu;
+            if (pages > 1)
+            {
+                if (inventoryPage > 0 && UiKit.SecondaryButton(new Rect(16f, y, 70f, 38f), "<", 20)) inventoryPage--;
+                GUI.Label(new Rect(0f, y, width, 38f), (inventoryPage + 1) + " / " + pages, smallCenterStyle);
+                if (inventoryPage < pages - 1 && UiKit.SecondaryButton(new Rect(width - 86f, y, 70f, 38f), ">", 20)) inventoryPage++;
+                y += 44f;
+            }
+            return y;
+        }
+
+        // Giy / çıkar: ekran hemen güncellenir, sunucu arkada kaydeder (hata olursa envanter yeniden okunur)
+        async void ToggleWear(ItemDto item)
+        {
+            if (inventory == null || net == null) return;
+            bool wasWorn = IsWorn(item.id);
+
+            var next = new List<string>();
+            foreach (var id in inventory.equipped ?? new string[0])
+            {
+                string category = null;
+                foreach (var owned in inventory.items) if (owned.id == id) { category = owned.category; break; }
+                if (category != item.category) next.Add(id);
+            }
+            if (!wasWorn) next.Add(item.id);
+            inventory.equipped = next.ToArray();
+
+            try
+            {
+                await net.EquipAsync(wasWorn ? null : item.id, item.category);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("Esya takilamadi: " + e.Message);
+                LoadInventory();
+            }
         }
 
         // ---------- Sandık açma animasyonu ----------
@@ -294,22 +356,23 @@ namespace TextRun.Game
         }
 
         // Geliştirme: sandık açma ekranını örnek veriyle gösterir (DevHarness)
-        public void DevShowInventory(bool withItems, string openRarity = null, bool noChests = false)
+        public void DevShowInventory(bool withItems, string openRarity = null, bool noChests = false, bool itemsTab = false)
         {
             profile = new ProfileDto { name = "Furkan", level = 4, gold = 1250, chestBronze = noChests ? 0 : 2, chestSilver = noChests ? 0 : 1, chestGold = 0, itemCount = 7 };
             var items = new List<ItemDto>();
             if (withItems)
             {
-                items.Add(new ItemDto { id = "hat_cap", category = "head", rarity = "common", tr = "Şapka", en = "Cap" });
+                items.Add(new ItemDto { id = "hat_cap", category = "head", rarity = "common", tr = "Spor Şapka", en = "Sporty Cap" });
                 items.Add(new ItemDto { id = "hair_afro", category = "head", rarity = "uncommon", tr = "Afro", en = "Afro" });
                 items.Add(new ItemDto { id = "glasses_star", category = "glasses", rarity = "rare", tr = "Yıldız Gözlük", en = "Star Glasses" });
-                items.Add(new ItemDto { id = "top_cape", category = "top", rarity = "epic", tr = "Pelerin", en = "Cape" });
-                items.Add(new ItemDto { id = "hat_crown", category = "head", rarity = "legendary", tr = "Taç", en = "Crown" });
+                items.Add(new ItemDto { id = "top_cape", category = "top", rarity = "epic", tr = "Kahraman Pelerini", en = "Hero Cape" });
+                items.Add(new ItemDto { id = "hat_crown", category = "head", rarity = "legendary", tr = "Kral Tacı", en = "King's Crown" });
                 items.Add(new ItemDto { id = "shoes_wing", category = "shoes", rarity = "legendary", tr = "Kanatlı Ayakkabı", en = "Winged Shoes" });
-                items.Add(new ItemDto { id = "bottom_jeans", category = "bottom", rarity = "common", tr = "Kot Pantolon", en = "Jeans" });
+                items.Add(new ItemDto { id = "bottom_jeans", category = "bottom", rarity = "common", tr = "Mavi Kot", en = "Blue Jeans" });
             }
-            inventory = new InventoryDto { items = items.ToArray() };
+            inventory = new InventoryDto { items = items.ToArray(), equipped = withItems ? new[] { "hair_afro", "glasses_star", "top_cape" } : new string[0] };
             inventoryPage = 0;
+            inventoryTab = itemsTab ? 0 : 1;
             screen = Page.Inventory;
             openingTier = null;
             if (openRarity != null)
@@ -320,6 +383,11 @@ namespace TextRun.Game
                 revealSoundPlayed = true;
             }
         }
+
+        public bool DevSuppressGui;
+
+        // Galeri için: istemcinin çizebildiği tüm eşya kimlikleri (sunucu listesi sırasına yakın)
+        public static string[] DevAllOutfitIds() => TextRun.Characters.Outfits.AllIds();
 
         public void DevShowChestShaking()
         {

@@ -12,6 +12,7 @@ export interface Player {
   isBot: boolean;
   connected: boolean;
   disconnectedAt: number;
+  look: string[]; // takılı eşya kimlikleri (yalnızca görünüm)
   sessionId: string; // oyuncunun şu anki bağlantısı (eski bağlantının geç gelen "ayrıldı" bildirimini ayıklamak için)
   slot: number;
   index: number; // sıradaki kelimenin numarası
@@ -100,12 +101,13 @@ export function humanCount(state: RaceState): number {
 
 // ---------- Lobi ----------
 
-export function addHuman(state: RaceState, id: string, name: string, now: number, sessionId = ""): JoinOutcome {
+export function addHuman(state: RaceState, id: string, name: string, now: number, sessionId = "", look: string[] = []): JoinOutcome {
   const existing = state.players[id];
   if (existing && !existing.isBot) {
     existing.connected = true;
     existing.disconnectedAt = 0;
     existing.sessionId = sessionId;
+    existing.look = look;
     return "rejoined";
   }
   if (state.phase !== "lobby") return "closed";
@@ -114,6 +116,7 @@ export function addHuman(state: RaceState, id: string, name: string, now: number
   delete state.reserved[id]; // rezerve edilen koltuk artık gerçek koltuk
   state.players[id] = newPlayer(id, name, false, state.order.length);
   state.players[id].sessionId = sessionId;
+  state.players[id].look = look;
   state.order.push(id);
   state.everHadHuman = true;
   if (state.kind === "private") {
@@ -215,6 +218,7 @@ function newPlayer(id: string, name: string, isBot: boolean, slot: number): Play
     isBot,
     connected: true,
     disconnectedAt: 0,
+    look: [],
     sessionId: "",
     slot,
     index: 0,
@@ -373,7 +377,7 @@ export function computeResults(state: RaceState, now: number): RaceResult[] {
 }
 
 // İstemcilere gönderilecek oyuncu özeti (kelime listesi hariç).
-export function publicPlayers(state: RaceState): Array<{ id: string; name: string; isBot: boolean; slot: number; index: number; connected: boolean; finished: boolean; disqualified: boolean }> {
+export function publicPlayers(state: RaceState): Array<{ id: string; name: string; isBot: boolean; slot: number; index: number; connected: boolean; finished: boolean; disqualified: boolean; look: string[] }> {
   return playerList(state).map((p) => ({
     id: p.id,
     name: p.name,
@@ -383,5 +387,6 @@ export function publicPlayers(state: RaceState): Array<{ id: string; name: strin
     connected: p.connected,
     finished: p.finishedAt > 0,
     disqualified: p.disqualified,
+    look: p.look,
   }));
 }

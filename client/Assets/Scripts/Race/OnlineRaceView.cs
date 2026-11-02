@@ -34,6 +34,7 @@ namespace TextRun.Race
         string[] names;
         bool[] isBot;
         bool[] active;
+        string[] lookKeys;
         bool racing;
         int localSlot = 2;
         float cameraX;
@@ -57,6 +58,7 @@ namespace TextRun.Race
             names = new string[laneCount];
             isBot = new bool[laneCount];
             active = new bool[laneCount];
+            lookKeys = new string[laneCount];
 
             for (int i = 0; i < laneCount; i++)
             {
@@ -125,6 +127,12 @@ namespace TextRun.Race
                 active[p.slot] = true;
                 names[p.slot] = p.name;
                 isBot[p.slot] = p.isBot;
+                string key = p.look == null ? "" : string.Join(",", p.look);
+                if (lookKeys[p.slot] != key)
+                {
+                    lookKeys[p.slot] = key;
+                    Outfits.Apply(runners[p.slot], p.look);
+                }
                 if (p.id == localId) localSlot = p.slot;
             }
             for (int i = 0; i < laneCount; i++) runners[i].gameObject.SetActive(active[i] && IsVisible);

@@ -105,6 +105,9 @@ namespace TextRun.Game
             yield return Shot("1i-menu-profile");
 
             // Envanter: eşyalı liste, sallanan sandık, nadirliğe göre eşya açılışı
+            controller.DevShowInventory(true, null, false, true);
+            yield return new WaitForSeconds(0.6f);
+            yield return Shot("1j-inventory-items");
             controller.DevShowInventory(true);
             yield return new WaitForSeconds(0.4f);
             yield return Shot("1j-inventory");
@@ -122,6 +125,19 @@ namespace TextRun.Game
             yield return Shot("1m-chest-common");
             controller.DevBackToMenu();
             yield return new WaitForSeconds(0.3f);
+
+            // Eşya galerisi: her eşya ayrı karakterde (dokuzar dokuzar), arayüz gizli
+            var gallery = new OutfitGallery();
+            var ids = new System.Collections.Generic.List<string>(TextRun.Game.OnlineGameController.DevAllOutfitIds());
+            controller.DevSuppressGui = true;
+            for (int page = 0; page * 9 < ids.Count; page++)
+            {
+                gallery.Show(ids.GetRange(page * 9, Math.Min(9, ids.Count - page * 9)));
+                yield return new WaitForSeconds(0.4f);
+                yield return Shot("1n-gallery-" + page);
+            }
+            gallery.Clear();
+            controller.DevSuppressGui = false;
 
             controller.DevShowError();
             yield return new WaitForSeconds(0.4f);

@@ -350,6 +350,14 @@ namespace TextRun.Online
             return JsonUtility.FromJson<InventoryDto>(rpc.Payload);
         }
 
+        // Bir eşyayı takar (itemId) ya da bir kategoriyi boşaltır (category); güncel envanteri döner.
+        public async Task<InventoryDto> EquipAsync(string itemId, string category)
+        {
+            var request = string.IsNullOrEmpty(itemId) ? "{\"category\":\"" + category + "\"}" : "{\"itemId\":\"" + itemId + "\"}";
+            var rpc = await client.RpcAsync(session, "equip_item", request);
+            return JsonUtility.FromJson<InventoryDto>(rpc.Payload);
+        }
+
         // Bir sandık açar (tier: bronze | silver | gold). Sandık yoksa istisna: IsError(e, "no_chest")
         public async Task<ChestResultDto> OpenChestAsync(string tier)
         {

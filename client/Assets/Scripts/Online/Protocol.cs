@@ -44,6 +44,7 @@ namespace TextRun.Online
         public bool connected;
         public bool finished;
         public bool disqualified;
+        public string[] look; // takılı eşya kimlikleri
     }
 
     [Serializable]
@@ -167,6 +168,7 @@ namespace TextRun.Online
     public class InventoryDto
     {
         public ItemDto[] items;
+        public string[] equipped; // takılı eşya kimlikleri
     }
 
     [Serializable]

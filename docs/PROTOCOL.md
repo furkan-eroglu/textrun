@@ -91,6 +91,8 @@ Veri, UTF-8 JSON metnidir.
 - `get_profile` → `{ guest, name, xp, level, xpIntoLevel, xpForNext, races, wins, gold, chestBronze, chestSilver, chestGold, itemCount }` (`name` null = ad seçilmemiş; misafirde hepsi sıfır).
 - `get_inventory` → `{ items: [{ id, category, rarity, tr, en }] }` (misafirde boş).
 - `open_chest` `{ tier: "bronze"|"silver"|"gold" }` → `{ tier, itemId, category, rarity, tr, en, duplicate, goldRefund, profile }`. Sandık yoksa 400/412 `no_chest`, geçersiz tür `bad_chest`, misafir `guest_account`. Tekrar eşya envantere girmez, nadirliğe göre altın verir.
+- `equip_item` `{ itemId }` (takar; aynı kategorideki eskisi çıkar) veya `{ category }` (kategoriyi boşaltır) → `{ items, equipped }`. Eşya oyuncunun değilse `not_owned`, misafir `guest_account`. `get_inventory` de `equipped` (takılı eşya kimlikleri) döner.
+- Yarış odasındaki her oyuncu özetinde (`players[]`) `look`: takılı eşya kimlikleri; istemci bunları karaktere giydirir.
 - `set_name` `{ name }` → profil. Geçersiz ad: 400 `name_invalid` (3-12 karakter; harf, rakam, boşluk, `_ . -`).
 - XP yalnızca sunucuda hesaplanır: bitirmek 20 + sıra bonusu (50/35/25/15/10); bitirmeyen 5; hile 0. Seviye 1→2 100 XP, her seviyede gereken 40 artar.
 

@@ -468,6 +468,15 @@ await test('profil: ad secilir, yarista gorunur, yarisi bitirince XP verilir ve 
   assert.equal(inventory.items.length, 1);
   assert.equal(inventory.items[0].id, opened.itemId);
   await assert.rejects(() => p.rpc('open_chest', { tier: 'bronze' }), /no_chest/, 'sandik bitince tekrar acilmaz');
+
+  // Esya takma: sahip olunmayan takilmaz, sahip olunan takilir ve cikarilir
+  assert.deepEqual(inventory.equipped, []);
+  await assert.rejects(() => p.rpc('equip_item', { itemId: 'trail_fire' }), /not_owned/, 'sahip olunmayan esya takilmaz');
+  const worn = await p.rpc('equip_item', { itemId: opened.itemId });
+  assert.deepEqual(worn.equipped, [opened.itemId]);
+  assert.deepEqual((await p.rpc('get_inventory', {})).equipped, [opened.itemId], 'takili esya kalici');
+  const bare = await p.rpc('equip_item', { category: opened.category });
+  assert.deepEqual(bare.equipped, []);
   p.close();
 });
 
@@ -490,6 +499,7 @@ await test('misafir: takma ad secemez, yarisi bitirse de XP/seviye kazanmaz', as
   assert.equal(after.gold, 0, 'misafir altin kazanmaz');
   await assert.rejects(() => g.rpc('open_chest', { tier: 'bronze' }), /guest_account/);
   assert.deepEqual((await g.rpc('get_inventory', {})).items, []);
+  await assert.rejects(() => g.rpc('equip_item', { itemId: 'hat_cap' }), /guest_account/);
   g.close();
 });
 

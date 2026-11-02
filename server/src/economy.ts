@@ -11,54 +11,75 @@ export interface Item {
   rarity: Rarity;
   tr: string;
   en: string;
-  chest: boolean; // false = sandıktan çıkmaz (ör. koşu efektleri: ileride yalnızca elmasla)
+  chest: boolean; // false = sandıktan çıkmaz
+  diamond: boolean; // true = yalnızca elmasla satılır (mağaza); sandıktan da çıkmaz
 }
 
 export const RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
 export const CHEST_TIERS: ChestTier[] = ["bronze", "silver", "gold"];
 
-// Deneme eşyaları: gerçek karakter ve görseller gelince aynı kimliklerle değiştirilir/çoğaltılır.
-function item(id: string, category: Category, rarity: Rarity, tr: string, en: string, chest = true): Item {
-  return { id, category, rarity, tr, en, chest };
+// Eşya listesi. Görseller istemcide aynı kimliklerle çizilir (client/Assets/Scripts/Characters/Outfits.cs);
+// yeni eşya eklerken iki yerde de aynı kimlik kullanılmalıdır.
+function item(id: string, category: Category, rarity: Rarity, tr: string, en: string, flags: { chest?: boolean; diamond?: boolean } = {}): Item {
+  const diamond = !!flags.diamond;
+  return { id, category, rarity, tr, en, chest: !diamond && flags.chest !== false, diamond };
 }
 
+const DIAMOND = { diamond: true };
+const NO_CHEST = { chest: false };
+
 export const CATALOG: Item[] = [
-  item("hat_cap", "head", "common", "Şapka", "Cap"),
-  item("hat_beanie", "head", "common", "Bere", "Beanie"),
+  // Baş (şapka ve saç aynı kategori: şapka takılınca saç görünmez)
+  item("hat_cap", "head", "common", "Spor Şapka", "Sporty Cap"),
+  item("hat_beanie", "head", "common", "Kışlık Bere", "Winter Beanie"),
+  item("hat_bucket", "head", "common", "Balıkçı Şapkası", "Bucket Hat"),
   item("hat_cowboy", "head", "uncommon", "Kovboy Şapkası", "Cowboy Hat"),
-  item("hat_top", "head", "rare", "Silindir Şapka", "Top Hat"),
-  item("hat_crown", "head", "legendary", "Taç", "Crown"),
-  item("hair_short", "head", "common", "Kısa Saç", "Short Hair"),
-  item("hair_long", "head", "common", "Uzun Saç", "Long Hair"),
+  item("hat_street", "head", "uncommon", "Serseri Şapkası", "Street Cap"),
+  item("hat_pop", "head", "rare", "Popstar Şapkası", "Popstar Hat"),
+  item("hat_top", "head", "rare", "Sihirbaz Silindiri", "Magician Top Hat"),
+  item("hat_pirate", "head", "epic", "Korsan Şapkası", "Pirate Hat"),
+  item("hat_crown", "head", "legendary", "Kral Tacı", "King's Crown"),
+  item("hair_short", "head", "common", "Düzgün Kesim", "Neat Cut"),
+  item("hair_long", "head", "common", "Omuz Saçı", "Shoulder Hair"),
   item("hair_afro", "head", "uncommon", "Afro", "Afro"),
   item("hair_mohawk", "head", "rare", "Mohawk", "Mohawk"),
   item("hair_flame", "head", "epic", "Alevli Saç", "Flame Hair"),
+  item("hair_rainbow", "head", "legendary", "Gökkuşağı Saçı", "Rainbow Hair"),
+  // Gözlük
   item("glasses_round", "glasses", "common", "Yuvarlak Gözlük", "Round Glasses"),
   item("glasses_sun", "glasses", "uncommon", "Güneş Gözlüğü", "Sunglasses"),
   item("glasses_star", "glasses", "rare", "Yıldız Gözlük", "Star Glasses"),
-  item("glasses_cyber", "glasses", "epic", "Siber Gözlük", "Cyber Visor"),
-  item("face_smile", "face", "common", "Gülümseme", "Smile"),
+  item("glasses_cyber", "glasses", "epic", "Siber Vizör", "Cyber Visor"),
+  item("glasses_gold", "glasses", "legendary", "Altın Çerçeve", "Golden Frames", DIAMOND),
+  // Yüz ifadesi
+  item("face_smile", "face", "common", "Neşeli Yüz", "Happy Face"),
   item("face_wink", "face", "uncommon", "Göz Kırpma", "Wink"),
   item("face_cool", "face", "rare", "Havalı Bakış", "Cool Look"),
   item("face_star", "face", "epic", "Yıldız Gözler", "Star Eyes"),
-  item("top_tee", "top", "common", "Tişört", "T-Shirt"),
-  item("top_hoodie", "top", "uncommon", "Kapüşonlu", "Hoodie"),
-  item("top_jacket", "top", "rare", "Ceket", "Jacket"),
-  item("top_cape", "top", "epic", "Pelerin", "Cape"),
-  item("top_armor", "top", "legendary", "Zırh", "Armor"),
-  item("bottom_jeans", "bottom", "common", "Kot Pantolon", "Jeans"),
-  item("bottom_shorts", "bottom", "common", "Şort", "Shorts"),
+  // Üst giyim
+  item("top_tee", "top", "common", "Basit Tişört", "Plain Tee"),
+  item("top_hoodie", "top", "uncommon", "Sokak Kapüşonu", "Street Hoodie"),
+  item("top_jersey", "top", "uncommon", "Takım Forması", "Team Jersey"),
+  item("top_jacket", "top", "rare", "Deri Ceket", "Leather Jacket"),
+  item("top_cape", "top", "epic", "Kahraman Pelerini", "Hero Cape"),
+  item("top_armor", "top", "legendary", "Şövalye Zırhı", "Knight Armor"),
+  // Alt giyim
+  item("bottom_jeans", "bottom", "common", "Mavi Kot", "Blue Jeans"),
+  item("bottom_shorts", "bottom", "common", "Spor Şort", "Sport Shorts"),
   item("bottom_cargo", "bottom", "uncommon", "Kargo Pantolon", "Cargo Pants"),
-  item("bottom_suit", "bottom", "rare", "Takım Pantolon", "Suit Pants"),
-  item("bottom_gold", "bottom", "legendary", "Altın Pantolon", "Golden Pants"),
+  item("bottom_suit", "bottom", "rare", "Takım Pantolonu", "Suit Pants"),
+  item("bottom_gold", "bottom", "legendary", "Altın Pantolon", "Golden Pants", DIAMOND),
+  // Ayakkabı
   item("shoes_sneaker", "shoes", "common", "Spor Ayakkabı", "Sneakers"),
-  item("shoes_boots", "shoes", "uncommon", "Bot", "Boots"),
+  item("shoes_boots", "shoes", "uncommon", "Maceracı Botu", "Explorer Boots"),
+  item("shoes_neon", "shoes", "rare", "Neon Ayakkabı", "Neon Shoes"),
   item("shoes_rocket", "shoes", "epic", "Roket Ayakkabı", "Rocket Shoes"),
-  item("shoes_wing", "shoes", "legendary", "Kanatlı Ayakkabı", "Winged Shoes"),
-  item("trail_sparkle", "trail", "epic", "Parıltı İzi", "Sparkle Trail", false),
-  item("trail_smoke", "trail", "epic", "Duman İzi", "Smoke Trail", false),
-  item("trail_fire", "trail", "legendary", "Ateş İzi", "Fire Trail", false),
-  item("trail_lightning", "trail", "legendary", "Şimşek İzi", "Lightning Trail", false),
+  item("shoes_wing", "shoes", "legendary", "Kanatlı Ayakkabı", "Winged Shoes", DIAMOND),
+  // Koşu efektleri (sandıktan çıkmaz; ileride elmasla)
+  item("trail_sparkle", "trail", "epic", "Parıltı İzi", "Sparkle Trail", NO_CHEST),
+  item("trail_smoke", "trail", "epic", "Duman İzi", "Smoke Trail", NO_CHEST),
+  item("trail_fire", "trail", "legendary", "Ateş İzi", "Fire Trail", NO_CHEST),
+  item("trail_lightning", "trail", "legendary", "Şimşek İzi", "Lightning Trail", NO_CHEST),
 ];
 
 const BY_ID: { [id: string]: Item } = {};

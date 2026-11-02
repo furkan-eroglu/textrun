@@ -21,7 +21,7 @@ import {
 import type { RaceState } from "./race.ts";
 import { racePaysXp } from "./profile.ts";
 import type { Reward } from "./profile.ts";
-import { awardRace, isRegistered, readProfile } from "./profileStore.ts";
+import { awardRace, isRegistered, lookFor, readProfile } from "./profileStore.ts";
 
 const TICK_RATE = 10;
 const EMPTY_LOBBY_TIMEOUT_MS = 30000;
@@ -128,7 +128,7 @@ export function matchJoin(
     } catch (e) {
       logger.warn("Profil okunamadi: %s", String(e));
     }
-    addHuman(state, presence.userId, name, now, presence.sessionId);
+    addHuman(state, presence.userId, name, now, presence.sessionId, lookFor(nk, presence.userId));
     send(dispatcher, OP.SNAPSHOT, snapshotOf(state, now), [presence]);
   }
   if (state.phase === "lobby") send(dispatcher, OP.ROSTER, snapshotOf(state, now));

@@ -8,7 +8,7 @@ namespace TextRun.Characters
     public static class CharacterBuilder
     {
         const float HipHeight = 0.8f;
-        static readonly Color Skin = new Color(0.91f, 0.74f, 0.60f);
+        public static readonly Color Skin = new Color(0.91f, 0.74f, 0.60f);
         static readonly Color EyeWhite = new Color(0.97f, 0.97f, 0.97f);
         static readonly Color Dark = new Color(0.12f, 0.1f, 0.1f);
 

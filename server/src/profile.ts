@@ -1,7 +1,7 @@
 // Oyuncu profili: ad, XP, seviye, altın, sandık ve eşyalar. Saf kurallar burada; saklama ve RPC'ler main.ts / match.ts içindedir.
 // XP, altın ve sandıklar yalnızca sunucuda hesaplanır ve saklanır; istemci bu değerleri gönderemez.
-import { CHEST_TIERS, chestTierForLevel, goldForRace, rollChest } from "./economy.ts";
-import type { ChestOpening, ChestTier } from "./economy.ts";
+import { CHEST_TIERS, chestTierForLevel, goldForRace, itemById, rollChest } from "./economy.ts";
+import type { Category, ChestOpening, ChestTier } from "./economy.ts";
 
 export type Chests = { [tier in ChestTier]: number };
 
@@ -13,6 +13,7 @@ export interface Profile {
   gold: number;
   chests: Chests; // açılmamış sandık sayıları
   items: string[]; // sahip olunan eşya kimlikleri
+  equipped: { [category: string]: string }; // kategori -> takılı eşya kimliği
 }
 
 export interface LevelInfo {
@@ -29,7 +30,7 @@ export function emptyChests(): Chests {
 }
 
 export function emptyProfile(): Profile {
-  return { name: null, xp: 0, races: 0, wins: 0, gold: 0, chests: emptyChests(), items: [] };
+  return { name: null, xp: 0, races: 0, wins: 0, gold: 0, chests: emptyChests(), items: [], equipped: {} };
 }
 
 // Seviye 1'den 2'ye 100 XP; her seviyede gereken miktar 40 artar (100, 140, 180, ...)
@@ -116,4 +117,29 @@ export function openChest(profile: Profile, tier: ChestTier, rng: () => number =
   if (opening.duplicate) profile.gold += opening.goldRefund;
   else profile.items.push(opening.itemId);
   return opening;
+}
+
+// Sahip olunan bir eşyayı takar (aynı kategorideki önceki eşya çıkar). Sahip değilse veya bilinmiyorsa false döner.
+export function equipItem(profile: Profile, itemId: unknown): boolean {
+  if (typeof itemId !== "string" || profile.items.indexOf(itemId) < 0) return false;
+  const entry = itemById(itemId);
+  if (!entry) return false;
+  profile.equipped[entry.category] = entry.id;
+  return true;
+}
+
+// Bir kategorideki eşyayı çıkarır. Bilinmeyen kategoride false döner.
+export function unequipCategory(profile: Profile, category: unknown): boolean {
+  if (typeof category !== "string") return false;
+  const known = ["head", "glasses", "face", "top", "bottom", "shoes", "trail"];
+  if (known.indexOf(category) < 0) return false;
+  delete profile.equipped[category as Category];
+  return true;
+}
+
+// Takılı eşyaların kimlikleri (yarışta diğer oyunculara gönderilir)
+export function lookOf(profile: Profile): string[] {
+  const ids: string[] = [];
+  for (const category of Object.keys(profile.equipped)) ids.push(profile.equipped[category]);
+  return ids.sort();
 }
