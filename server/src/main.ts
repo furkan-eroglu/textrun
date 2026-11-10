@@ -5,7 +5,7 @@ import { isSupportedLang } from "./words.ts";
 import { itemById } from "./economy.ts";
 import type { ChestTier } from "./economy.ts";
 import { cleanName, isChestTier } from "./profile.ts";
-import { equipFor, inventoryView, isRegistered, openChestFor, profileView, readProfile, saveProfile } from "./profileStore.ts";
+import { equipFor, inventoryView, isRegistered, openChestFor, profileView, readProfile, saveProfile, shopFor, shopView } from "./profileStore.ts";
 
 export function pingRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
   return JSON.stringify({ ok: true, message: "TextRun sunucusu calisiyor", time: Date.now() });
@@ -201,6 +201,35 @@ export function equipItemRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, n
   return JSON.stringify(inventoryView(profile!));
 }
 
+// Mağaza. get_shop: günün mağazası. shop_buy {"slot"}: 0-3 eşya, 4 altınla sandık, 5 elmasla sandık. shop_refresh: elmasla yeniler.
+// Hatalar: "bad_slot", "already_bought", "not_enough", misafir "guest_account". Dönen değer: { shop, profile }.
+function shopRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, action: "open" | "buy" | "refresh", slot?: unknown): string {
+  if (!ctx.userId) throw new Error("giris gerekli");
+  if (!isRegistered(nk, ctx.userId)) fail("guest_account", CODE_INVALID_ARGUMENT);
+  const result = shopFor(nk, logger, ctx.userId, action, slot);
+  if (result.outcome === "bad_slot") fail("bad_slot", CODE_INVALID_ARGUMENT);
+  if (result.outcome !== "ok") fail(result.outcome, CODE_FAILED_PRECONDITION);
+  return JSON.stringify({ shop: shopView(result.profile, Date.now()), profile: profileView(result.profile, false) });
+}
+
+export function getShopRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+  return shopRpc(ctx, logger, nk, "open");
+}
+
+export function shopBuyRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+  let slot: unknown;
+  try {
+    slot = JSON.parse(payload).slot;
+  } catch (e) {
+    throw new Error("gecersiz istek");
+  }
+  return shopRpc(ctx, logger, nk, "buy", slot);
+}
+
+export function shopRefreshRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+  return shopRpc(ctx, logger, nk, "refresh");
+}
+
 // Envanterdeki bir sandığı açar. Sandık yoksa "no_chest", geçersiz tür "bad_chest", misafirse "guest_account".
 export function openChestRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
   if (!ctx.userId) throw new Error("giris gerekli");
@@ -240,6 +269,9 @@ export function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk:
   initializer.registerRpc("get_inventory", getInventoryRpc);
   initializer.registerRpc("open_chest", openChestRpc);
   initializer.registerRpc("equip_item", equipItemRpc);
+  initializer.registerRpc("get_shop", getShopRpc);
+  initializer.registerRpc("shop_buy", shopBuyRpc);
+  initializer.registerRpc("shop_refresh", shopRefreshRpc);
   initializer.registerMatch("race", { matchInit, matchJoinAttempt, matchJoin, matchLeave, matchLoop, matchTerminate, matchSignal });
   logger.info("TextRun modulu yuklendi");
 }

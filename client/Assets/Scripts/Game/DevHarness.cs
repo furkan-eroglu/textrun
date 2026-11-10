@@ -126,6 +126,12 @@ namespace TextRun.Game
             controller.DevBackToMenu();
             yield return new WaitForSeconds(0.3f);
 
+            controller.DevShowShop();
+            yield return new WaitForSeconds(0.6f);
+            yield return Shot("1o-shop");
+            controller.DevBackToMenu();
+            yield return new WaitForSeconds(0.3f);
+
             // Eşya galerisi: her eşya ayrı karakterde (dokuzar dokuzar), arayüz gizli
             var gallery = new OutfitGallery();
             var ids = new System.Collections.Generic.List<string>(TextRun.Game.OnlineGameController.DevAllOutfitIds());

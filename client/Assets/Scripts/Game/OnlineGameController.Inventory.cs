@@ -125,6 +125,14 @@ namespace TextRun.Game
             }
         }
 
+        void EnsureInventoryStyles()
+        {
+            if (itemNameStyle != null) return;
+            itemNameStyle = new GUIStyle(rowNameStyle) { fontSize = 15, fontStyle = FontStyle.Bold, wordWrap = false, clipping = TextClipping.Clip };
+            UiKit.SetAllTextColors(itemNameStyle, Color.white);
+            chestNameStyle = new GUIStyle(rowNameStyle) { fontSize = 17, wordWrap = false, clipping = TextClipping.Clip };
+        }
+
         void DrawInventory(float width, float height, float top)
         {
             FullViewport();
@@ -135,12 +143,7 @@ namespace TextRun.Game
                 return;
             }
 
-            if (itemNameStyle == null)
-            {
-                itemNameStyle = new GUIStyle(rowNameStyle) { fontSize = 15, fontStyle = FontStyle.Bold, wordWrap = false, clipping = TextClipping.Clip };
-                UiKit.SetAllTextColors(itemNameStyle, Color.white);
-                chestNameStyle = new GUIStyle(rowNameStyle) { fontSize = 17, wordWrap = false, clipping = TextClipping.Clip };
-            }
+            EnsureInventoryStyles();
 
             float y = top + 8f;
             GUI.Label(new Rect(0f, y, width, 40f), T("inventory"), headingStyle);

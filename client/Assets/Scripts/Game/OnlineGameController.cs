@@ -15,7 +15,7 @@ namespace TextRun.Game
     // burada yalnızca yazma girişi alınır, sunucudan gelenler gösterilir.
     public partial class OnlineGameController : MonoBehaviour
     {
-        enum Page { Connecting, Welcome, Login, NameEntry, Settings, Menu, PrivateMenu, JoinCode, RoomLobby, Searching, MatchFound, Countdown, Racing, Results, Error, Inventory }
+        enum Page { Connecting, Welcome, Login, NameEntry, Settings, Menu, PrivateMenu, JoinCode, RoomLobby, Searching, MatchFound, Countdown, Racing, Results, Error, Inventory, Shop }
 
         const string LanguageKey = "textrun.language";
 
@@ -336,7 +336,7 @@ namespace TextRun.Game
         void OnClosed(string reason)
         {
             if (screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.Connecting || screen == Page.Error
-                || screen == Page.Welcome || screen == Page.Login || screen == Page.NameEntry || screen == Page.Settings || screen == Page.Results || screen == Page.Inventory) return;
+                || screen == Page.Welcome || screen == Page.Login || screen == Page.NameEntry || screen == Page.Settings || screen == Page.Results || screen == Page.Inventory || screen == Page.Shop) return;
 
             // Başlamış yarış sürerken kopma: hata ekranı yerine yarışa geri dönülür
             if (screen == Page.MatchFound || screen == Page.Countdown || screen == Page.Racing)
@@ -709,7 +709,7 @@ namespace TextRun.Game
                 focusField = null;
                 if (screen != Page.Countdown && screen != Page.Racing) keyboard.Close();
             }
-            if (screen != Page.Inventory) preview.Hide();
+            if (screen != Page.Inventory && screen != Page.Shop) preview.Hide();
             ReleaseFieldKeyboardIfUnfocused();
 
             net?.Pump();
@@ -868,7 +868,7 @@ namespace TextRun.Game
             float height = UnityEngine.Screen.height / scale;
             float top = (UnityEngine.Screen.height - UnityEngine.Screen.safeArea.yMax) / scale + 6f;
 
-            if (screen == Page.Connecting || screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.RoomLobby || screen == Page.Searching || screen == Page.MatchFound || screen == Page.Error || screen == Page.Inventory)
+            if (screen == Page.Connecting || screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.RoomLobby || screen == Page.Searching || screen == Page.MatchFound || screen == Page.Error || screen == Page.Inventory || screen == Page.Shop)
                 backdrop.Draw(width, height);
 
             switch (screen)
@@ -881,6 +881,7 @@ namespace TextRun.Game
                 case Page.Settings: DrawSettings(width, height, top); break;
                 case Page.Menu: DrawMenu(width, height, top); break;
                 case Page.Inventory: DrawInventory(width, height, top); break;
+                case Page.Shop: DrawShop(width, height, top); break;
                 case Page.PrivateMenu: DrawPrivateMenu(width, height, top); break;
                 case Page.JoinCode: DrawJoinCode(width, height, top); break;
                 case Page.RoomLobby: DrawRoomLobby(width, height, top); break;
@@ -976,7 +977,9 @@ namespace TextRun.Game
             {
                 int chests = profile.TotalChests;
                 string label = T("inventory") + (chests > 0 ? "  (" + chests + ")" : "");
-                if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 56f), label, 20)) OpenInventory();
+                float halfWidth = (width - 48f - 12f) / 2f;
+                if (UiKit.SecondaryButton(new Rect(24f, y, halfWidth, 56f), label, 19)) OpenInventory();
+                if (UiKit.SecondaryButton(new Rect(24f + halfWidth + 12f, y, halfWidth, 56f), T("shop"), 19)) OpenShop();
             }
 
             // Geliştirme: telefonda sunucu adresini (bilgisayarın yerel IP'si) girmek için
@@ -1027,7 +1030,9 @@ namespace TextRun.Game
             if (r.height >= 70f)
             {
                 DrawCoin(new Rect(r.x + 12f, r.y + 32f, 18f, 18f));
-                GUI.Label(new Rect(r.x + 36f, r.y + 29f, r.width - 100f, 24f), profile.gold.ToString(), rowNameStyle);
+                GUI.Label(new Rect(r.x + 36f, r.y + 29f, 90f, 24f), profile.gold.ToString(), rowNameStyle);
+                DrawDiamond(new Rect(r.x + 126f, r.y + 32f, 18f, 18f));
+                GUI.Label(new Rect(r.x + 150f, r.y + 29f, 90f, 24f), profile.diamonds.ToString(), rowNameStyle);
             }
 
             var bar = new Rect(r.x + 12f, r.yMax - 20f, r.width - 24f, 10f);

@@ -358,6 +358,27 @@ namespace TextRun.Online
             return JsonUtility.FromJson<InventoryDto>(rpc.Payload);
         }
 
+        // Mağaza: günün eşyaları, fiyatlar ve bakiyeler
+        public async Task<ShopResultDto> GetShopAsync()
+        {
+            var rpc = await client.RpcAsync(session, "get_shop", "{}");
+            return JsonUtility.FromJson<ShopResultDto>(rpc.Payload);
+        }
+
+        // Mağazadan alır (slot: 0-3 eşya, 4 altınla sandık, 5 elmasla sandık). Hatalar: IsError(e, "not_enough" | "already_bought")
+        public async Task<ShopResultDto> ShopBuyAsync(int slot)
+        {
+            var rpc = await client.RpcAsync(session, "shop_buy", "{\"slot\":" + slot + "}");
+            return JsonUtility.FromJson<ShopResultDto>(rpc.Payload);
+        }
+
+        // Mağazayı elmasla yeniler (gece yenilenme zamanı değişmez)
+        public async Task<ShopResultDto> ShopRefreshAsync()
+        {
+            var rpc = await client.RpcAsync(session, "shop_refresh", "{}");
+            return JsonUtility.FromJson<ShopResultDto>(rpc.Payload);
+        }
+
         // Bir sandık açar (tier: bronze | silver | gold). Sandık yoksa istisna: IsError(e, "no_chest")
         public async Task<ChestResultDto> OpenChestAsync(string tier)
         {

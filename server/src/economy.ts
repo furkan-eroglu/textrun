@@ -158,3 +158,62 @@ export function rollChest(tier: ChestTier, owned: string[], rng: () => number = 
   const duplicate = owned.indexOf(won.id) >= 0;
   return { itemId: won.id, rarity: won.rarity, duplicate, goldRefund: duplicate ? duplicateGold(won.rarity) : 0 };
 }
+
+// ---------- Mağaza ----------
+
+export type Currency = "gold" | "diamond";
+
+export const SHOP_SLOTS = 4; // her gün değişen eşya yuvaları
+export const SHOP_REFRESH_DIAMONDS = 20; // mağazayı elmasla yenilemenin bedeli
+export const SHOP_GOLD_CHEST: { tier: ChestTier; price: number } = { tier: "silver", price: 500 }; // altınla: yenileme başına 1 kez
+export const SHOP_DIAMOND_CHEST: { tier: ChestTier; price: number } = { tier: "gold", price: 100 }; // elmasla: sınırsız
+
+// TEST: gerçek satın alma gelene kadar her hesaba verilen elmas. Yayından önce 0 yapılmalı.
+export const START_DIAMONDS = 500;
+
+const GOLD_PRICE: { [rarity: string]: number } = { common: 150, uncommon: 400, rare: 1000, epic: 2500, legendary: 6000 };
+const DIAMOND_PRICE: { [rarity: string]: number } = { common: 10, uncommon: 25, rare: 60, epic: 150, legendary: 300 };
+
+// Eşyanın mağaza fiyatı: yalnızca elmasla satılanlar elmasla, diğerleri altınla
+export function priceOf(entry: Item): { currency: Currency; price: number } {
+  if (entry.diamond) return { currency: "diamond", price: DIAMOND_PRICE[entry.rarity] };
+  return { currency: "gold", price: GOLD_PRICE[entry.rarity] };
+}
+
+// Mağaza her gece 00.00'da (Türkiye saati, UTC+3) yenilenir.
+const SHOP_ZONE_OFFSET_MS = 3 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function shopDay(now: number): number {
+  return Math.floor((now + SHOP_ZONE_OFFSET_MS) / DAY_MS);
+}
+
+export function shopSecondsLeft(now: number): number {
+  return Math.ceil(((shopDay(now) + 1) * DAY_MS - SHOP_ZONE_OFFSET_MS - now) / 1000);
+}
+
+// Mağazada bir eşyanın çıkma ağırlığı (nadir eşyalar daha seyrek gelir)
+const SHOP_WEIGHT: { [rarity: string]: number } = { common: 10, uncommon: 8, rare: 5, epic: 3, legendary: 2 };
+
+// Günün eşyalarını seçer: oyuncunun sahip olmadığı, birbirinden farklı en fazla SHOP_SLOTS eşya.
+// Koşu efektleri şimdilik satılmaz (görselleri yok).
+export function rollShop(owned: string[], rng: () => number = Math.random): string[] {
+  const pool = CATALOG.filter((entry) => entry.category !== "trail" && owned.indexOf(entry.id) < 0);
+  const picked: string[] = [];
+  while (picked.length < SHOP_SLOTS && pool.length > 0) {
+    let total = 0;
+    for (const entry of pool) total += SHOP_WEIGHT[entry.rarity];
+    let roll = rng() * total;
+    let index = pool.length - 1;
+    for (let i = 0; i < pool.length; i++) {
+      roll -= SHOP_WEIGHT[pool[i].rarity];
+      if (roll < 0) {
+        index = i;
+        break;
+      }
+    }
+    picked.push(pool[index].id);
+    pool.splice(index, 1);
+  }
+  return picked;
+}

@@ -144,6 +144,7 @@ namespace TextRun.Online
         public int races;
         public int wins;
         public int gold;
+        public int diamonds;
         public int chestBronze;
         public int chestSilver;
         public int chestGold;
@@ -169,6 +170,50 @@ namespace TextRun.Online
     {
         public ItemDto[] items;
         public string[] equipped; // takılı eşya kimlikleri
+    }
+
+    // Mağaza: günün eşya yuvası
+    [Serializable]
+    public class ShopSlotDto
+    {
+        public int slot;
+        public string itemId;
+        public string category;
+        public string rarity;
+        public string tr;
+        public string en;
+        public string currency; // gold | diamond
+        public int price;
+        public bool bought;
+    }
+
+    [Serializable]
+    public class ShopChestDto
+    {
+        public int slot;
+        public string tier;
+        public string currency;
+        public int price;
+        public bool bought;
+    }
+
+    [Serializable]
+    public class ShopDto
+    {
+        public int secondsLeft;  // gece 00.00'daki yenilenmeye kalan süre
+        public int refreshCost;  // elmasla yenileme bedeli
+        public int gold;
+        public int diamonds;
+        public ShopSlotDto[] slots;
+        public ShopChestDto goldChest;
+        public ShopChestDto diamondChest;
+    }
+
+    [Serializable]
+    public class ShopResultDto
+    {
+        public ShopDto shop;
+        public ProfileDto profile;
     }
 
     [Serializable]

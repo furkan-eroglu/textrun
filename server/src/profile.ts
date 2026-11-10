@@ -1,6 +1,9 @@
 // Oyuncu profili: ad, XP, seviye, altın, sandık ve eşyalar. Saf kurallar burada; saklama ve RPC'ler main.ts / match.ts içindedir.
 // XP, altın ve sandıklar yalnızca sunucuda hesaplanır ve saklanır; istemci bu değerleri gönderemez.
-import { CHEST_TIERS, chestTierForLevel, goldForRace, itemById, rollChest } from "./economy.ts";
+import {
+  CHEST_TIERS, SHOP_DIAMOND_CHEST, SHOP_GOLD_CHEST, SHOP_REFRESH_DIAMONDS, SHOP_SLOTS, START_DIAMONDS,
+  chestTierForLevel, goldForRace, itemById, priceOf, rollChest, rollShop, shopDay,
+} from "./economy.ts";
 import type { Category, ChestOpening, ChestTier } from "./economy.ts";
 
 export type Chests = { [tier in ChestTier]: number };
@@ -14,6 +17,15 @@ export interface Profile {
   chests: Chests; // açılmamış sandık sayıları
   items: string[]; // sahip olunan eşya kimlikleri
   equipped: { [category: string]: string }; // kategori -> takılı eşya kimliği
+  diamonds: number;
+  shop: ShopState | null; // bugünün mağazası (ilk açılışta kurulur)
+}
+
+export interface ShopState {
+  day: number; // mağaza günü (economy.shopDay)
+  items: string[]; // günün eşyaları
+  bought: boolean[]; // her yuva için: alındı mı
+  goldChestBought: boolean;
 }
 
 export interface LevelInfo {
@@ -30,7 +42,7 @@ export function emptyChests(): Chests {
 }
 
 export function emptyProfile(): Profile {
-  return { name: null, xp: 0, races: 0, wins: 0, gold: 0, chests: emptyChests(), items: [], equipped: {} };
+  return { name: null, xp: 0, races: 0, wins: 0, gold: 0, chests: emptyChests(), items: [], equipped: {}, diamonds: START_DIAMONDS, shop: null };
 }
 
 // Seviye 1'den 2'ye 100 XP; her seviyede gereken miktar 40 artar (100, 140, 180, ...)
@@ -142,4 +154,71 @@ export function lookOf(profile: Profile): string[] {
   const ids: string[] = [];
   for (const category of Object.keys(profile.equipped)) ids.push(profile.equipped[category]);
   return ids.sort();
+}
+
+// ---------- Mağaza ----------
+
+export const SHOP_GOLD_CHEST_SLOT = SHOP_SLOTS; // 4
+export const SHOP_DIAMOND_CHEST_SLOT = SHOP_SLOTS + 1; // 5
+
+export type ShopOutcome = "ok" | "bad_slot" | "already_bought" | "not_enough";
+
+function newShop(profile: Profile, day: number, rng: () => number): ShopState {
+  const items = rollShop(profile.items, rng);
+  return { day, items, bought: items.map(() => false), goldChestBought: false };
+}
+
+// Mağaza yoksa veya gün değiştiyse (gece 00.00) yenisini kurar. Değişiklik olduysa true döner.
+export function ensureShop(profile: Profile, now: number, rng: () => number = Math.random): boolean {
+  const day = shopDay(now);
+  if (profile.shop && profile.shop.day === day) return false;
+  profile.shop = newShop(profile, day, rng);
+  return true;
+}
+
+// Elmasla yenileme: eşyalar ve altın sandık hakkı yenilenir; gün aynı kalır (00.00'a kalan süre değişmez).
+export function refreshShop(profile: Profile, now: number, rng: () => number = Math.random): ShopOutcome {
+  ensureShop(profile, now, rng);
+  if (profile.diamonds < SHOP_REFRESH_DIAMONDS) return "not_enough";
+  profile.diamonds -= SHOP_REFRESH_DIAMONDS;
+  profile.shop = newShop(profile, shopDay(now), rng);
+  return "ok";
+}
+
+// Mağazadan alışveriş: 0-3 eşya yuvaları, 4 altınla sandık (yenileme başına 1), 5 elmasla sandık (sınırsız)
+export function buyShopSlot(profile: Profile, slot: unknown, now: number, rng: () => number = Math.random): ShopOutcome {
+  ensureShop(profile, now, rng);
+  const shop = profile.shop!;
+  if (typeof slot !== "number" || Math.floor(slot) !== slot) return "bad_slot";
+
+  if (slot === SHOP_GOLD_CHEST_SLOT) {
+    if (shop.goldChestBought) return "already_bought";
+    if (profile.gold < SHOP_GOLD_CHEST.price) return "not_enough";
+    profile.gold -= SHOP_GOLD_CHEST.price;
+    profile.chests[SHOP_GOLD_CHEST.tier] += 1;
+    shop.goldChestBought = true;
+    return "ok";
+  }
+  if (slot === SHOP_DIAMOND_CHEST_SLOT) {
+    if (profile.diamonds < SHOP_DIAMOND_CHEST.price) return "not_enough";
+    profile.diamonds -= SHOP_DIAMOND_CHEST.price;
+    profile.chests[SHOP_DIAMOND_CHEST.tier] += 1;
+    return "ok";
+  }
+
+  if (slot < 0 || slot >= shop.items.length) return "bad_slot";
+  const entry = itemById(shop.items[slot]);
+  if (!entry) return "bad_slot";
+  if (shop.bought[slot] || profile.items.indexOf(entry.id) >= 0) return "already_bought"; // bu arada sandıktan çıkmış olabilir
+  const cost = priceOf(entry);
+  if (cost.currency === "gold") {
+    if (profile.gold < cost.price) return "not_enough";
+    profile.gold -= cost.price;
+  } else {
+    if (profile.diamonds < cost.price) return "not_enough";
+    profile.diamonds -= cost.price;
+  }
+  profile.items.push(entry.id);
+  shop.bought[slot] = true;
+  return "ok";
 }

@@ -92,6 +92,10 @@ Veri, UTF-8 JSON metnidir.
 - `get_inventory` → `{ items: [{ id, category, rarity, tr, en }] }` (misafirde boş).
 - `open_chest` `{ tier: "bronze"|"silver"|"gold" }` → `{ tier, itemId, category, rarity, tr, en, duplicate, goldRefund, profile }`. Sandık yoksa 400/412 `no_chest`, geçersiz tür `bad_chest`, misafir `guest_account`. Tekrar eşya envantere girmez, nadirliğe göre altın verir.
 - `equip_item` `{ itemId }` (takar; aynı kategorideki eskisi çıkar) veya `{ category }` (kategoriyi boşaltır) → `{ items, equipped }`. Eşya oyuncunun değilse `not_owned`, misafir `guest_account`. `get_inventory` de `equipped` (takılı eşya kimlikleri) döner.
+- `get_shop` `{}` → `{ shop, profile }`. `shop`: `{ secondsLeft, refreshCost, gold, diamonds, slots[], goldChest, diamondChest }`; `slots[]`: `{ slot, itemId, category, rarity, tr, en, currency: "gold"|"diamond", price, bought }`. Mağaza her gece 00.00'da (Türkiye saati) yenilenir; günün eşyaları oyuncuya özeldir ve sahip olmadıklarından seçilir.
+- `shop_buy` `{ slot }` → `{ shop, profile }`. 0-3 eşya, 4 altınla sandık (yenileme başına 1), 5 elmasla sandık (sınırsız). Hatalar: `bad_slot`, `already_bought`, `not_enough`, misafir `guest_account`.
+- `shop_refresh` `{}` → `{ shop, profile }`. Elmasla yeniler; 00.00'a kalan süre değişmez. Elmas yetmezse `not_enough`.
+- `get_profile` ayrıca `diamonds` döner. TEST: her hesap 500 elmasla başlar (`START_DIAMONDS`, yayından önce 0 yapılacak).
 - Yarış odasındaki her oyuncu özetinde (`players[]`) `look`: takılı eşya kimlikleri; istemci bunları karaktere giydirir.
 - `set_name` `{ name }` → profil. Geçersiz ad: 400 `name_invalid` (3-12 karakter; harf, rakam, boşluk, `_ . -`).
 - XP yalnızca sunucuda hesaplanır: bitirmek 20 + sıra bonusu (50/35/25/15/10); bitirmeyen 5; hile 0. Seviye 1→2 100 XP, her seviyede gereken 40 artar.

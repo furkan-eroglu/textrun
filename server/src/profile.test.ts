@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { applyRace, cleanName, emptyProfile, equipItem, levelOf, lookOf, openChest, racePaysXp, unequipCategory, xpForNextLevel, xpForRace } from "./profile.ts";
+import { CATALOG, SHOP_DIAMOND_CHEST, SHOP_GOLD_CHEST, SHOP_REFRESH_DIAMONDS, itemById, priceOf, rollShop, shopDay, shopSecondsLeft } from "./economy.ts";
+import {
+  SHOP_DIAMOND_CHEST_SLOT, SHOP_GOLD_CHEST_SLOT, applyRace, buyShopSlot, cleanName, emptyProfile, ensureShop, equipItem, levelOf, lookOf, openChest, racePaysXp, refreshShop,
+  unequipCategory, xpForNextLevel, xpForRace,
+} from "./profile.ts";
 
 // Verilen seviyeye ulaşmak için gereken toplam XP
 function xpToReach(level: number): number {
@@ -125,4 +129,77 @@ test("esya takma: yalnizca sahip olunan esya takilir, ayni kategoride yenisi esk
   assert.equal(unequipCategory(profile, "head"), true);
   assert.deepEqual(lookOf(profile), ["glasses_sun"]);
   assert.equal(unequipCategory(profile, "bilinmeyen"), false);
+});
+
+test("magaza: gun Turkiye saatine gore degisir, geri sayim dogru", () => {
+  const midnightTr = Date.UTC(2026, 10, 10, 21, 0, 0); // 11 Kasim 00.00 TR
+  assert.equal(shopDay(midnightTr - 1) + 1, shopDay(midnightTr));
+  assert.equal(shopSecondsLeft(midnightTr - 10 * 3600 * 1000), 10 * 3600);
+  assert.equal(shopSecondsLeft(midnightTr), 24 * 3600);
+});
+
+test("magaza: 4 farkli, sahip olunmayan esya; kosu efekti satilmaz", () => {
+  for (let round = 0; round < 50; round++) {
+    const picked = rollShop(["hat_cap", "top_tee"]);
+    assert.equal(picked.length, 4);
+    assert.equal(new Set(picked).size, 4);
+    for (const id of picked) {
+      assert.ok(id !== "hat_cap" && id !== "top_tee");
+      assert.notEqual(itemById(id)!.category, "trail");
+    }
+  }
+  const almostAll = CATALOG.filter((entry) => entry.category !== "trail").map((entry) => entry.id).slice(2);
+  assert.equal(rollShop(almostAll).length, 2, "satilacak esya azsa yuva sayisi azalir");
+});
+
+test("magaza: satin alma, yetersiz bakiye, tekrar alamama, sandiklar", () => {
+  const now = Date.UTC(2026, 10, 10, 12, 0, 0);
+  const profile = emptyProfile();
+  profile.diamonds = 0;
+  assert.equal(ensureShop(profile, now), true);
+  assert.equal(ensureShop(profile, now), false, "ayni gun yeniden kurulmaz");
+  const first = itemById(profile.shop!.items[0])!;
+  const cost = priceOf(first);
+
+  assert.equal(buyShopSlot(profile, 0, now), "not_enough");
+  assert.equal(buyShopSlot(profile, 9, now), "bad_slot");
+  assert.equal(buyShopSlot(profile, "0", now), "bad_slot");
+  profile.gold = 100000;
+  profile.diamonds = 1000;
+  assert.equal(buyShopSlot(profile, 0, now), "ok");
+  assert.ok(profile.items.indexOf(first.id) >= 0);
+  assert.equal(cost.currency === "gold" ? 100000 - profile.gold : 1000 - profile.diamonds, cost.price);
+  assert.equal(buyShopSlot(profile, 0, now), "already_bought");
+
+  const gold = profile.gold;
+  assert.equal(buyShopSlot(profile, SHOP_GOLD_CHEST_SLOT, now), "ok");
+  assert.equal(profile.gold, gold - SHOP_GOLD_CHEST.price);
+  assert.equal(profile.chests[SHOP_GOLD_CHEST.tier], 1);
+  assert.equal(buyShopSlot(profile, SHOP_GOLD_CHEST_SLOT, now), "already_bought", "altin sandik yenileme basina 1 kez");
+
+  const diamonds = profile.diamonds;
+  assert.equal(buyShopSlot(profile, SHOP_DIAMOND_CHEST_SLOT, now), "ok");
+  assert.equal(buyShopSlot(profile, SHOP_DIAMOND_CHEST_SLOT, now), "ok", "elmas sandik sinirsiz");
+  assert.equal(profile.diamonds, diamonds - 2 * SHOP_DIAMOND_CHEST.price);
+  assert.equal(profile.chests[SHOP_DIAMOND_CHEST.tier], 2);
+});
+
+test("magaza: elmasla yenileme gunu degistirmez, altin sandik hakkini geri verir; gece yenilenir", () => {
+  const now = Date.UTC(2026, 10, 10, 12, 0, 0);
+  const profile = emptyProfile();
+  profile.gold = 100000;
+  profile.diamonds = SHOP_REFRESH_DIAMONDS;
+  ensureShop(profile, now);
+  buyShopSlot(profile, SHOP_GOLD_CHEST_SLOT, now);
+  const day = profile.shop!.day;
+
+  assert.equal(refreshShop(profile, now), "ok");
+  assert.equal(profile.diamonds, 0);
+  assert.equal(profile.shop!.day, day, "yenileme 00.00 zamanini degistirmez");
+  assert.equal(profile.shop!.goldChestBought, false);
+  assert.equal(refreshShop(profile, now), "not_enough");
+
+  const tomorrow = now + 24 * 3600 * 1000;
+  assert.equal(ensureShop(profile, tomorrow), true, "gece 00.00'dan sonra magaza yenilenir");
+  assert.equal(profile.shop!.day, day + 1);
 });

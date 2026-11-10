@@ -477,6 +477,29 @@ await test('profil: ad secilir, yarista gorunur, yarisi bitirince XP verilir ve 
   assert.deepEqual((await p.rpc('get_inventory', {})).equipped, [opened.itemId], 'takili esya kalici');
   const bare = await p.rpc('equip_item', { category: opened.category });
   assert.deepEqual(bare.equipped, []);
+
+  // Magaza: gunun esyalari, elmasla sandik, elmasla yenileme (00.00 zamani degismez), gecersiz yuva
+  const first = await p.rpc('get_shop', {});
+  assert.equal(first.shop.slots.length, 4);
+  assert.ok(first.shop.secondsLeft > 0 && first.shop.secondsLeft <= 24 * 3600);
+  assert.equal(first.profile.diamonds, 500, 'test elmasi');
+  assert.equal(new Set(first.shop.slots.map((slot) => slot.itemId)).size, 4);
+  for (const slot of first.shop.slots) assert.ok(slot.price > 0 && (slot.currency === 'gold' || slot.currency === 'diamond'));
+  const again = await p.rpc('get_shop', {});
+  assert.deepEqual(again.shop.slots.map((slot) => slot.itemId), first.shop.slots.map((slot) => slot.itemId), 'ayni gun magaza degismez');
+
+  const chestBuy = await p.rpc('shop_buy', { slot: 5 });
+  assert.equal(chestBuy.profile.diamonds, 400);
+  assert.equal(chestBuy.profile.chestGold, 1);
+  await assert.rejects(() => p.rpc('shop_buy', { slot: 9 }), /bad_slot/);
+  await assert.rejects(() => p.rpc('shop_buy', { slot: 'x' }), /bad_slot/);
+
+  const refreshed = await p.rpc('shop_refresh', {});
+  assert.equal(refreshed.profile.diamonds, 400 - refreshed.shop.refreshCost);
+  assert.ok(Math.abs(refreshed.shop.secondsLeft - first.shop.secondsLeft) < 120, 'yenileme geri sayimi sifirlamaz');
+
+  const pricey = refreshed.shop.slots.find((slot) => slot.currency === 'gold' && slot.price > refreshed.profile.gold);
+  if (pricey) await assert.rejects(() => p.rpc('shop_buy', { slot: pricey.slot }), /not_enough/, 'parasi yetmeyen alamaz');
   p.close();
 });
 
@@ -500,6 +523,8 @@ await test('misafir: takma ad secemez, yarisi bitirse de XP/seviye kazanmaz', as
   await assert.rejects(() => g.rpc('open_chest', { tier: 'bronze' }), /guest_account/);
   assert.deepEqual((await g.rpc('get_inventory', {})).items, []);
   await assert.rejects(() => g.rpc('equip_item', { itemId: 'hat_cap' }), /guest_account/);
+  await assert.rejects(() => g.rpc('get_shop', {}), /guest_account/);
+  await assert.rejects(() => g.rpc('shop_buy', { slot: 5 }), /guest_account/);
   g.close();
 });
 
