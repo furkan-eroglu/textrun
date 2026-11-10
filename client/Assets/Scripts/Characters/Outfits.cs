@@ -59,15 +59,15 @@ namespace TextRun.Characters
             { "hat_street", c => { Dome(c, C(0x1E2026), 0.64f); c.Add(PrimitiveType.Cube, c.head, 0f, 0.14f, 0.33f, 0.4f, 0.02f, 0.26f, C(0x35E060), 6f); c.Add(PrimitiveType.Cube, c.head, 0.2f, 0.26f, 0.2f, 0.05f, 0.05f, 0.05f, C(0x35E060)); } },
             { "hat_pop", c => { c.Add(PrimitiveType.Cylinder, c.head, 0f, 0.18f, 0f, 0.86f, 0.02f, 0.86f, C(0xFF4FA3)); c.Add(PrimitiveType.Cylinder, c.head, 0f, 0.31f, 0f, 0.44f, 0.12f, 0.44f, C(0xFF6FB5)); c.Add(PrimitiveType.Cylinder, c.head, 0f, 0.22f, 0f, 0.46f, 0.03f, 0.46f, C(0xFFD23C)); c.Add(PrimitiveType.Cube, c.head, 0.15f, 0.34f, 0.22f, 0.1f, 0.1f, 0.02f, C(0xFFD23C), 0f, 0f, 45f, 0.6f); } },
             { "hat_top", c => { c.Add(PrimitiveType.Cylinder, c.head, 0f, 0.18f, 0f, 0.66f, 0.02f, 0.66f, C(0x14141A)); c.Add(PrimitiveType.Cylinder, c.head, 0f, 0.36f, 0f, 0.42f, 0.17f, 0.42f, C(0x1C1C24)); c.Add(PrimitiveType.Cylinder, c.head, 0f, 0.24f, 0f, 0.44f, 0.03f, 0.44f, C(0x8A3FD4)); c.Add(PrimitiveType.Sphere, c.head, 0.2f, 0.28f, 0.15f, 0.07f, 0.07f, 0.07f, C(0xFFD23C), 0f, 0f, 0f, 0.6f); } },
-            { "hat_pirate", c => { Dome(c, C(0x16161C), 0.66f, 0.36f); c.Add(PrimitiveType.Cube, c.head, 0f, 0.27f, 0f, 0.86f, 0.14f, 0.34f, C(0x1C1C24), 0f, 0f, 0f); c.Add(PrimitiveType.Sphere, c.head, 0f, 0.28f, 0.17f, 0.11f, 0.11f, 0.03f, C(0xF2F2F2)); c.Add(PrimitiveType.Cube, c.head, 0f, 0.28f, 0.19f, 0.15f, 0.025f, 0.02f, C(0xF2F2F2), 0f, 0f, 35f); c.Add(PrimitiveType.Cube, c.head, 0f, 0.28f, 0.19f, 0.15f, 0.025f, 0.02f, C(0xF2F2F2), 0f, 0f, -35f); } },
+            { "hat_pirate", c => { var black = C(0x1A1A22); Dome(c, black, 0.66f, 0.38f); c.Add(PrimitiveType.Cube, c.head, -0.2f, 0.3f, 0.02f, 0.5f, 0.2f, 0.3f, black, 0f, 0f, -18f); c.Add(PrimitiveType.Cube, c.head, 0.2f, 0.3f, 0.02f, 0.5f, 0.2f, 0.3f, black, 0f, 0f, 18f); c.Add(PrimitiveType.Cube, c.head, 0f, 0.2f, 0.02f, 0.9f, 0.035f, 0.33f, C(0xFFCC33)); c.Add(PrimitiveType.Sphere, c.head, 0f, 0.32f, 0.175f, 0.13f, 0.13f, 0.04f, C(0xF2F2F2)); c.Add(PrimitiveType.Cube, c.head, 0f, 0.3f, 0.185f, 0.2f, 0.028f, 0.02f, C(0xF2F2F2), 0f, 0f, 35f); c.Add(PrimitiveType.Cube, c.head, 0f, 0.3f, 0.185f, 0.2f, 0.028f, 0.02f, C(0xF2F2F2), 0f, 0f, -35f); } },
             { "hat_crown", c => { var gold = C(0xFFCC33); c.Add(PrimitiveType.Cylinder, c.head, 0f, 0.28f, 0f, 0.5f, 0.07f, 0.5f, gold, 0f, 0f, 0f, 0.6f); for (int i = 0; i < 5; i++) { float a = i * Mathf.PI * 2f / 5f; c.Add(PrimitiveType.Cube, c.head, Mathf.Sin(a) * 0.22f, 0.4f, Mathf.Cos(a) * 0.22f, 0.07f, 0.16f, 0.07f, gold, 0f, 0f, 0f, 0.6f); c.Add(PrimitiveType.Sphere, c.head, Mathf.Sin(a) * 0.22f, 0.49f, Mathf.Cos(a) * 0.22f, 0.06f, 0.06f, 0.06f, i % 2 == 0 ? C(0xE23B3B) : C(0x3B7BE2)); } } },
 
-            { "hair_short", c => Dome(c, C(0x3A2412), 0.64f) },
+            { "hair_short", c => { var brown = C(0x5A3418); Dome(c, brown, 0.64f, 0.36f); c.Add(PrimitiveType.Sphere, c.head, 0.05f, 0.3f, 0.2f, 0.34f, 0.16f, 0.2f, brown, -18f); c.Add(PrimitiveType.Cube, c.head, -0.29f, 0.02f, 0.02f, 0.04f, 0.2f, 0.14f, brown); c.Add(PrimitiveType.Cube, c.head, 0.29f, 0.02f, 0.02f, 0.04f, 0.2f, 0.14f, brown); } },
             { "hair_long", c => { Dome(c, C(0xE0B040), 0.64f); c.Add(PrimitiveType.Cube, c.head, 0f, -0.06f, -0.2f, 0.62f, 0.66f, 0.14f, C(0xE0B040)); c.Add(PrimitiveType.Cube, c.head, -0.3f, 0f, -0.02f, 0.06f, 0.5f, 0.2f, C(0xE0B040)); c.Add(PrimitiveType.Cube, c.head, 0.3f, 0f, -0.02f, 0.06f, 0.5f, 0.2f, C(0xE0B040)); } },
             { "hair_afro", c => c.Add(PrimitiveType.Sphere, c.head, 0f, 0.28f, -0.14f, 0.85f, 0.85f, 0.85f, C(0x1E140E)) },
             { "hair_mohawk", c => { var green = C(0x3BE070); float[] h = { 0.14f, 0.2f, 0.26f, 0.22f, 0.16f }; for (int i = 0; i < 5; i++) c.Add(PrimitiveType.Cube, c.head, 0f, 0.28f + h[i] / 2f - 0.02f, 0.2f - i * 0.1f, 0.07f, h[i], 0.09f, i % 2 == 0 ? green : C(0xFF4FA3)); } },
             { "hair_flame", c => { Dome(c, C(0xFF7A1A), 0.64f); c.Add(PrimitiveType.Cube, c.head, 0f, 0.46f, 0f, 0.1f, 0.3f, 0.1f, C(0xFFD23C), 0f, 0f, 45f); c.Add(PrimitiveType.Cube, c.head, -0.14f, 0.42f, 0f, 0.09f, 0.24f, 0.09f, C(0xFF3B1A), 0f, 0f, 25f); c.Add(PrimitiveType.Cube, c.head, 0.14f, 0.42f, 0f, 0.09f, 0.24f, 0.09f, C(0xFF3B1A), 0f, 0f, -25f); } },
-            { "hair_rainbow", c => { int[] cols = { 0xE23B3B, 0xFF9A1A, 0xFFE03C, 0x3BD070, 0x3B7BE2, 0x9A4FD4 }; for (int i = 0; i < 6; i++) { float a = i * Mathf.PI * 2f / 6f; c.Add(PrimitiveType.Sphere, c.head, Mathf.Sin(a) * 0.18f, 0.22f, -0.04f + Mathf.Cos(a) * 0.12f - 0.08f, 0.32f, 0.32f, 0.32f, C(cols[i])); } c.Add(PrimitiveType.Sphere, c.head, 0f, 0.3f, -0.06f, 0.4f, 0.3f, 0.4f, C(0xFFFFFF)); } },
+            { "hair_rainbow", c => { int[] cols = { 0xE23B3B, 0xFF9A1A, 0xFFE03C, 0x3BD070, 0x3B9BE2, 0x9A4FD4 }; Dome(c, C(0xFFFFFF), 0.63f, 0.3f); for (int i = 0; i < 6; i++) { float a = Mathf.Lerp(-78f, 78f, i / 5f) * Mathf.Deg2Rad; c.Add(PrimitiveType.Sphere, c.head, Mathf.Sin(a) * 0.3f, 0.06f + Mathf.Cos(a) * 0.32f, -0.05f, 0.24f, 0.24f, 0.34f, C(cols[i])); } } },
 
             // ---------- Gözlük ----------
             { "glasses_round", c => { c.Glasses(C(0x1A1A1A), false); } },
@@ -79,7 +79,7 @@ namespace TextRun.Characters
             // ---------- Yüz ifadesi ----------
             { "face_smile", c => { c.HideMouth(); c.Smile(); foreach (float x in new[] { -0.19f, 0.19f }) c.Add(PrimitiveType.Sphere, c.head, x, -0.05f, 0.24f, 0.09f, 0.06f, 0.04f, C(0xFF8A9A)); } },
             { "face_wink", c => { c.HideMouth(); c.Smile(); c.HideEye(1f); c.Add(PrimitiveType.Cube, c.head, 0.12f, 0.05f, 0.3f, 0.12f, 0.025f, 0.02f, C(0x1E1414)); } },
-            { "face_cool", c => { c.HideMouth(); c.Add(PrimitiveType.Cube, c.head, -0.12f, 0.15f, 0.29f, 0.14f, 0.03f, 0.02f, C(0x1E1414), 0f, 0f, -14f); c.Add(PrimitiveType.Cube, c.head, 0.12f, 0.15f, 0.29f, 0.14f, 0.03f, 0.02f, C(0x1E1414), 0f, 0f, 14f); c.Add(PrimitiveType.Cube, c.head, 0.03f, -0.12f, 0.285f, 0.16f, 0.028f, 0.02f, C(0x1E1414), 0f, 0f, 10f); } },
+            { "face_cool", c => { c.HideMouth(); Hide(c.head, "Brow", 0f); c.Add(PrimitiveType.Cube, c.head, -0.12f, 0.15f, 0.29f, 0.14f, 0.03f, 0.02f, C(0x1E1414), 0f, 0f, -14f); c.Add(PrimitiveType.Cube, c.head, 0.12f, 0.15f, 0.29f, 0.14f, 0.03f, 0.02f, C(0x1E1414), 0f, 0f, 14f); c.Add(PrimitiveType.Cube, c.head, 0.03f, -0.12f, 0.285f, 0.16f, 0.028f, 0.02f, C(0x1E1414), 0f, 0f, 10f); } },
             { "face_star", c => { c.HidePupils(); c.HideMouth(); foreach (float x in new[] { -0.12f, 0.12f }) { c.Add(PrimitiveType.Cube, c.head, x, 0.05f, 0.325f, 0.11f, 0.11f, 0.02f, C(0xFFD23C), 0f, 0f, 0f, 0.6f); c.Add(PrimitiveType.Cube, c.head, x, 0.05f, 0.33f, 0.11f, 0.11f, 0.02f, C(0xFFD23C), 0f, 0f, 45f, 0.6f); } c.Add(PrimitiveType.Sphere, c.head, 0f, -0.12f, 0.27f, 0.09f, 0.08f, 0.04f, C(0x1E1414)); } },
 
             // ---------- Üst giyim ----------
@@ -180,7 +180,7 @@ namespace TextRun.Characters
             {
                 c.Dye(c.feet[i], body, smooth);
                 c.Add(PrimitiveType.Sphere, c.legs[i], 0f, -0.74f, 0.06f, 0.27f, 0.17f, 0.4f, body, 0f, 0f, 0f, smooth);
-                c.Add(PrimitiveType.Cube, c.legs[i], 0f, -0.805f, 0.06f, 0.25f, 0.045f, 0.4f, sole, 0f, 0f, 0f, smooth);
+                c.Add(PrimitiveType.Cube, c.legs[i], 0f, -0.805f, 0.06f, 0.21f, 0.04f, 0.37f, sole, 0f, 0f, 0f, smooth);
             });
         }
 
@@ -202,9 +202,50 @@ namespace TextRun.Characters
             }
             ResetBase(c);
 
-            if (look == null) return;
-            foreach (var id in look)
-                if (id != null && Registry.TryGetValue(id, out var build)) build(c);
+            bool head = false, top = false, bottom = false, shoes = false;
+            if (look != null)
+            {
+                foreach (var id in look)
+                {
+                    if (id == null || !Registry.TryGetValue(id, out var build)) continue;
+                    build(c);
+                    if (id.StartsWith("hat_") || id.StartsWith("hair_")) head = true;
+                    else if (id.StartsWith("top_")) top = true;
+                    else if (id.StartsWith("bottom_")) bottom = true;
+                    else if (id.StartsWith("shoes_")) shoes = true;
+                }
+            }
+
+            // Eşya giyilmemiş yerler boş kalmaz: sade saç, atlet (karakterin temel rengi), şort ve ayakkabı
+            if (!head) Dome(c, C(0x4A2F1B), 0.625f, 0.3f);
+            if (!top) c.Torso(character.baseColor);
+            if (!bottom) c.BothSides((s, i) => c.Sleeve(c.legs[i], -0.15f, 0.15f, 0.26f, C(0x2B3145)));
+            if (!shoes) c.Shoes(C(0x3A4054), C(0xE8ECF2));
+        }
+
+        static readonly string[] BotCategories = { "hat_,hair_", "glasses_", "top_", "bottom_", "shoes_", "face_" };
+        static readonly float[] BotChances = { 0.85f, 0.3f, 0.75f, 0.75f, 0.6f, 0.35f };
+
+        // Botlar için: kimlikten türetilen sabit bir görünüm (aynı bot her oyuncuda aynı görünür)
+        public static string[] RandomLook(string seedText)
+        {
+            uint hash = 2166136261;
+            foreach (char ch in seedText ?? "") hash = (hash ^ ch) * 16777619;
+            var rng = new System.Random((int)(hash & 0x7FFFFFFF));
+
+            var look = new List<string>();
+            for (int k = 0; k < BotCategories.Length; k++)
+            {
+                var prefixes = BotCategories[k].Split(',');
+                var pool = new List<string>();
+                foreach (var id in Registry.Keys)
+                    foreach (var prefix in prefixes)
+                        if (id.StartsWith(prefix)) pool.Add(id);
+                bool wear = rng.NextDouble() < BotChances[k];
+                int pick = rng.Next(pool.Count);
+                if (wear && pool.Count > 0) look.Add(pool[pick]);
+            }
+            return look.ToArray();
         }
 
         public static string[] AllIds()
@@ -237,7 +278,7 @@ namespace TextRun.Characters
                 c.Dye(c.feet[i], Skin);
             }
             foreach (Transform t in c.head)
-                if (t.name == "Mouth" || t.name == "EyeWhite" || t.name == "Pupil") t.gameObject.SetActive(true);
+                if (t.name == "Mouth" || t.name == "EyeWhite" || t.name == "Pupil" || t.name == "Brow") t.gameObject.SetActive(true);
         }
     }
 }

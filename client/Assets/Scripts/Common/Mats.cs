@@ -14,12 +14,12 @@ namespace TextRun.Common
         // "Can't add component ... doesn't exist" hataları yazılıyordu. Türlere burada başvurmak ayıklanmalarını önler.
         static readonly System.Type[] KeepPhysicsClasses = { typeof(BoxCollider), typeof(SphereCollider), typeof(CapsuleCollider), typeof(MeshCollider) };
 
-        static readonly Dictionary<Color, Material> cache = new Dictionary<Color, Material>();
+        static readonly Dictionary<(Color, float), Material> cache = new Dictionary<(Color, float), Material>();
         static Material baseMaterial;
 
         public static Material Get(Color color, float smoothness = 0.1f)
         {
-            if (cache.TryGetValue(color, out var existing) && existing != null)
+            if (cache.TryGetValue((color, smoothness), out var existing) && existing != null)
                 return existing;
 
             if (baseMaterial == null) baseMaterial = Resources.Load<Material>(BaseMaterialPath);
@@ -28,7 +28,7 @@ namespace TextRun.Common
 
             var mat = new Material(baseMaterial) { color = color };
             mat.SetFloat("_Glossiness", smoothness);
-            cache[color] = mat;
+            cache[(color, smoothness)] = mat;
             return mat;
         }
 

@@ -127,11 +127,13 @@ namespace TextRun.Race
                 active[p.slot] = true;
                 names[p.slot] = p.name;
                 isBot[p.slot] = p.isBot;
-                string key = p.look == null ? "" : string.Join(",", p.look);
+                // Botların eşyası sunucuda yoktur: kimliklerinden türetilen sabit bir görünüm giyerler
+                string[] look = p.isBot && (p.look == null || p.look.Length == 0) ? Outfits.RandomLook(p.id) : p.look;
+                string key = look == null ? "" : string.Join(",", look);
                 if (lookKeys[p.slot] != key)
                 {
                     lookKeys[p.slot] = key;
-                    Outfits.Apply(runners[p.slot], p.look);
+                    Outfits.Apply(runners[p.slot], look);
                 }
                 if (p.id == localId) localSlot = p.slot;
             }
@@ -206,7 +208,7 @@ namespace TextRun.Race
             for (int i = 0; i < laneCount; i++)
             {
                 if (!active[i]) continue;
-                Vector3 screen = cam.WorldToScreenPoint(runners[i].transform.position + Vector3.up * 2.3f);
+                Vector3 screen = cam.WorldToScreenPoint(runners[i].transform.position + Vector3.up * 2.65f);
                 if (screen.z <= 0f) continue;
 
                 string label = names[i];
