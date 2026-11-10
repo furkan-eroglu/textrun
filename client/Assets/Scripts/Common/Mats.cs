@@ -32,6 +32,18 @@ namespace TextRun.Common
             return mat;
         }
 
+        // Kodla üretilmiş bir ağdan (MeshKit) nesne kurar
+        public static GameObject MeshObject(string name, Mesh mesh, Transform parent, Vector3 localPos, Vector3 localScale, Color color)
+        {
+            var go = new GameObject(name);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            go.AddComponent<MeshRenderer>().sharedMaterial = Get(color);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localScale = localScale;
+            return go;
+        }
+
         public static GameObject Primitive(string name, PrimitiveType type, Transform parent, Vector3 localPos, Vector3 localScale, Color color)
         {
             var go = GameObject.CreatePrimitive(type);

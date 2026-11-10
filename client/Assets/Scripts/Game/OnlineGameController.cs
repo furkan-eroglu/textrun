@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TextRun.Audio;
@@ -961,7 +961,7 @@ namespace TextRun.Game
 
             // Oyuncunun karakteri (giydikleriyle) ve yanında günlük reklam sandığı
             bool devBox = Application.isEditor || Debug.isDebugBuild;
-            float stageTop = top + 160f;
+            float stageTop = top + 170f;
             float stageHeight = Mathf.Clamp(height - stageTop - 240f - (devBox ? 104f : 20f) - 8f, 100f, 210f);
             if (!profile.guest && inventory == null && net != null && Time.realtimeSinceStartup - inventoryTriedAt > 5f) LoadInventory();
             preview.Show(profile.guest ? null : inventory?.equipped);
