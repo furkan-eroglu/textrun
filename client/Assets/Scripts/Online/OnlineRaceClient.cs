@@ -379,6 +379,13 @@ namespace TextRun.Online
             return JsonUtility.FromJson<ShopResultDto>(rpc.Payload);
         }
 
+        // Günlük reklam sandığı (günde bir kez). Bugün açıldıysa istisna: IsError(e, "ad_not_ready")
+        public async Task<ChestResultDto> ClaimAdChestAsync()
+        {
+            var rpc = await client.RpcAsync(session, "claim_ad_chest", "{}");
+            return JsonUtility.FromJson<ChestResultDto>(rpc.Payload);
+        }
+
         // Bir sandık açar (tier: bronze | silver | gold). Sandık yoksa istisna: IsError(e, "no_chest")
         public async Task<ChestResultDto> OpenChestAsync(string tier)
         {

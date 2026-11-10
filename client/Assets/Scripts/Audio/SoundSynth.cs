@@ -348,6 +348,88 @@ namespace TextRun.Audio
             return data;
         }
 
+        // Sandık sallanırken: kısa, tok bir tahta tıkırtısı
+        public static float[] ChestRattleSamples()
+        {
+            int n = (int)(0.09f * SampleRate);
+            var data = new float[n];
+            var random = new System.Random(11);
+            float low = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                low += ((float)random.NextDouble() * 2f - 1f - low) * 0.45f;
+                float knock = Mathf.Sin(TwoPi * 210f * t) * Mathf.Exp(-t * 55f) + Mathf.Sin(TwoPi * 420f * t) * Mathf.Exp(-t * 80f) * 0.5f;
+                data[i] = knock * 0.8f + low * Mathf.Exp(-t * 60f) * 0.7f;
+            }
+            FadeEdges(data, 0.003f);
+            Normalize(data, 0.8f);
+            return data;
+        }
+
+        // Sandık açılmadan önceki gerilim: giderek tizleşen ve hızlanan titreşimli ses
+        public static float[] ChestRiserSamples(float seconds)
+        {
+            int n = (int)(seconds * SampleRate);
+            var data = new float[n];
+            var random = new System.Random(5);
+            float phase = 0f, low = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float u = i / (float)n;
+                float frequency = Mathf.Lerp(180f, 880f, u * u);
+                phase += TwoPi * frequency / SampleRate;
+                float tremolo = 0.6f + 0.4f * Mathf.Sin(TwoPi * Mathf.Lerp(6f, 22f, u) * (i / (float)SampleRate));
+                low += ((float)random.NextDouble() * 2f - 1f - low) * Mathf.Lerp(0.05f, 0.5f, u);
+                float tone = Mathf.Sin(phase) * 0.6f + Mathf.Sin(phase * 2f) * 0.25f + Mathf.Sin(phase * 0.5f) * 0.3f;
+                data[i] = (tone * tremolo + low * 0.5f * u) * Mathf.Lerp(0.25f, 1f, u);
+            }
+            FadeEdges(data, 0.02f);
+            Normalize(data, 0.7f);
+            return data;
+        }
+
+        // Sandık açıldı: patlama + yükselen çan dizisi. level: 0 sıradan, 1 nadir/destansı, 2 efsanevi (daha uzun ve parlak)
+        public static float[] ChestOpenSamples(int level)
+        {
+            float seconds = level == 2 ? 2.4f : level == 1 ? 1.7f : 1.2f;
+            int n = (int)(seconds * SampleRate);
+            var data = new float[n];
+            var random = new System.Random(3 + level);
+
+            // Patlama: hızla sönen gürültü ve derin bir vuruş
+            float low = 0f;
+            for (int i = 0; i < n && i < SampleRate * 0.5f; i++)
+            {
+                float t = i / (float)SampleRate;
+                low += ((float)random.NextDouble() * 2f - 1f - low) * 0.6f;
+                data[i] += low * Mathf.Exp(-t * 9f) * 0.9f + Mathf.Sin(TwoPi * Mathf.Lerp(140f, 55f, t * 4f) * t) * Mathf.Exp(-t * 7f) * 0.9f;
+            }
+
+            // Çanlar: Do majör, seviyeye göre daha çok ve daha yüksek nota
+            float[][] notes =
+            {
+                new[] { 523.25f, 659.25f, 783.99f },
+                new[] { 523.25f, 659.25f, 783.99f, 1046.5f, 1318.5f },
+                new[] { 523.25f, 659.25f, 783.99f, 1046.5f, 1318.5f, 1568f, 2093f },
+            };
+            float step = level == 2 ? 0.11f : 0.09f;
+            for (int k = 0; k < notes[level].Length; k++) AddBell(data, 0.05f + k * step, notes[level][k], 0.75f);
+            if (level >= 1)
+            {
+                // Bitiş akoru
+                float at = 0.05f + notes[level].Length * step;
+                AddBell(data, at, 1046.5f, 0.7f);
+                AddBell(data, at, 1318.5f, 0.6f);
+                AddBell(data, at, 1568f, 0.6f);
+                if (level == 2) AddBell(data, at + 0.25f, 2093f, 0.7f);
+            }
+
+            FadeEdges(data, 0.01f);
+            Normalize(data, 0.9f);
+            return data;
+        }
+
         public static void Normalize(float[] data, float peak)
         {
             float max = 0f;

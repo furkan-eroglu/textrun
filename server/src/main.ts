@@ -5,7 +5,7 @@ import { isSupportedLang } from "./words.ts";
 import { itemById } from "./economy.ts";
 import type { ChestTier } from "./economy.ts";
 import { cleanName, isChestTier } from "./profile.ts";
-import { equipFor, inventoryView, isRegistered, openChestFor, profileView, readProfile, saveProfile, shopFor, shopView } from "./profileStore.ts";
+import { AD_TIER, claimAdChestFor, equipFor, inventoryView, isRegistered, openChestFor, profileView, readProfile, saveProfile, shopFor, shopView } from "./profileStore.ts";
 
 export function pingRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
   return JSON.stringify({ ok: true, message: "TextRun sunucusu calisiyor", time: Date.now() });
@@ -212,6 +212,28 @@ function shopRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime
   return JSON.stringify({ shop: shopView(result.profile, Date.now()), profile: profileView(result.profile, false) });
 }
 
+// Günlük reklam sandığı: günde bir kez (gece 00.00'da yenilenir). Yanıt open_chest ile aynı biçimdedir.
+// Bugün açıldıysa "ad_not_ready", misafir "guest_account".
+// NOT: reklamın gerçekten izlendiği henüz doğrulanmıyor (reklam SDK'sı eklenince sunucu doğrulaması gelecek).
+export function claimAdChestRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+  if (!ctx.userId) throw new Error("giris gerekli");
+  if (!isRegistered(nk, ctx.userId)) fail("guest_account", CODE_INVALID_ARGUMENT);
+  const result = claimAdChestFor(nk, logger, ctx.userId);
+  if (!result) fail("ad_not_ready", CODE_FAILED_PRECONDITION);
+  const won = itemById(result!.opening.itemId)!;
+  return JSON.stringify({
+    tier: AD_TIER,
+    itemId: won.id,
+    category: won.category,
+    rarity: won.rarity,
+    tr: won.tr,
+    en: won.en,
+    duplicate: result!.opening.duplicate,
+    goldRefund: result!.opening.goldRefund,
+    profile: profileView(result!.profile, false),
+  });
+}
+
 export function getShopRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
   return shopRpc(ctx, logger, nk, "open");
 }
@@ -272,6 +294,7 @@ export function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk:
   initializer.registerRpc("get_shop", getShopRpc);
   initializer.registerRpc("shop_buy", shopBuyRpc);
   initializer.registerRpc("shop_refresh", shopRefreshRpc);
+  initializer.registerRpc("claim_ad_chest", claimAdChestRpc);
   initializer.registerMatch("race", { matchInit, matchJoinAttempt, matchJoin, matchLeave, matchLoop, matchTerminate, matchSignal });
   logger.info("TextRun modulu yuklendi");
 }

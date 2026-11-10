@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CATALOG, CHEST_TIERS, CHEST_WEIGHTS, RARITIES, chestTierForLevel, duplicateGold, goldForRace, itemById, rollChest } from "./economy.ts";
+import { CATALOG, CATEGORIES, CHEST_TIERS, CHEST_WEIGHTS, RARITIES, chestTierForLevel, duplicateGold, goldForRace, itemById, rollChest } from "./economy.ts";
 
 test("altın: bitirmek 10, üstüne sıra bonusu; bitirmeyen ve hile yapan almaz", () => {
   assert.equal(goldForRace(1, "finished"), 35);
@@ -29,9 +29,11 @@ test("eşya listesi: kimlikler benzersiz, her nadirlikten ve sandıktan çıkan 
   assert.equal(itemById("yok"), undefined);
 });
 
-test("koşu efektleri sandıktan çıkmaz (ileride yalnızca elmasla)", () => {
+test("eşya listesi: 5 kategori, her birinde 10 eşya; elmasa özel eşya sandıktan çıkmaz", () => {
+  for (const category of CATEGORIES) assert.equal(CATALOG.filter((entry) => entry.category === category).length, 10, category);
+  assert.equal(CATALOG.length, 50);
   for (const tier of CHEST_TIERS) {
-    for (let i = 0; i < 400; i++) assert.notEqual(itemById(rollChest(tier, [], () => Math.random()).itemId)!.category, "trail");
+    for (let i = 0; i < 400; i++) assert.equal(itemById(rollChest(tier, [], () => Math.random()).itemId)!.diamond, false);
   }
 });
 

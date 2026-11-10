@@ -53,7 +53,6 @@ namespace TextRun.Characters
             animator.rightArm = rightArm;
             animator.leftLeg = leftLeg;
             animator.rightLeg = rightLeg;
-            if (laneColor.a > 0f) animator.baseColor = laneColor;
             animator.Pose(0f);
             return animator;
         }

@@ -471,7 +471,7 @@ await test('profil: ad secilir, yarista gorunur, yarisi bitirince XP verilir ve 
 
   // Esya takma: sahip olunmayan takilmaz, sahip olunan takilir ve cikarilir
   assert.deepEqual(inventory.equipped, []);
-  await assert.rejects(() => p.rpc('equip_item', { itemId: 'trail_fire' }), /not_owned/, 'sahip olunmayan esya takilmaz');
+  await assert.rejects(() => p.rpc('equip_item', { itemId: 'cape_gold' }), /not_owned/, 'sahip olunmayan esya takilmaz');
   const worn = await p.rpc('equip_item', { itemId: opened.itemId });
   assert.deepEqual(worn.equipped, [opened.itemId]);
   assert.deepEqual((await p.rpc('get_inventory', {})).equipped, [opened.itemId], 'takili esya kalici');
@@ -497,6 +497,13 @@ await test('profil: ad secilir, yarista gorunur, yarisi bitirince XP verilir ve 
   const refreshed = await p.rpc('shop_refresh', {});
   assert.equal(refreshed.profile.diamonds, 400 - refreshed.shop.refreshCost);
   assert.ok(Math.abs(refreshed.shop.secondsLeft - first.shop.secondsLeft) < 120, 'yenileme geri sayimi sifirlamaz');
+
+  // Gunluk reklam sandigi: bir kez acilir, sonra geri sayim baslar
+  assert.equal(refreshed.profile.adChestSeconds, 0);
+  const ad = await p.rpc('claim_ad_chest', {});
+  assert.ok(ad.itemId && ad.rarity && ad.tier === 'silver');
+  assert.ok(ad.profile.adChestSeconds > 0 && ad.profile.adChestSeconds <= 24 * 3600);
+  await assert.rejects(() => p.rpc('claim_ad_chest', {}), /ad_not_ready/, 'ayni gun ikinci reklam sandigi yok');
 
   const pricey = refreshed.shop.slots.find((slot) => slot.currency === 'gold' && slot.price > refreshed.profile.gold);
   if (pricey) await assert.rejects(() => p.rpc('shop_buy', { slot: pricey.slot }), /not_enough/, 'parasi yetmeyen alamaz');
@@ -524,6 +531,7 @@ await test('misafir: takma ad secemez, yarisi bitirse de XP/seviye kazanmaz', as
   assert.deepEqual((await g.rpc('get_inventory', {})).items, []);
   await assert.rejects(() => g.rpc('equip_item', { itemId: 'hat_cap' }), /guest_account/);
   await assert.rejects(() => g.rpc('get_shop', {}), /guest_account/);
+  await assert.rejects(() => g.rpc('claim_ad_chest', {}), /guest_account/);
   await assert.rejects(() => g.rpc('shop_buy', { slot: 5 }), /guest_account/);
   g.close();
 });

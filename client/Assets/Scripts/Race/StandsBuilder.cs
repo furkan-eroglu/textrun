@@ -24,10 +24,17 @@ namespace TextRun.Race
         static readonly Color BoardBlue = new Color(0.20f, 0.42f, 0.88f);
         static readonly Color BoardWhite = new Color(0.96f, 0.96f, 0.96f);
 
-        static readonly Color[] PanelColors =
+        static readonly Color BandColor = new Color(0.06f, 0.07f, 0.13f);
+        static readonly Color NeonCyan = new Color(0.25f, 0.90f, 1f);
+        static readonly Color NeonPink = new Color(1f, 0.35f, 0.75f);
+        static readonly Color CheckerDark = new Color(0.08f, 0.08f, 0.10f);
+
+        // Işık çubuğu rengi: alçak çubuk mavi, yüksek çubuk pembe (birkaç sabit ton: parçalar renge göre birleştirilir)
+        static Color BarColor(float wave)
         {
-            new Color(0.85f, 0.25f, 0.28f), new Color(0.95f, 0.72f, 0.18f), new Color(0.20f, 0.60f, 0.85f), new Color(0.30f, 0.72f, 0.45f)
-        };
+            float step = Mathf.Round(wave * 5f) / 5f;
+            return Color.Lerp(new Color(0.20f, 0.55f, 1f), new Color(1f, 0.35f, 0.80f), step);
+        }
 
         public static void Build(Transform parent, int laneCount, float laneWidth, float trackLength)
         {
@@ -82,13 +89,43 @@ namespace TextRun.Race
             for (float z = zMin + 6f; z < zMax - 3f; z += 9f)
                 batch.AddBox(LightStrip, new Vector3(0f, WallHeight - 0.05f, z), new Vector3(2f * outerSide * 0.85f, 0.1f, 1.1f));
 
-            // Duvarlarda renkli sponsor panoları
-            int panel = 0;
-            for (float z = zMin + 3f; z < zMax - 5f; z += 7f, panel++)
-                for (int side = -1; side <= 1; side += 2)
-                    batch.AddBox(PanelColors[panel % PanelColors.Length], new Vector3(side * (outerSide - 0.02f), 8.2f, z), new Vector3(0.12f, 3.2f, 5.5f));
-            for (float x = -outerSide + 3f; x < outerSide - 2f; x += 7f, panel++)
-                batch.AddBox(PanelColors[panel % PanelColors.Length], new Vector3(x, 8.2f, zMax - 0.32f), new Vector3(5.5f, 3.2f, 0.12f));
+            // Duvarlarda ışık duvarı: koyu bir bant üstünde yükseklikleri dalgalanan renkli ışık çubukları (ses dalgası gibi),
+            // bandın altında ve üstünde ince neon çizgiler. Bitiş duvarında ortada damalı bitiş panosu.
+            const float bandY = 8.3f, bandHeight = 3.4f;
+            for (int side = -1; side <= 1; side += 2)
+            {
+                float x = side * (outerSide - 0.02f);
+                batch.AddBox(BandColor, new Vector3(x, bandY, zCenter), new Vector3(0.12f, bandHeight, zLength - 1f));
+                batch.AddBox(NeonCyan, new Vector3(x - side * 0.06f, bandY - bandHeight / 2f, zCenter), new Vector3(0.08f, 0.12f, zLength - 1f));
+                batch.AddBox(NeonPink, new Vector3(x - side * 0.06f, bandY + bandHeight / 2f, zCenter), new Vector3(0.08f, 0.12f, zLength - 1f));
+
+                int bar = 0;
+                for (float z = zMin + 1.2f; z < zMax - 1.2f; z += 0.95f, bar++)
+                {
+                    float wave = 0.5f + 0.5f * Mathf.Sin(bar * 0.55f) * Mathf.Cos(bar * 0.17f + side);
+                    float barHeight = Mathf.Lerp(0.5f, bandHeight - 0.7f, wave);
+                    batch.AddBox(BarColor(wave), new Vector3(x - side * 0.08f, bandY - bandHeight / 2f + 0.3f + barHeight / 2f, z), new Vector3(0.08f, barHeight, 0.5f));
+                }
+            }
+
+            float endZ = zMax - 0.32f;
+            batch.AddBox(BandColor, new Vector3(0f, bandY, endZ), new Vector3(2f * outerSide - 1f, bandHeight, 0.12f));
+            batch.AddBox(NeonCyan, new Vector3(0f, bandY - bandHeight / 2f, endZ - 0.06f), new Vector3(2f * outerSide - 1f, 0.12f, 0.08f));
+            batch.AddBox(NeonPink, new Vector3(0f, bandY + bandHeight / 2f, endZ - 0.06f), new Vector3(2f * outerSide - 1f, 0.12f, 0.08f));
+            const int checkerColumns = 12, checkerRows = 4;
+            const float cell = 0.62f;
+            for (int row = 0; row < checkerRows; row++)
+                for (int column = 0; column < checkerColumns; column++)
+                    batch.AddBox((row + column) % 2 == 0 ? BoardWhite : CheckerDark,
+                        new Vector3((column - (checkerColumns - 1) / 2f) * cell, bandY + (row - (checkerRows - 1) / 2f) * cell, endZ - 0.08f), new Vector3(cell, cell, 0.08f));
+            int endBar = 0;
+            for (float x = -outerSide + 1.5f; x < outerSide - 1.2f; x += 0.95f, endBar++)
+            {
+                if (Mathf.Abs(x) < checkerColumns * cell / 2f + 0.8f) continue;
+                float wave = 0.5f + 0.5f * Mathf.Sin(endBar * 0.6f);
+                float barHeight = Mathf.Lerp(0.5f, bandHeight - 0.7f, wave);
+                batch.AddBox(BarColor(wave), new Vector3(x, bandY - bandHeight / 2f + 0.3f + barHeight / 2f, endZ - 0.08f), new Vector3(0.5f, barHeight, 0.08f));
+            }
 
             batch.Build(root, "ArenaPart");
             BuildCrowd(root, outerSide, sideInner, zStart, endInner, endOuter);

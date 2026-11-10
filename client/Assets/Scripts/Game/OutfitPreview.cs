@@ -18,7 +18,8 @@ namespace TextRun.Game
 
         public Texture Texture => target;
 
-        public void Show(IList<string> look)
+        // baseYaw: 0 = önden, 180 = arkadan (pelerinler için)
+        public void Show(IList<string> look, float baseYaw = 0f)
         {
             if (root == null) Create();
             root.SetActive(true);
@@ -32,7 +33,7 @@ namespace TextRun.Game
             }
 
             // Karakter yavaşça sağa sola döner; giysilerin yan görünümü de anlaşılır
-            character.transform.localRotation = Quaternion.Euler(0f, Mathf.Sin(Time.realtimeSinceStartup * 0.9f) * 32f, 0f);
+            character.transform.localRotation = Quaternion.Euler(0f, baseYaw + Mathf.Sin(Time.realtimeSinceStartup * 0.9f) * 32f, 0f);
         }
 
         public void Hide()

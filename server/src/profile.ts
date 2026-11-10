@@ -1,7 +1,7 @@
 // Oyuncu profili: ad, XP, seviye, altın, sandık ve eşyalar. Saf kurallar burada; saklama ve RPC'ler main.ts / match.ts içindedir.
 // XP, altın ve sandıklar yalnızca sunucuda hesaplanır ve saklanır; istemci bu değerleri gönderemez.
 import {
-  CHEST_TIERS, SHOP_DIAMOND_CHEST, SHOP_GOLD_CHEST, SHOP_REFRESH_DIAMONDS, SHOP_SLOTS, START_DIAMONDS,
+  AD_CHEST_TIER, CATEGORIES, CHEST_TIERS, SHOP_DIAMOND_CHEST, SHOP_GOLD_CHEST, SHOP_REFRESH_DIAMONDS, SHOP_SLOTS, START_DIAMONDS,
   chestTierForLevel, goldForRace, itemById, priceOf, rollChest, rollShop, shopDay,
 } from "./economy.ts";
 import type { Category, ChestOpening, ChestTier } from "./economy.ts";
@@ -19,6 +19,7 @@ export interface Profile {
   equipped: { [category: string]: string }; // kategori -> takılı eşya kimliği
   diamonds: number;
   shop: ShopState | null; // bugünün mağazası (ilk açılışta kurulur)
+  adDay: number; // reklam sandığının en son açıldığı mağaza günü (0 = hiç)
 }
 
 export interface ShopState {
@@ -42,7 +43,7 @@ export function emptyChests(): Chests {
 }
 
 export function emptyProfile(): Profile {
-  return { name: null, xp: 0, races: 0, wins: 0, gold: 0, chests: emptyChests(), items: [], equipped: {}, diamonds: START_DIAMONDS, shop: null };
+  return { name: null, xp: 0, races: 0, wins: 0, gold: 0, chests: emptyChests(), items: [], equipped: {}, diamonds: START_DIAMONDS, shop: null, adDay: 0 };
 }
 
 // Seviye 1'den 2'ye 100 XP; her seviyede gereken miktar 40 artar (100, 140, 180, ...)
@@ -143,8 +144,7 @@ export function equipItem(profile: Profile, itemId: unknown): boolean {
 // Bir kategorideki eşyayı çıkarır. Bilinmeyen kategoride false döner.
 export function unequipCategory(profile: Profile, category: unknown): boolean {
   if (typeof category !== "string") return false;
-  const known = ["head", "glasses", "face", "top", "bottom", "shoes", "trail"];
-  if (known.indexOf(category) < 0) return false;
+  if ((CATEGORIES as string[]).indexOf(category) < 0) return false;
   delete profile.equipped[category as Category];
   return true;
 }
@@ -221,4 +221,21 @@ export function buyShopSlot(profile: Profile, slot: unknown, now: number, rng: (
   profile.items.push(entry.id);
   shop.bought[slot] = true;
   return "ok";
+}
+
+// ---------- Günlük reklam sandığı ----------
+
+export function adChestReady(profile: Profile, now: number): boolean {
+  return profile.adDay !== shopDay(now);
+}
+
+// Günlük reklam sandığını açar (günde bir kez; gece 00.00'da yenilenir). Bugün açıldıysa null döner.
+// Sandık envantere girmez, hemen açılır: eşya eklenir, tekrar eşyaysa altın verilir.
+export function claimAdChest(profile: Profile, now: number, rng: () => number = Math.random): ChestOpening | null {
+  if (!adChestReady(profile, now)) return null;
+  profile.adDay = shopDay(now);
+  const opening = rollChest(AD_CHEST_TIER, profile.items, rng);
+  if (opening.duplicate) profile.gold += opening.goldRefund;
+  else profile.items.push(opening.itemId);
+  return opening;
 }

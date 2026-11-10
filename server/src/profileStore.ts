@@ -1,8 +1,8 @@
 // Profilin Nakama depolamasına okunup yazılması. Kurallar profile.ts içindedir.
-import { CHEST_TIERS, SHOP_DIAMOND_CHEST, SHOP_GOLD_CHEST, SHOP_REFRESH_DIAMONDS, itemById, priceOf, shopSecondsLeft } from "./economy.ts";
+import { AD_CHEST_TIER, CHEST_TIERS, SHOP_DIAMOND_CHEST, SHOP_GOLD_CHEST, SHOP_REFRESH_DIAMONDS, itemById, priceOf, shopSecondsLeft } from "./economy.ts";
 import type { ChestOpening, ChestTier } from "./economy.ts";
 import {
-  SHOP_DIAMOND_CHEST_SLOT, SHOP_GOLD_CHEST_SLOT, applyRace, buyShopSlot, emptyProfile, ensureShop, equipItem, levelOf, lookOf, openChest, refreshShop, unequipCategory,
+  SHOP_DIAMOND_CHEST_SLOT, SHOP_GOLD_CHEST_SLOT, adChestReady, applyRace, buyShopSlot, claimAdChest, emptyProfile, ensureShop, equipItem, levelOf, lookOf, openChest, refreshShop, unequipCategory,
 } from "./profile.ts";
 import type { Profile, Reward, ShopOutcome } from "./profile.ts";
 
@@ -27,6 +27,7 @@ function parse(value: { [key: string]: any } | undefined): Profile {
   }
   if (Array.isArray(value.items)) profile.items = value.items.filter((id: unknown) => typeof id === "string" && !!itemById(id as string));
   if (typeof value.diamonds === "number") profile.diamonds = value.diamonds;
+  if (typeof value.adDay === "number") profile.adDay = value.adDay;
   const shop = value.shop;
   if (shop && typeof shop === "object" && typeof shop.day === "number" && Array.isArray(shop.items) && Array.isArray(shop.bought)) {
     const items = shop.items.filter((id: unknown) => typeof id === "string" && !!itemById(id as string));
@@ -72,11 +73,11 @@ export function isRegistered(nk: nkruntime.Nakama, userId: string): boolean {
 }
 
 // İstemciye giden profil görünümü. Misafirin seviyesi hep 1'dir; XP, para, seviye yalnızca kalıcı hesapta vardır.
-export function profileView(profile: Profile, guest: boolean) {
+export function profileView(profile: Profile, guest: boolean, now: number = Date.now()) {
   if (guest) {
     return {
       guest: true, name: null, xp: 0, level: 1, xpIntoLevel: 0, xpForNext: levelOf(0).xpForNext, races: 0, wins: 0,
-      gold: 0, diamonds: 0, chestBronze: 0, chestSilver: 0, chestGold: 0, itemCount: 0,
+      gold: 0, diamonds: 0, chestBronze: 0, chestSilver: 0, chestGold: 0, itemCount: 0, adChestSeconds: 0,
     };
   }
   const info = levelOf(profile.xp);
@@ -95,6 +96,7 @@ export function profileView(profile: Profile, guest: boolean) {
     chestSilver: profile.chests.silver,
     chestGold: profile.chests.gold,
     itemCount: profile.items.length,
+    adChestSeconds: adChestReady(profile, now) ? 0 : shopSecondsLeft(now), // 0 = reklam sandığı açılabilir
   };
 }
 
@@ -221,3 +223,21 @@ export function shopFor(
   }
   throw new Error("magaza islemi yapilamadi");
 }
+
+// Günlük reklam sandığını açar ve kalıcı yazar. Bugün zaten açıldıysa null döner.
+export function claimAdChestFor(nk: nkruntime.Nakama, logger: nkruntime.Logger, userId: string): { opening: ChestOpening; profile: Profile } | null {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const stored = readProfile(nk, userId);
+      const opening = claimAdChest(stored.profile, Date.now());
+      if (!opening) return null;
+      saveProfile(nk, userId, stored);
+      return { opening, profile: stored.profile };
+    } catch (e) {
+      logger.warn("Reklam sandigi yazilamadi (deneme %d): %s", attempt + 1, String(e));
+    }
+  }
+  throw new Error("reklam sandigi acilamadi");
+}
+
+export const AD_TIER = AD_CHEST_TIER;

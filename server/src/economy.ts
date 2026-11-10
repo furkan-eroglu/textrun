@@ -3,7 +3,7 @@
 
 export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 export type ChestTier = "bronze" | "silver" | "gold";
-export type Category = "head" | "glasses" | "face" | "top" | "bottom" | "shoes" | "trail";
+export type Category = "head" | "top" | "bottom" | "shoes" | "cape";
 
 export interface Item {
   id: string;
@@ -17,69 +17,73 @@ export interface Item {
 
 export const RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
 export const CHEST_TIERS: ChestTier[] = ["bronze", "silver", "gold"];
+export const CATEGORIES: Category[] = ["head", "top", "bottom", "shoes", "cape"];
 
-// Eşya listesi. Görseller istemcide aynı kimliklerle çizilir (client/Assets/Scripts/Characters/Outfits.cs);
-// yeni eşya eklerken iki yerde de aynı kimlik kullanılmalıdır.
-function item(id: string, category: Category, rarity: Rarity, tr: string, en: string, flags: { chest?: boolean; diamond?: boolean } = {}): Item {
+// Eşya listesi: her kategoride 10 eşya. Görseller istemcide aynı kimliklerle çizilir
+// (client/Assets/Scripts/Characters/Outfits.cs); yeni eşya eklerken iki yerde de aynı kimlik kullanılmalıdır.
+function item(id: string, category: Category, rarity: Rarity, tr: string, en: string, flags: { diamond?: boolean } = {}): Item {
   const diamond = !!flags.diamond;
-  return { id, category, rarity, tr, en, chest: !diamond && flags.chest !== false, diamond };
+  return { id, category, rarity, tr, en, chest: !diamond, diamond };
 }
 
 const DIAMOND = { diamond: true };
-const NO_CHEST = { chest: false };
 
 export const CATALOG: Item[] = [
-  // Baş (şapka ve saç aynı kategori: şapka takılınca saç görünmez)
+  // Kafa (şapka, saç ve gözlük aynı kategori: aynı anda yalnızca biri takılır)
   item("hat_cap", "head", "common", "Spor Şapka", "Sporty Cap"),
   item("hat_beanie", "head", "common", "Kışlık Bere", "Winter Beanie"),
-  item("hat_bucket", "head", "common", "Balıkçı Şapkası", "Bucket Hat"),
+  item("hair_afro", "head", "uncommon", "Afro", "Afro"),
   item("hat_cowboy", "head", "uncommon", "Kovboy Şapkası", "Cowboy Hat"),
-  item("hat_street", "head", "uncommon", "Serseri Şapkası", "Street Cap"),
+  item("glasses_sun", "head", "uncommon", "Güneş Gözlüğü", "Sunglasses"),
+  item("hat_street", "head", "rare", "Serseri Şapkası", "Street Cap"),
   item("hat_pop", "head", "rare", "Popstar Şapkası", "Popstar Hat"),
-  item("hat_top", "head", "rare", "Sihirbaz Silindiri", "Magician Top Hat"),
+  item("hair_mohawk", "head", "rare", "Mohawk", "Mohawk"),
   item("hat_pirate", "head", "epic", "Korsan Şapkası", "Pirate Hat"),
   item("hat_crown", "head", "legendary", "Kral Tacı", "King's Crown"),
-  item("hair_short", "head", "common", "Düzgün Kesim", "Neat Cut"),
-  item("hair_long", "head", "common", "Omuz Saçı", "Shoulder Hair"),
-  item("hair_afro", "head", "uncommon", "Afro", "Afro"),
-  item("hair_mohawk", "head", "rare", "Mohawk", "Mohawk"),
-  item("hair_flame", "head", "epic", "Alevli Saç", "Flame Hair"),
-  item("hair_rainbow", "head", "legendary", "Gökkuşağı Saçı", "Rainbow Hair"),
-  // Gözlük
-  item("glasses_round", "glasses", "common", "Yuvarlak Gözlük", "Round Glasses"),
-  item("glasses_sun", "glasses", "uncommon", "Güneş Gözlüğü", "Sunglasses"),
-  item("glasses_star", "glasses", "rare", "Yıldız Gözlük", "Star Glasses"),
-  item("glasses_cyber", "glasses", "epic", "Siber Vizör", "Cyber Visor"),
-  item("glasses_gold", "glasses", "legendary", "Altın Çerçeve", "Golden Frames", DIAMOND),
-  // Yüz ifadesi
-  item("face_smile", "face", "common", "Neşeli Yüz", "Happy Face"),
-  item("face_wink", "face", "uncommon", "Göz Kırpma", "Wink"),
-  item("face_cool", "face", "rare", "Havalı Bakış", "Cool Look"),
-  item("face_star", "face", "epic", "Yıldız Gözler", "Star Eyes"),
   // Üst giyim
   item("top_tee", "top", "common", "Basit Tişört", "Plain Tee"),
+  item("top_tank", "top", "common", "Spor Atlet", "Sport Tank"),
   item("top_hoodie", "top", "uncommon", "Sokak Kapüşonu", "Street Hoodie"),
   item("top_jersey", "top", "uncommon", "Takım Forması", "Team Jersey"),
+  item("top_stripe", "top", "uncommon", "Çizgili Kazak", "Striped Sweater"),
   item("top_jacket", "top", "rare", "Deri Ceket", "Leather Jacket"),
-  item("top_cape", "top", "epic", "Kahraman Pelerini", "Hero Cape"),
+  item("top_suit", "top", "rare", "Smokin Ceket", "Tuxedo Jacket"),
+  item("top_hawaii", "top", "rare", "Hawaii Gömleği", "Hawaiian Shirt"),
+  item("top_ninja", "top", "epic", "Ninja Kıyafeti", "Ninja Outfit"),
   item("top_armor", "top", "legendary", "Şövalye Zırhı", "Knight Armor"),
   // Alt giyim
   item("bottom_jeans", "bottom", "common", "Mavi Kot", "Blue Jeans"),
   item("bottom_shorts", "bottom", "common", "Spor Şort", "Sport Shorts"),
+  item("bottom_track", "bottom", "common", "Eşofman Altı", "Track Pants"),
   item("bottom_cargo", "bottom", "uncommon", "Kargo Pantolon", "Cargo Pants"),
+  item("bottom_camo", "bottom", "uncommon", "Kamuflaj Pantolon", "Camo Pants"),
   item("bottom_suit", "bottom", "rare", "Takım Pantolonu", "Suit Pants"),
+  item("bottom_ripped", "bottom", "rare", "Yırtık Kot", "Ripped Jeans"),
+  item("bottom_ninja", "bottom", "epic", "Ninja Şalvarı", "Ninja Pants"),
+  item("bottom_flame", "bottom", "epic", "Alevli Pantolon", "Flame Pants"),
   item("bottom_gold", "bottom", "legendary", "Altın Pantolon", "Golden Pants", DIAMOND),
   // Ayakkabı
   item("shoes_sneaker", "shoes", "common", "Spor Ayakkabı", "Sneakers"),
+  item("shoes_sandal", "shoes", "common", "Plaj Terliği", "Beach Sandals"),
+  item("shoes_canvas", "shoes", "common", "Bez Ayakkabı", "Canvas Shoes"),
   item("shoes_boots", "shoes", "uncommon", "Maceracı Botu", "Explorer Boots"),
+  item("shoes_hightop", "shoes", "uncommon", "Basket Ayakkabısı", "High-Tops"),
   item("shoes_neon", "shoes", "rare", "Neon Ayakkabı", "Neon Shoes"),
+  item("shoes_cowboy", "shoes", "rare", "Kovboy Çizmesi", "Cowboy Boots"),
   item("shoes_rocket", "shoes", "epic", "Roket Ayakkabı", "Rocket Shoes"),
+  item("shoes_skate", "shoes", "epic", "Tekerlekli Paten", "Roller Skates"),
   item("shoes_wing", "shoes", "legendary", "Kanatlı Ayakkabı", "Winged Shoes", DIAMOND),
-  // Koşu efektleri (sandıktan çıkmaz; ileride elmasla)
-  item("trail_sparkle", "trail", "epic", "Parıltı İzi", "Sparkle Trail", NO_CHEST),
-  item("trail_smoke", "trail", "epic", "Duman İzi", "Smoke Trail", NO_CHEST),
-  item("trail_fire", "trail", "legendary", "Ateş İzi", "Fire Trail", NO_CHEST),
-  item("trail_lightning", "trail", "legendary", "Şimşek İzi", "Lightning Trail", NO_CHEST),
+  // Pelerin
+  item("cape_red", "cape", "common", "Kırmızı Pelerin", "Red Cape"),
+  item("cape_blue", "cape", "common", "Mavi Pelerin", "Blue Cape"),
+  item("cape_green", "cape", "uncommon", "Orman Pelerini", "Forest Cape"),
+  item("cape_striped", "cape", "uncommon", "Çizgili Pelerin", "Striped Cape"),
+  item("cape_hero", "cape", "rare", "Kahraman Pelerini", "Hero Cape"),
+  item("cape_night", "cape", "rare", "Gece Pelerini", "Night Cape"),
+  item("cape_royal", "cape", "epic", "Kraliyet Pelerini", "Royal Cape"),
+  item("cape_fire", "cape", "epic", "Alev Pelerini", "Fire Cape"),
+  item("cape_wings", "cape", "legendary", "Melek Kanatları", "Angel Wings"),
+  item("cape_gold", "cape", "legendary", "Altın Pelerin", "Golden Cape", DIAMOND),
 ];
 
 const BY_ID: { [id: string]: Item } = {};
@@ -196,9 +200,8 @@ export function shopSecondsLeft(now: number): number {
 const SHOP_WEIGHT: { [rarity: string]: number } = { common: 10, uncommon: 8, rare: 5, epic: 3, legendary: 2 };
 
 // Günün eşyalarını seçer: oyuncunun sahip olmadığı, birbirinden farklı en fazla SHOP_SLOTS eşya.
-// Koşu efektleri şimdilik satılmaz (görselleri yok).
 export function rollShop(owned: string[], rng: () => number = Math.random): string[] {
-  const pool = CATALOG.filter((entry) => entry.category !== "trail" && owned.indexOf(entry.id) < 0);
+  const pool = CATALOG.filter((entry) => owned.indexOf(entry.id) < 0);
   const picked: string[] = [];
   while (picked.length < SHOP_SLOTS && pool.length > 0) {
     let total = 0;
@@ -217,3 +220,8 @@ export function rollShop(owned: string[], rng: () => number = Math.random): stri
   }
   return picked;
 }
+
+// ---------- Günlük reklam sandığı ----------
+
+// Günde bir kez (gece 00.00'da yenilenir) reklam izleyerek açılan ücretsiz sandığın türü
+export const AD_CHEST_TIER: ChestTier = "silver";

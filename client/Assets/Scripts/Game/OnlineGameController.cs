@@ -70,7 +70,9 @@ namespace TextRun.Game
         bool keyboardRequested;        // yarış ekranında klavye istendi mi (ışıklar başlayınca açılır, yarış bitince kapanır)
         bool roomBots;                 // kurucu: boş yerleri botla doldur
         string joinCodeInput = "";
-        ProfileDto profile = new ProfileDto();   // sunucudaki oyuncu profili (ad, XP, seviye); misafirde guest=true
+        ProfileDto profileValue = new ProfileDto();
+        float profileSetAt;                       // profilin en son okunduğu an (geri sayımlar için)
+        ProfileDto profile { get => profileValue; set { profileValue = value ?? new ProfileDto(); profileSetAt = Time.realtimeSinceStartup; } }   // sunucudaki oyuncu profili (ad, XP, seviye); misafirde guest=true
         enum Entry { Guest, Account, Saved }     // sunucuya giriş türü: misafir, kullanıcı adı + şifre, telefonda kayıtlı hesap
         Entry lastEntry = Entry.Guest;
         string loginInput = "";
@@ -709,7 +711,8 @@ namespace TextRun.Game
                 focusField = null;
                 if (screen != Page.Countdown && screen != Page.Racing) keyboard.Close();
             }
-            if (screen != Page.Inventory && screen != Page.Shop) preview.Hide();
+            if (screen != Page.Inventory && screen != Page.Menu) preview.Hide();
+            ItemIcons.Tick();
             ReleaseFieldKeyboardIfUnfocused();
 
             net?.Pump();
@@ -945,8 +948,9 @@ namespace TextRun.Game
         void DrawMenu(float width, float height, float top)
         {
             FullViewport();
+            EnsureInventoryStyles();
 
-            logo.Draw(width, top + 130f, LogoElapsed());
+            logo.Draw(width, top + 124f, LogoElapsed());
 
             DrawSoundButton(new Rect(width - 54f, top + 8f, 42f, 42f));
 
@@ -955,35 +959,50 @@ namespace TextRun.Game
             DrawProfileCard(card);
             if (GUI.Button(card, GUIContent.none, GUIStyle.none)) OpenSettings();
 
+            // Oyuncunun karakteri (giydikleriyle) ve yanında günlük reklam sandığı
+            bool devBox = Application.isEditor || Debug.isDebugBuild;
+            float stageTop = top + 160f;
+            float stageHeight = Mathf.Clamp(height - stageTop - 240f - (devBox ? 104f : 20f) - 8f, 100f, 210f);
+            if (!profile.guest && inventory == null && net != null && Time.realtimeSinceStartup - inventoryTriedAt > 5f) LoadInventory();
+            preview.Show(profile.guest ? null : inventory?.equipped);
+            var stage = new Rect(width / 2f - stageHeight * 0.4f, stageTop, stageHeight * 0.8f, stageHeight);
+            UiKit.Card(new Rect(stage.center.x - stageHeight * 0.2f, stage.yMax - 20f, stageHeight * 0.4f, 10f), new Color(0f, 0f, 0f, 0.30f), 5f); // ayak altı gölge
+            if (preview.Texture != null) GUI.DrawTexture(stage, preview.Texture, ScaleMode.ScaleToFit, true);
+            if (!profile.guest)
+            {
+                if (GUI.Button(stage, GUIContent.none, GUIStyle.none)) OpenInventory();
+                DrawAdChest(new Rect(width - 98f, stage.center.y - 56f, 82f, 112f));
+            }
+
             // Dil seçimi: başlık yok, yalnızca iki seçenek
-            float y = top + 220f;
-            int clickedLanguage = UiKit.Segmented(new Rect(24f, y, width - 48f, 52f), new[] { "Türkçe", "English" }, language == GameLanguage.Turkish ? 0 : 1, 21);
+            float y = stageTop + stageHeight + 8f;
+            int clickedLanguage = UiKit.Segmented(new Rect(24f, y, width - 48f, 46f), new[] { "Türkçe", "English" }, language == GameLanguage.Turkish ? 0 : 1, 20);
             if (clickedLanguage >= 0) SetLanguage((GameLanguage)clickedLanguage);
-            y += 86f;
+            y += 54f;
 
-            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 76f), T("normalGame"), 26)) StartSearch();
-            y += 96f;
+            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 68f), T("normalGame"), 26)) StartSearch();
+            y += 78f;
 
-            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 56f), T("privateGame"), 20))
+            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 50f), T("privateGame"), 20))
             {
                 joinCodeInput = "";
                 codeNotice = "";
                 screen = Page.PrivateMenu;
             }
-            y += 72f;
+            y += 58f;
 
-            // Envanter: yalnızca hesaplı oyuncuda (misafirin altını, sandığı, eşyası yoktur); açılmamış sandık sayısı yanında görünür
+            // Envanter ve mağaza: yalnızca hesaplı oyuncuda (misafirin altını, sandığı, eşyası yoktur)
             if (!profile.guest)
             {
                 int chests = profile.TotalChests;
                 string label = T("inventory") + (chests > 0 ? "  (" + chests + ")" : "");
                 float halfWidth = (width - 48f - 12f) / 2f;
-                if (UiKit.SecondaryButton(new Rect(24f, y, halfWidth, 56f), label, 19)) OpenInventory();
-                if (UiKit.SecondaryButton(new Rect(24f + halfWidth + 12f, y, halfWidth, 56f), T("shop"), 19)) OpenShop();
+                if (UiKit.SecondaryButton(new Rect(24f, y, halfWidth, 50f), label, 19)) OpenInventory();
+                if (UiKit.SecondaryButton(new Rect(24f + halfWidth + 12f, y, halfWidth, 50f), T("shop"), 19)) OpenShop();
             }
 
             // Geliştirme: telefonda sunucu adresini (bilgisayarın yerel IP'si) girmek için
-            if (Application.isEditor || Debug.isDebugBuild)
+            if (devBox)
             {
                 float by = height - 70f;
                 GUI.Label(new Rect(20f, by - 24f, width - 40f, 22f), T("server"), smallStyle);
@@ -994,6 +1013,56 @@ namespace TextRun.Game
                     Connect();
                 }
             }
+        }
+
+        // Günlük reklam sandığına kalan süre (0 = açılabilir). Süre dolunca profil bir kez yeniden okunur.
+        int AdChestSecondsLeft()
+        {
+            if (profile.adChestSeconds <= 0) return 0;
+            int left = profile.adChestSeconds - Mathf.FloorToInt(Time.realtimeSinceStartup - profileSetAt);
+            if (left <= 0 && !adChestRefreshing && net != null) RefreshProfileForAdChest();
+            return Mathf.Max(1, left);
+        }
+
+        bool adChestRefreshing;
+        async void RefreshProfileForAdChest()
+        {
+            adChestRefreshing = true;
+            try { profile = await net.GetProfileAsync(); }
+            catch (Exception e) { Debug.LogWarning("Profil okunamadi: " + e.Message); profileSetAt = Time.realtimeSinceStartup - profile.adChestSeconds + 30f; }
+            adChestRefreshing = false;
+        }
+
+        // Günlük reklam sandığı: köşesinde "AD" rozeti olan sandık. Açılabiliyorsa hafifçe zıplar ve "Ücretsiz" yazar;
+        // bugün açıldıysa soluk durur ve altında yenilenmeye kalan süre yazar.
+        GUIStyle adBadgeStyle;
+        void DrawAdChest(Rect r)
+        {
+            if (adBadgeStyle == null)
+            {
+                adBadgeStyle = new GUIStyle(tabStyle) { fontSize = 11 };
+                UiKit.SetAllTextColors(adBadgeStyle, new Color(0.12f, 0.10f, 0.02f));
+            }
+
+            int left = AdChestSecondsLeft();
+            bool ready = left == 0;
+            UiKit.Card(r, new Color(1f, 1f, 1f, ready ? 0.10f : 0.05f), 14f);
+
+            float bob = ready ? Mathf.Abs(Mathf.Sin(Time.realtimeSinceStartup * 3.2f)) * 5f : 0f;
+            var icon = new Rect(r.center.x - 30f, r.y + 14f - bob, 60f, 60f);
+            var old = GUI.color;
+            if (!ready) GUI.color = new Color(1f, 1f, 1f, 0.4f);
+            DrawChestIcon(icon, "silver");
+            var badge = new Rect(icon.xMax - 20f, icon.y - 6f, 30f, 18f);
+            UiKit.Card(badge, new Color(1f, 0.82f, 0.22f), 6f);
+            GUI.Label(badge, "AD", adBadgeStyle);
+            GUI.color = old;
+
+            GUI.color = ready ? new Color(0.45f, 0.95f, 0.55f) : new Color(1f, 1f, 1f, 0.75f);
+            GUI.Label(new Rect(r.x - 6f, r.yMax - 32f, r.width + 12f, 28f), ready ? T("free") : Clock(left), tabStyle);
+            GUI.color = old;
+
+            if (GUI.Button(r, GUIContent.none, GUIStyle.none) && ready) { sound.Click(); BeginAdChest(); }
         }
 
         // Logo animasyon saati: menü/karşılama her açıldığında harfler yeniden kayarak gelir.
@@ -1074,6 +1143,13 @@ namespace TextRun.Game
         }
 
         GUIStyle smallCenterWrap;
+        GUIStyle bigCenterWrap;
+        GUIStyle smallCenterWrapStyle(int fontSize)
+        {
+            if (bigCenterWrap == null) bigCenterWrap = new GUIStyle(smallCenterStyle) { wordWrap = true, fontSize = fontSize };
+            return bigCenterWrap;
+        }
+
         GUIStyle smallCenterWrapStyle()
         {
             if (smallCenterWrap == null) smallCenterWrap = new GUIStyle(smallCenterStyle) { wordWrap = true, fontSize = 14 };
@@ -1383,6 +1459,9 @@ namespace TextRun.Game
             ClearResume();
             lastEntry = Entry.Guest;
             profile = new ProfileDto();
+            inventory = null;
+            inventoryTriedAt = -999f;
+            shop = null;
             ClearLoginForm();
             screen = Page.Welcome;
             if (net != null) await net.CloseAsync();

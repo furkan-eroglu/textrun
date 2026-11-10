@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CATALOG, SHOP_DIAMOND_CHEST, SHOP_GOLD_CHEST, SHOP_REFRESH_DIAMONDS, itemById, priceOf, rollShop, shopDay, shopSecondsLeft } from "./economy.ts";
 import {
-  SHOP_DIAMOND_CHEST_SLOT, SHOP_GOLD_CHEST_SLOT, applyRace, buyShopSlot, cleanName, emptyProfile, ensureShop, equipItem, levelOf, lookOf, openChest, racePaysXp, refreshShop,
+  SHOP_DIAMOND_CHEST_SLOT, SHOP_GOLD_CHEST_SLOT, adChestReady, applyRace, buyShopSlot, claimAdChest, cleanName, emptyProfile, ensureShop, equipItem, levelOf, lookOf, openChest, racePaysXp, refreshShop,
   unequipCategory, xpForNextLevel, xpForRace,
 } from "./profile.ts";
 
@@ -124,11 +124,15 @@ test("esya takma: yalnizca sahip olunan esya takilir, ayni kategoride yenisi esk
   assert.equal(equipItem(profile, "hat_cap"), true);
   assert.equal(equipItem(profile, "hair_afro"), true, "sapka ve sac ayni kategori: yenisi eskisini cikarir");
   assert.equal(profile.equipped.head, "hair_afro");
-  assert.equal(equipItem(profile, "glasses_sun"), true);
-  assert.deepEqual(lookOf(profile), ["glasses_sun", "hair_afro"]);
-  assert.equal(unequipCategory(profile, "head"), true);
+  assert.equal(equipItem(profile, "glasses_sun"), true, "gozluk de kafa kategorisinde: saci cikarir");
   assert.deepEqual(lookOf(profile), ["glasses_sun"]);
+  profile.items.push("cape_red");
+  assert.equal(equipItem(profile, "cape_red"), true);
+  assert.deepEqual(lookOf(profile), ["cape_red", "glasses_sun"]);
+  assert.equal(unequipCategory(profile, "head"), true);
+  assert.deepEqual(lookOf(profile), ["cape_red"]);
   assert.equal(unequipCategory(profile, "bilinmeyen"), false);
+  assert.equal(unequipCategory(profile, "trail"), false, "kosu efekti kategorisi kaldirildi");
 });
 
 test("magaza: gun Turkiye saatine gore degisir, geri sayim dogru", () => {
@@ -138,17 +142,16 @@ test("magaza: gun Turkiye saatine gore degisir, geri sayim dogru", () => {
   assert.equal(shopSecondsLeft(midnightTr), 24 * 3600);
 });
 
-test("magaza: 4 farkli, sahip olunmayan esya; kosu efekti satilmaz", () => {
+test("magaza: 4 farkli, sahip olunmayan esya", () => {
   for (let round = 0; round < 50; round++) {
     const picked = rollShop(["hat_cap", "top_tee"]);
     assert.equal(picked.length, 4);
     assert.equal(new Set(picked).size, 4);
     for (const id of picked) {
       assert.ok(id !== "hat_cap" && id !== "top_tee");
-      assert.notEqual(itemById(id)!.category, "trail");
     }
   }
-  const almostAll = CATALOG.filter((entry) => entry.category !== "trail").map((entry) => entry.id).slice(2);
+  const almostAll = CATALOG.map((entry) => entry.id).slice(2);
   assert.equal(rollShop(almostAll).length, 2, "satilacak esya azsa yuva sayisi azalir");
 });
 
@@ -202,4 +205,18 @@ test("magaza: elmasla yenileme gunu degistirmez, altin sandik hakkini geri verir
   const tomorrow = now + 24 * 3600 * 1000;
   assert.equal(ensureShop(profile, tomorrow), true, "gece 00.00'dan sonra magaza yenilenir");
   assert.equal(profile.shop!.day, day + 1);
+});
+
+test("reklam sandigi: gunde bir kez, gece 00.00'da (TR) yenilenir; esya ya da altin verir", () => {
+  const now = Date.UTC(2026, 10, 10, 12, 0, 0);
+  const profile = emptyProfile();
+  assert.equal(adChestReady(profile, now), true);
+  const first = claimAdChest(profile, now);
+  assert.ok(first);
+  assert.equal(profile.items.length + (first!.duplicate ? 1 : 0), 1);
+  assert.equal(adChestReady(profile, now), false);
+  assert.equal(claimAdChest(profile, now + 3600 * 1000), null, "ayni gun ikinci kez acilmaz");
+  const midnightTr = Date.UTC(2026, 10, 10, 21, 0, 0);
+  assert.equal(claimAdChest(profile, midnightTr - 1000), null);
+  assert.ok(claimAdChest(profile, midnightTr + 1000), "gece 00.00'dan sonra yeniden acilir");
 });

@@ -149,6 +149,7 @@ namespace TextRun.Online
         public int chestSilver;
         public int chestGold;
         public int itemCount;
+        public int adChestSeconds; // günlük reklam sandığına kalan süre (0 = açılabilir)
 
         public int ChestCount(string tier) => tier == "gold" ? chestGold : tier == "silver" ? chestSilver : chestBronze;
         public int TotalChests => chestBronze + chestSilver + chestGold;

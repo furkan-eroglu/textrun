@@ -127,8 +127,7 @@ namespace TextRun.Race
                 active[p.slot] = true;
                 names[p.slot] = p.name;
                 isBot[p.slot] = p.isBot;
-                // Botların eşyası sunucuda yoktur: kimliklerinden türetilen sabit bir görünüm giyerler
-                string[] look = p.isBot && (p.look == null || p.look.Length == 0) ? Outfits.RandomLook(p.id) : p.look;
+                string[] look = p.look; // botların eşyası yoktur: çıplak koşarlar
                 string key = look == null ? "" : string.Join(",", look);
                 if (lookKeys[p.slot] != key)
                 {

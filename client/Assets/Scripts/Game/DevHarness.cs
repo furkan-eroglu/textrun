@@ -100,35 +100,44 @@ namespace TextRun.Game
             controller.DevFillLogin("furkan_01", "gizlisifre1", "gizlisifre1", true);
             while (!controller.DevCaretOn) yield return null;
             yield return Shot("1h-register-revealed");
-            controller.DevBackToMenu();
-            yield return new WaitForSeconds(0.4f);
-            yield return Shot("1i-menu-profile");
-
-            // Envanter: eşyalı liste, sallanan sandık, nadirliğe göre eşya açılışı
-            controller.DevShowInventory(true, null, false, true);
+            // Envanter: kategori sekmeleri (resimli ızgara), sandıklar, sandık açılışı
+            controller.DevShowInventory(0);
+            yield return new WaitForSeconds(0.8f);
+            yield return Shot("1j-inventory-head");
+            controller.DevShowInventory(4);
+            yield return new WaitForSeconds(2.0f);
+            yield return Shot("1j-inventory-cape");
+            controller.DevShowInventory(2);
             yield return new WaitForSeconds(0.6f);
-            yield return Shot("1j-inventory-items");
-            controller.DevShowInventory(true);
+            yield return Shot("1j-inventory-bottom");
+            controller.DevShowInventory(5);
             yield return new WaitForSeconds(0.4f);
-            yield return Shot("1j-inventory");
-            controller.DevShowInventory(true, null, true);
+            yield return Shot("1j-inventory-chests");
+            controller.DevShowChest(false);
             yield return new WaitForSeconds(0.3f);
-            yield return Shot("1j-inventory-nochest");
-            controller.DevShowChestShaking();
-            yield return new WaitForSeconds(1.0f);
             yield return Shot("1k-chest-shaking");
-            controller.DevShowInventory(true, "legendary");
+            controller.DevShowChest(true, "epic");
             yield return new WaitForSeconds(0.5f);
-            yield return Shot("1l-chest-legendary");
-            controller.DevShowInventory(true, "common");
+            yield return Shot("1l-chest-epic");
+            controller.DevShowChest(true, "legendary");
             yield return new WaitForSeconds(0.5f);
-            yield return Shot("1m-chest-common");
+            yield return Shot("1m-chest-legendary");
+
+            // Ana menü: karakter (giydikleriyle) ve reklam sandığı (açılabilir / geri sayımda)
+            controller.DevShowInventory(0);
             controller.DevBackToMenu();
+            yield return new WaitForSeconds(0.6f);
+            yield return Shot("1i-menu-character");
+            controller.DevSetAdChestTimer(5 * 3600 + 120);
             yield return new WaitForSeconds(0.3f);
+            yield return Shot("1i-menu-ad-timer");
 
             controller.DevShowShop();
-            yield return new WaitForSeconds(0.6f);
+            yield return new WaitForSeconds(0.8f);
             yield return Shot("1o-shop");
+            controller.DevShowShop(true);
+            yield return new WaitForSeconds(0.3f);
+            yield return Shot("1o-shop-confirm");
             controller.DevBackToMenu();
             yield return new WaitForSeconds(0.3f);
 

@@ -15,8 +15,6 @@ namespace TextRun.Characters
         public Transform head;
         public Transform leftArm, rightArm, leftLeg, rightLeg;
 
-        // Eşya giyilmemişken üstün rengi (yarışta kulvar rengi, önizlemede açık gri)
-        public Color baseColor = new Color(0.91f, 0.93f, 0.95f);
 
         public CharacterState state = CharacterState.Idle;
         // 1 = normal koşu hızı. Daha hızlı yazan karakterin adımları da sıklaşır.

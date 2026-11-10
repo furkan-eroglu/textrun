@@ -22,6 +22,10 @@ namespace TextRun.Audio
         float cheerStartedAt = -999f;
         float cheerLength;
         AudioClip tick, click, alertTick, alertFinal, whistle, loop, fanfarePodium, fanfareDone, applause, matchFound;
+        AudioSource chest;
+        AudioClip chestRattle, chestRiser;
+        readonly AudioClip[] chestOpen = new AudioClip[3];
+        public const float ChestRiserSeconds = 1.9f;
 
         public bool Enabled
         {
@@ -51,6 +55,12 @@ namespace TextRun.Audio
             menu.playOnAwake = false;
             menu.loop = true;
             menu.volume = 0f;
+
+            chest = gameObject.AddComponent<AudioSource>();
+            chest.playOnAwake = false;
+            chestRattle = SoundSynth.ToClip("chestRattle", SoundSynth.ChestRattleSamples());
+            chestRiser = SoundSynth.ToClip("chestRiser", SoundSynth.ChestRiserSamples(ChestRiserSeconds));
+            for (int level = 0; level < 3; level++) chestOpen[level] = SoundSynth.ToClip("chestOpen" + level, SoundSynth.ChestOpenSamples(level));
 
             // Assets/Resources/Audio içine aynı adla bir ses dosyası (.ogg/.wav/.mp3) konursa o kullanılır;
             // yoksa kodla üretilen geçici ses çalar. Dosya adları: tick, click, alert_tick, alert_final, whistle, race_loop, finish_win, finish_done, applause, match_found, menu_music
@@ -97,6 +107,24 @@ namespace TextRun.Audio
             sfx.PlayOneShot(whistle, 0.9f);
             music.clip = loop;
             music.Play();
+        }
+
+        // Sandık açma: sallanma tıkırtısı (pitch ile giderek tizleşir), gerilim sesi ve açılış (level: 0 sıradan, 1 nadir/destansı, 2 efsanevi)
+        public void ChestRattle(float pitch)
+        {
+            if (!Enabled) return;
+            chest.pitch = pitch;
+            chest.PlayOneShot(chestRattle, 0.8f);
+        }
+
+        public void ChestRiser()
+        {
+            if (Enabled) sfx.PlayOneShot(chestRiser, 0.5f);
+        }
+
+        public void ChestOpen(int level)
+        {
+            if (Enabled) sfx.PlayOneShot(chestOpen[Mathf.Clamp(level, 0, 2)], 1f);
         }
 
         // Karşılaşma bulundu uyarısı
