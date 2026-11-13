@@ -198,11 +198,6 @@ namespace TextRun.Game
             yield return new WaitForSeconds(0.2f);
             yield return Shot("3b-go"); // ışıklar yeşil yanıp sönmeli
             yield return new WaitForSeconds(13.8f);
-            TextRun.Race.PostFx.Disabled = true; // karşılaştırma: efektsiz
-            yield return new WaitForSeconds(0.1f);
-            yield return Shot("4-racing-nofx");
-            TextRun.Race.PostFx.Disabled = false;
-            yield return new WaitForSeconds(0.1f);
             yield return Shot("4-racing");
 
             KeyboardInput.SimulateInEditor = true; // telefon klavyesinin kaplayacağı yeri taklit eder
