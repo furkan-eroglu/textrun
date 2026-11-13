@@ -23,6 +23,65 @@ namespace TextRun.Game
         GUIStyle itemNameStyle, chestNameStyle, tinyNameStyle, tabStyle;
         readonly OutfitPreview preview = new OutfitPreview();
 
+        // Yeni kazanılan, henüz bakılmamış eşyalar: menüdeki Envanter düğmesinde ve sekmelerde sayı, eşyada "YENİ" işareti.
+        // İlgili sekme açılıp kapatılınca (ya da envanterden çıkınca) görülmüş sayılır. Cihazda saklanır.
+        const string NewItemsKey = "textrun.newitems";
+        HashSet<string> newItems;
+
+        HashSet<string> NewItems
+        {
+            get
+            {
+                if (newItems == null)
+                {
+                    newItems = new HashSet<string>();
+                    foreach (var id in PlayerPrefs.GetString(NewItemsKey, "").Split(','))
+                        if (id.Length > 0) newItems.Add(id);
+                }
+                return newItems;
+            }
+        }
+
+        void SaveNewItems()
+        {
+            PlayerPrefs.SetString(NewItemsKey, string.Join(",", new List<string>(NewItems).ToArray()));
+            PlayerPrefs.Save();
+        }
+
+        void MarkNewItem(string itemId)
+        {
+            if (!string.IsNullOrEmpty(itemId) && NewItems.Add(itemId)) SaveNewItems();
+        }
+
+        int NewItemCount(string category)
+        {
+            int count = 0;
+            foreach (var id in NewItems)
+                if (Characters.Outfits.CategoryOf(id) == category) count++;
+            return count;
+        }
+
+        // Bir kategorideki (null = hepsi) yeni işaretlerini kaldırır
+        void ClearNewItems(string category)
+        {
+            if (NewItems.Count == 0) return;
+            if (category == null) NewItems.Clear();
+            else NewItems.RemoveWhere(id => Characters.Outfits.CategoryOf(id) == category);
+            SaveNewItems();
+        }
+
+        // Envanter sekmesi değişirken ya da envanterden çıkarken: bakılan kategorinin işaretleri silinir
+        void LeaveInventoryTab()
+        {
+            if (inventoryTab >= 0 && inventoryTab < Categories.Length) ClearNewItems(Categories[inventoryTab]);
+        }
+
+        static void DrawBadge(Rect at, int count, GUIStyle style)
+        {
+            UiKit.Card(at, new Color(0.93f, 0.25f, 0.25f), at.height / 2f);
+            GUI.Label(at, count.ToString(), style);
+        }
+
         // Sandık açma
         const float ChestDropSeconds = 0.45f;
         const float ChestShakeSeconds = RaceAudio.ChestRiserSeconds;
@@ -114,6 +173,9 @@ namespace TextRun.Game
         void OpenInventory()
         {
             inventoryTab = profile.TotalChests > 0 ? ChestTab : 0;
+            if (profile.TotalChests == 0)
+                for (int i = 0; i < Categories.Length; i++)
+                    if (NewItemCount(Categories[i]) > 0) { inventoryTab = i; break; }
             openingTier = null;
             screen = Page.Inventory;
             LoadInventory();
@@ -159,21 +221,17 @@ namespace TextRun.Game
                 UiKit.Card(tab, selected ? new Color(0.20f, 0.52f, 1f) : new Color(1f, 1f, 1f, 0.10f), 10f);
                 string label = i == ChestTab ? T("tab_chests") : T("tab_" + Categories[i]);
                 GUI.Label(tab, label, tabStyle);
-                if (i == ChestTab && profile.TotalChests > 0)
-                {
-                    // Açılmamış sandık sayısı: sekmenin köşesinde kırmızı rozet
-                    var badge = new Rect(tab.xMax - 15f, tab.y - 6f, 19f, 19f);
-                    UiKit.Card(badge, new Color(0.93f, 0.25f, 0.25f), 9.5f);
-                    GUI.Label(badge, profile.TotalChests.ToString(), tabStyle);
-                }
-                if (GUI.Button(tab, GUIContent.none, GUIStyle.none)) { inventoryTab = i; sound.Click(); }
+                // Köşede kırmızı rozet: açılmamış sandık sayısı ya da o kategorideki yeni eşya sayısı
+                int badgeCount = i == ChestTab ? profile.TotalChests : NewItemCount(Categories[i]);
+                if (badgeCount > 0) DrawBadge(new Rect(tab.xMax - 15f, tab.y - 6f, 19f, 19f), badgeCount, tabStyle);
+                if (GUI.Button(tab, GUIContent.none, GUIStyle.none) && i != inventoryTab) { LeaveInventoryTab(); inventoryTab = i; sound.Click(); }
             }
             y += 44f;
 
             if (inventoryTab == ChestTab) DrawChestList(width, y);
             else DrawCategory(width, height, y, Categories[inventoryTab]);
 
-            if (UiKit.SecondaryButton(new Rect(24f, height - 64f, width - 48f, 50f), T("back"), 20)) screen = Page.Menu;
+            if (UiKit.SecondaryButton(new Rect(24f, height - 64f, width - 48f, 50f), T("back"), 20)) { LeaveInventoryTab(); screen = Page.Menu; }
         }
 
         // Sandıklar: yalnızca sahip olunanlar gösterilir (hiç yoksa kısa bir not)
@@ -242,6 +300,12 @@ namespace TextRun.Game
                     UiKit.Card(new Rect(icon.xMax - 20f, icon.y + 4f, 16f, 16f), Color.white, 8f);
                     UiKit.Card(new Rect(icon.xMax - 18f, icon.y + 6f, 12f, 12f), new Color(0.20f, 0.80f, 0.35f), 6f);
                 }
+                if (NewItems.Contains(item.id))
+                {
+                    var tag = new Rect(icon.x + 3f, icon.y + 3f, 34f, 16f);
+                    UiKit.Card(tag, new Color(0.93f, 0.25f, 0.25f), 6f);
+                    GUI.Label(tag, T("newTag"), tinyNameStyle);
+                }
                 GUI.Label(new Rect(cell.x - 4f, icon.yMax + 3f, cellWidth + 8f, 32f), ItemName(item.tr, item.en), tinyNameStyle);
                 if (GUI.Button(cell, GUIContent.none, GUIStyle.none)) { sound.Click(); ToggleWear(item); }
             }
@@ -292,6 +356,7 @@ namespace TextRun.Game
             {
                 var result = await net.OpenChestAsync(tier);
                 openedResult = result;
+                if (!result.duplicate) MarkNewItem(result.itemId);
                 if (result.profile != null) profile = result.profile;
                 LoadInventory();
             }
@@ -313,6 +378,7 @@ namespace TextRun.Game
             {
                 var result = await net.ClaimAdChestAsync();
                 openedResult = result;
+                if (!result.duplicate) MarkNewItem(result.itemId);
                 if (result.profile != null) profile = result.profile;
                 LoadInventory();
             }
@@ -458,6 +524,11 @@ namespace TextRun.Game
 
         void CloseChestOverlay()
         {
+            if (openedResult != null && !openedResult.duplicate && !chestToMenu)
+            {
+                int tab = Array.IndexOf(Categories, openedResult.category);
+                if (tab >= 0 && profile.TotalChests == 0) inventoryTab = tab; // sandık kalmadıysa yeni eşyanın sekmesine geç
+            }
             openingTier = null;
             openedResult = null;
             openingFailed = false;
@@ -513,6 +584,8 @@ namespace TextRun.Game
         }
 
         public void DevSetAdChestTimer(int seconds) { profile = new ProfileDto { name = "Furkan", level = 4, gold = 1250, diamonds = 320, xpIntoLevel = 110, xpForNext = 220, adChestSeconds = seconds }; }
+
+        public void DevMarkNew(params string[] ids) { foreach (var id in ids) MarkNewItem(id); }
 
         public bool DevSuppressGui;
 

@@ -121,7 +121,9 @@ namespace TextRun.Game
             shopNotice = "";
             try
             {
+                string boughtItem = slot >= 0 && shop != null && slot < shop.slots.Length ? shop.slots[slot].itemId : null;
                 ApplyShop(slot < 0 ? await net.ShopRefreshAsync() : await net.ShopBuyAsync(slot));
+                MarkNewItem(boughtItem);
                 sound.MatchFound();
                 if (slot >= 0 && slot < 4) { inventory = null; inventoryTriedAt = -999f; } // yeni eşya: envanter yeniden okunur
             }
@@ -284,12 +286,12 @@ namespace TextRun.Game
                 UiKit.Card(card, new Color(rarity.r, rarity.g, rarity.b, 0.20f), 14f);
                 UiKit.Card(new Rect(card.x, card.y, card.width, 5f), rarity, 2.5f);
 
-                float iconSize = card.height - 100f;
+                float iconSize = card.height - 106f;
                 DrawItemIcon(new Rect(card.center.x - iconSize / 2f, card.y + 11f, iconSize, iconSize), slot.itemId, slot.rarity);
                 GUI.Label(new Rect(card.x + 2f, card.y + 13f + iconSize, card.width - 4f, 20f), ItemName(slot.tr, slot.en), shopNameStyle);
                 var old = GUI.color;
                 GUI.color = rarity;
-                GUI.Label(new Rect(card.x + 2f, card.y + 31f + iconSize, card.width - 4f, 18f), T("rarity_" + slot.rarity), smallCenterStyle);
+                GUI.Label(new Rect(card.x + 2f, card.y + 31f + iconSize, card.width - 4f, 24f), T("rarity_" + slot.rarity), smallCenterStyle);
                 GUI.color = old;
 
                 var button = new Rect(card.x + 8f, card.yMax - 46f, card.width - 16f, 40f);
@@ -322,7 +324,7 @@ namespace TextRun.Game
             DrawChestIcon(new Rect(r.x + 10f, r.y + 10f, iconSize, iconSize), chest.tier);
             float tx = r.x + iconSize + 14f, tw = r.xMax - 4f - tx;
             GUI.Label(new Rect(tx, r.y + 10f, tw, 20f), T("chest_" + chest.tier), shopLeftStyle);
-            if (note != null) GUI.Label(new Rect(tx, r.y + 30f, tw, 18f), note, smallStyle);
+            if (note != null) GUI.Label(new Rect(tx, r.y + 30f, tw, 24f), note, smallStyle);
 
             var button = new Rect(r.x + 8f, r.yMax - 46f, r.width - 16f, 40f);
             if (chest.bought) UiKit.DisabledButton(button, T("bought"), 16);

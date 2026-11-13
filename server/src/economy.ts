@@ -172,8 +172,9 @@ export const SHOP_REFRESH_DIAMONDS = 20; // mağazayı elmasla yenilemenin bedel
 export const SHOP_GOLD_CHEST: { tier: ChestTier; price: number } = { tier: "silver", price: 500 }; // altınla: yenileme başına 1 kez
 export const SHOP_DIAMOND_CHEST: { tier: ChestTier; price: number } = { tier: "gold", price: 100 }; // elmasla: sınırsız
 
-// TEST: gerçek satın alma gelene kadar her hesaba verilen elmas. Yayından önce 0 yapılmalı.
-export const START_DIAMONDS = 500;
+// TEST: yeni açılan hesaba verilen altın ve elmas (denemeler için). Yayından önce ikisi de 0 yapılmalı.
+export const START_GOLD = 10000;
+export const START_DIAMONDS = 1000;
 
 const GOLD_PRICE: { [rarity: string]: number } = { common: 150, uncommon: 400, rare: 1000, epic: 2500, legendary: 6000 };
 const DIAMOND_PRICE: { [rarity: string]: number } = { common: 10, uncommon: 25, rare: 60, epic: 150, legendary: 300 };

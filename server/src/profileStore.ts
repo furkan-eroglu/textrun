@@ -1,5 +1,5 @@
 // Profilin Nakama depolamasına okunup yazılması. Kurallar profile.ts içindedir.
-import { AD_CHEST_TIER, CHEST_TIERS, SHOP_DIAMOND_CHEST, SHOP_GOLD_CHEST, SHOP_REFRESH_DIAMONDS, itemById, priceOf, shopSecondsLeft } from "./economy.ts";
+import { AD_CHEST_TIER, CHEST_TIERS, START_GOLD, SHOP_DIAMOND_CHEST, SHOP_GOLD_CHEST, SHOP_REFRESH_DIAMONDS, itemById, priceOf, shopSecondsLeft } from "./economy.ts";
 import type { ChestOpening, ChestTier } from "./economy.ts";
 import {
   SHOP_DIAMOND_CHEST_SLOT, SHOP_GOLD_CHEST_SLOT, adChestReady, applyRace, buyShopSlot, claimAdChest, emptyProfile, ensureShop, equipItem, levelOf, lookOf, openChest, refreshShop, unequipCategory,
@@ -47,7 +47,12 @@ function parse(value: { [key: string]: any } | undefined): Profile {
 
 export function readProfile(nk: nkruntime.Nakama, userId: string): Stored {
   const records = nk.storageRead([{ collection: COLLECTION, key: KEY, userId: userId }]);
-  if (records.length === 0) return { profile: emptyProfile(), version: "*" };
+  if (records.length === 0) {
+    // Yeni hesap: başlangıç altını verilir (elmas emptyProfile içinde gelir)
+    const fresh = emptyProfile();
+    fresh.gold = START_GOLD;
+    return { profile: fresh, version: "*" };
+  }
   return { profile: parse(records[0].value), version: records[0].version };
 }
 

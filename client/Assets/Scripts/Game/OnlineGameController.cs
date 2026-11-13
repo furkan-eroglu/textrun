@@ -994,10 +994,11 @@ namespace TextRun.Game
             // Envanter ve mağaza: yalnızca hesaplı oyuncuda (misafirin altını, sandığı, eşyası yoktur)
             if (!profile.guest)
             {
-                int chests = profile.TotalChests;
-                string label = T("inventory") + (chests > 0 ? "  (" + chests + ")" : "");
+                int news = profile.TotalChests + NewItems.Count; // açılmamış sandık + bakılmamış yeni eşya
                 float halfWidth = (width - 48f - 12f) / 2f;
-                if (UiKit.SecondaryButton(new Rect(24f, y, halfWidth, 50f), label, 19)) OpenInventory();
+                var inventoryButton = new Rect(24f, y, halfWidth, 50f);
+                if (UiKit.SecondaryButton(inventoryButton, T("inventory"), 19)) OpenInventory();
+                if (news > 0) DrawBadge(new Rect(inventoryButton.xMax - 20f, inventoryButton.y - 8f, 26f, 26f), news, tabStyle);
                 if (UiKit.SecondaryButton(new Rect(24f + halfWidth + 12f, y, halfWidth, 50f), T("shop"), 19)) OpenShop();
             }
 
@@ -1462,6 +1463,7 @@ namespace TextRun.Game
             inventory = null;
             inventoryTriedAt = -999f;
             shop = null;
+            ClearNewItems(null);
             ClearLoginForm();
             screen = Page.Welcome;
             if (net != null) await net.CloseAsync();

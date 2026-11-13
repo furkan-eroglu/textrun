@@ -439,7 +439,7 @@ await test('profil: ad secilir, yarista gorunur, yarisi bitirince XP verilir ve 
 
   // Altin: bitirmek 10 + sira bonusu; sandik yalnizca seviye atlayinca gelir
   assert.equal(reward.gold, 10 + [25, 15, 10, 5, 0][me.rank - 1]);
-  assert.equal(after.gold, reward.gold);
+  assert.equal(after.gold, 10000 + reward.gold, 'baslangic altini + yaris odulu');
   assert.equal(after.chestBronze + after.chestSilver + after.chestGold, after.level - 1, 'her seviye atlama icin bir sandik');
 
   // Seviye atlayana kadar yaris (her yaris en az 20 XP); sonra sandik acilir
@@ -482,20 +482,20 @@ await test('profil: ad secilir, yarista gorunur, yarisi bitirince XP verilir ve 
   const first = await p.rpc('get_shop', {});
   assert.equal(first.shop.slots.length, 4);
   assert.ok(first.shop.secondsLeft > 0 && first.shop.secondsLeft <= 24 * 3600);
-  assert.equal(first.profile.diamonds, 500, 'test elmasi');
+  assert.equal(first.profile.diamonds, 1000, 'test elmasi');
   assert.equal(new Set(first.shop.slots.map((slot) => slot.itemId)).size, 4);
   for (const slot of first.shop.slots) assert.ok(slot.price > 0 && (slot.currency === 'gold' || slot.currency === 'diamond'));
   const again = await p.rpc('get_shop', {});
   assert.deepEqual(again.shop.slots.map((slot) => slot.itemId), first.shop.slots.map((slot) => slot.itemId), 'ayni gun magaza degismez');
 
   const chestBuy = await p.rpc('shop_buy', { slot: 5 });
-  assert.equal(chestBuy.profile.diamonds, 400);
+  assert.equal(chestBuy.profile.diamonds, 900);
   assert.equal(chestBuy.profile.chestGold, 1);
   await assert.rejects(() => p.rpc('shop_buy', { slot: 9 }), /bad_slot/);
   await assert.rejects(() => p.rpc('shop_buy', { slot: 'x' }), /bad_slot/);
 
   const refreshed = await p.rpc('shop_refresh', {});
-  assert.equal(refreshed.profile.diamonds, 400 - refreshed.shop.refreshCost);
+  assert.equal(refreshed.profile.diamonds, 900 - refreshed.shop.refreshCost);
   assert.ok(Math.abs(refreshed.shop.secondsLeft - first.shop.secondsLeft) < 120, 'yenileme geri sayimi sifirlamaz');
 
   // Gunluk reklam sandigi: bir kez acilir, sonra geri sayim baslar

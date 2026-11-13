@@ -102,6 +102,7 @@ namespace TextRun.Game
             yield return Shot("1h-register-revealed");
             // Envanter: kategori sekmeleri (resimli ızgara), sandıklar, sandık açılışı
             controller.DevShowInventory(0);
+            controller.DevMarkNew("hat_pirate", "cape_wings");
             yield return new WaitForSeconds(0.8f);
             yield return Shot("1j-inventory-head");
             controller.DevShowInventory(4);

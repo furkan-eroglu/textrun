@@ -103,6 +103,7 @@ namespace TextRun.Common
             { "adChest", new[] { "Günlük Sandık", "Daily Chest" } },
             { "free", new[] { "Ücretsiz", "Free" } },
             { "tapToContinue", new[] { "Devam", "Continue" } },
+            { "newTag", new[] { "YENİ", "NEW" } },
             { "noChests", new[] { "Açılmamış sandığın yok", "You have no unopened chests" } },
             { "open",new[] { "Aç", "Open" } },
             { "myItems", new[] { "Eşyalarım", "My Items" } },
