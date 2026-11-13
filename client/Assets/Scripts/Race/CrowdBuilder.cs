@@ -67,7 +67,8 @@ namespace TextRun.Race
             new Kind { weight = 8,  torsoW = 0.50f, torsoH = 0.58f, torsoD = 0.34f, legH = 0.56f, legW = 0.38f, headD = 0.29f, scale = 0.94f, elder = true },    // yaşlı
         };
 
-        public static void Build(Transform parent, List<CrowdSlot> slots, int seed)
+        // animate=false: yerinde duran kişiler (pist kenarındaki görevliler); zıplamaz, flaş patlatmaz, koltuk boş kalmaz
+        public static void Build(Transform parent, List<CrowdSlot> slots, int seed, bool animate = true)
         {
             var rng = new System.Random(seed);
 
@@ -82,7 +83,7 @@ namespace TextRun.Race
 
             foreach (var slot in slots)
             {
-                if (rng.NextDouble() < 0.06) continue; // boş koltuklar
+                if (animate && rng.NextDouble() < 0.06) continue; // boş koltuklar
 
                 int group = rng.Next(BobGroups);
                 var look = PickKind(rng);
@@ -122,7 +123,7 @@ namespace TextRun.Race
                 }
 
                 // Kollar: telefonla çeken (flaşlı), tezahürat yapan (iki kol havada) ya da kollar aşağıda (gövdeyle birlikte)
-                double action = rng.NextDouble();
+                double action = animate ? rng.NextDouble() : 1.0;
                 float shoulderY = look.legH + look.torsoH - 0.08f;
                 float shoulderX = look.torsoW / 2f + 0.05f;
 
@@ -159,9 +160,12 @@ namespace TextRun.Race
             {
                 var group = new GameObject("CrowdGroup" + g);
                 group.transform.SetParent(parent, false);
-                var bob = group.AddComponent<CrowdBob>();
-                bob.phase = g * 1.3f;
-                bob.speed = 3.2f + g * 0.55f;
+                if (animate)
+                {
+                    var bob = group.AddComponent<CrowdBob>();
+                    bob.phase = g * 1.3f;
+                    bob.speed = 3.2f + g * 0.55f;
+                }
 
                 int index = 0;
                 foreach (var pair in parts[g])

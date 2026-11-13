@@ -14,6 +14,9 @@ namespace TextRun.Race
         static readonly Color White = new Color(0.97f, 0.97f, 0.97f);
         static readonly Color Black = new Color(0.12f, 0.12f, 0.14f);
 
+        // Başlangıç çizgisinin gerisinde kalan pist uzunluğu (kameranın önünde görünen kısım)
+        const float RunUp = 17f;
+
         public static float LaneX(int lane, int laneCount, float laneWidth)
         {
             return (lane - (laneCount - 1) / 2f) * laneWidth;
@@ -31,15 +34,15 @@ namespace TextRun.Race
             for (int i = 0; i < laneCount; i++)
             {
                 Mats.Primitive("Lane" + i, PrimitiveType.Cube, root,
-                    new Vector3(LaneX(i, laneCount, laneWidth), 0f, centerZ),
-                    new Vector3(laneWidth, 0.02f, trackLength + 6f),
+                    new Vector3(LaneX(i, laneCount, laneWidth), 0f, centerZ - RunUp / 2f + 1.5f),
+                    new Vector3(laneWidth, 0.02f, trackLength + RunUp + 3f),
                     i % 2 == 0 ? LaneA : LaneB);
             }
 
             for (int i = 0; i <= laneCount; i++)
             {
                 float x = (i - laneCount / 2f) * laneWidth;
-                Mats.Primitive("LaneLine" + i, PrimitiveType.Cube, root, new Vector3(x, 0.012f, centerZ), new Vector3(0.06f, 0.01f, trackLength + 6f), White);
+                Mats.Primitive("LaneLine" + i, PrimitiveType.Cube, root, new Vector3(x, 0.012f, centerZ - RunUp / 2f + 1.5f), new Vector3(0.06f, 0.01f, trackLength + RunUp + 3f), White);
             }
 
             Mats.Primitive("StartLine", PrimitiveType.Cube, root, new Vector3(0f, 0.014f, 0f), new Vector3(width, 0.01f, 0.25f), White);
