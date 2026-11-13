@@ -78,6 +78,7 @@ namespace TextRun.Race
             raceCamera = cam.GetComponent<RaceCamera>();
             if (raceCamera == null) raceCamera = cam.gameObject.AddComponent<RaceCamera>();
             raceCamera.enabled = false; // kamerayı bu sınıf kendisi hareket ettirir
+            if (cam.GetComponent<PostFx>() == null) cam.gameObject.AddComponent<PostFx>(); // ışık taşması, renk, kenar karartma
             raceCamera.offset = CameraOffset;
             // En kenar kulvardaki oyuncu için kamera en fazla yarım pist * takip oranı kadar kayar; o durumda bile pistin öbür ucu görünmeli.
             float halfTrack = (laneCount - 1) * laneWidth / 2f;
