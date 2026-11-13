@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TextRun.Characters;
 using TextRun.Common;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -13,7 +14,8 @@ namespace TextRun.Race
 
     // Tribündeki seyirciler: erkek, kadın, kilolu, zayıf, çocuk ve yaşlı tipleri; farklı ten, saç ve kıyafet renkleri;
     // bir kısmı telefonla çekip flaş patlatır, bir kısmı kollarını kaldırıp tezahürat yapar.
-    // Her seyirci küçük parçalardan (küp ve küre) kurulur; parçalar renge göre birleştirilir.
+    // Her seyirci insan biçimli parçalardan kurulur: omuzdan bele daralan gövde, incelen kol ve bacaklar, boyun, saç,
+    // gözler, ayakkabı; kimi atkılı, şapkalı ya da etekli. Parçalar az üçgenlidir ve renge göre birleştirilir.
     // 4 grup halinde zıplar, flaşlar 12 grup halinde yanıp söner.
     public static class CrowdBuilder
     {
@@ -78,8 +80,13 @@ namespace TextRun.Race
             for (int f = 0; f < FlashGroups; f++) flashes[f] = new List<CombineInstance>();
 
             Mesh box = MeshFactory.Box();
-            Mesh head = MeshFactory.Ball(6, 4);
-            Mesh cap = MeshFactory.Ball(5, 3);
+            Mesh head = MeshFactory.Ball(8, 5);
+            Mesh cap = MeshFactory.Ball(6, 3);
+            // Birim ölçülü parçalar (ölçek verilerek kullanılır): gövde 1 birim yüksek ve 1 birim geniş;
+            // uzuv tepesinden aşağı 1 birim sarkar ve uca doğru incelir; etek aşağı doğru genişler
+            Mesh torso = MeshKit.Lathe(new[] { 0f, 0f, 0.40f, 0f, 0.44f, 0.12f, 0.40f, 0.38f, 0.47f, 0.70f, 0.50f, 0.86f, 0.36f, 0.96f, 0.14f, 1f, 0f, 1f }, 8);
+            Mesh limb = MeshKit.Lathe(new[] { 0.36f, -1f, 0.5f, 0f }, 6);
+            Mesh skirt = MeshKit.Lathe(new[] { 0.66f, -1f, 0.5f, 0f }, 8);
 
             foreach (var slot in slots)
             {
@@ -106,52 +113,121 @@ namespace TextRun.Race
                     list.Add(new CombineInstance { mesh = mesh, transform = root * Matrix4x4.TRS(pos, rot, size) });
                 }
 
-                // Gövde: bacaklar, gövde, baş
-                Part(box, new Vector3(0f, look.legH / 2f, 0f), Quaternion.identity, new Vector3(look.legW, look.legH, look.torsoD * 0.9f), look.female && rng.NextDouble() < 0.5 ? shirt : pants);
-                Part(box, new Vector3(0f, look.legH + look.torsoH / 2f, 0f), Quaternion.identity, new Vector3(look.torsoW, look.torsoH, look.torsoD), shirt);
-
-                float headY = look.legH + look.torsoH + look.headD * 0.42f;
-                Part(head, new Vector3(0f, headY, 0f), Quaternion.identity, new Vector3(look.headD, look.headD * 1.08f, look.headD), skin);
-
-                // Saç: kısa (kepçe), uzun (arkada ek blok) veya kel
-                bool bald = !look.child && !look.female && rng.NextDouble() < (look.elder ? 0.5 : 0.12);
-                if (!bald)
+                // Uzuv parçası: "from" noktasından "dir" yönünde uzanır; ucunun konumunu döner
+                Vector3 Limb(Vector3 from, Vector3 dir, float length, float width, Color color)
                 {
-                    Part(cap, new Vector3(0f, headY + look.headD * 0.26f, -look.headD * 0.04f), Quaternion.identity, new Vector3(look.headD * 1.1f, look.headD * 0.7f, look.headD * 1.1f), hair);
-                    if (look.female && rng.NextDouble() < 0.65)
-                        Part(box, new Vector3(0f, headY - look.headD * 0.22f, -look.headD * 0.42f), Quaternion.identity, new Vector3(look.headD * 0.95f, look.headD * 1.25f, look.headD * 0.4f), hair);
+                    dir = dir.normalized;
+                    Part(limb, from, Quaternion.FromToRotation(Vector3.down, dir), new Vector3(width, length, width), color);
+                    return from + dir * length;
                 }
 
-                // Kollar: telefonla çeken (flaşlı), tezahürat yapan (iki kol havada) ya da kollar aşağıda (gövdeyle birlikte)
-                double action = animate ? rng.NextDouble() : 1.0;
-                float shoulderY = look.legH + look.torsoH - 0.08f;
-                float shoulderX = look.torsoW / 2f + 0.05f;
+                float build = look.heavy ? 1.3f : 1f;
+                bool skirted = look.female && rng.NextDouble() < 0.35;
+                bool longSleeves = rng.NextDouble() < 0.4;
+                bool sleeveless = !longSleeves && rng.NextDouble() < 0.12;
+                Color sleeve = sleeveless ? skin : shirt;
+                Color forearm = longSleeves ? shirt : skin;
+                Color shoe = rng.NextDouble() < 0.3 ? new Color(0.88f, 0.88f, 0.9f) : new Color(0.10f, 0.10f, 0.12f);
 
-                if (action < 0.20)
+                // Bacaklar (etekliyse etek + çıplak bacak), ayakkabılar
+                float legGap = look.legW * 0.27f;
+                float legWidth = look.legW * 0.52f;
+                for (int side = -1; side <= 1; side += 2)
                 {
-                    // Sağ kol ileri-yukarı, elde telefon, telefondan flaş
-                    Vector3 dir = new Vector3(0.1f, 0.75f, 0.66f).normalized;
-                    Vector3 shoulder = new Vector3(shoulderX, shoulderY, 0f);
-                    float length = 0.46f;
-                    var armRot = Quaternion.LookRotation(dir);
-                    Part(box, shoulder + dir * (length / 2f), armRot, new Vector3(0.12f, 0.12f, length), skin);
+                    Part(limb, new Vector3(side * legGap, look.legH + 0.02f, 0f), Quaternion.identity, new Vector3(legWidth, look.legH, legWidth * 1.05f), skirted ? skin : pants);
+                    Part(box, new Vector3(side * legGap, 0.04f, 0.05f), Quaternion.identity, new Vector3(legWidth * 0.8f, 0.08f, 0.26f), shoe);
+                }
+                if (skirted) Part(skirt, new Vector3(0f, look.legH + 0.06f, 0f), Quaternion.identity, new Vector3(look.torsoW * 0.92f, look.legH * 0.55f, look.torsoD * 1.05f), rng.NextDouble() < 0.5 ? shirt : pants);
 
-                    Vector3 phonePos = shoulder + dir * (length + 0.06f);
-                    Part(box, phonePos, armRot, new Vector3(0.15f, 0.23f, 0.03f), PhoneColor);
+                // Gövde, boyun, baş
+                Part(torso, new Vector3(0f, look.legH, 0f), Quaternion.identity, new Vector3(look.torsoW, look.torsoH, look.torsoD), shirt);
+                float neckY = look.legH + look.torsoH * 0.97f;
+                Part(limb, new Vector3(0f, neckY + 0.1f, 0f), Quaternion.identity, new Vector3(look.headD * 0.42f, 0.14f, look.headD * 0.42f), skin);
 
+                float headY = neckY + look.headD * 0.5f;
+                Part(head, new Vector3(0f, headY, 0f), Quaternion.identity, new Vector3(look.headD * 0.92f, look.headD * 1.1f, look.headD), skin);
+
+                // Gözler (yakındaki seyircilerde yüz boş kalmasın)
+                var eye = new Color(0.10f, 0.08f, 0.08f);
+                for (int side = -1; side <= 1; side += 2)
+                    Part(box, new Vector3(side * look.headD * 0.19f, headY + look.headD * 0.06f, look.headD * 0.46f), Quaternion.identity, new Vector3(look.headD * 0.11f, look.headD * 0.13f, 0.03f), eye);
+
+                // Saç ya da şapka
+                double style = rng.NextDouble();
+                bool bald = !look.child && !look.female && style < (look.elder ? 0.45 : 0.10);
+                bool capped = !bald && !look.elder && style > 0.86;
+                if (capped)
+                {
+                    Color capColor = Shirts[rng.Next(Shirts.Length)];
+                    Part(cap, new Vector3(0f, headY + look.headD * 0.3f, 0f), Quaternion.identity, new Vector3(look.headD * 1.02f, look.headD * 0.62f, look.headD * 1.08f), capColor);
+                    Part(box, new Vector3(0f, headY + look.headD * 0.3f, look.headD * 0.58f), Quaternion.identity, new Vector3(look.headD * 0.72f, 0.03f, look.headD * 0.42f), capColor);
+                }
+                else if (!bald)
+                {
+                    Part(cap, new Vector3(0f, headY + look.headD * 0.24f, -look.headD * 0.06f), Quaternion.identity, new Vector3(look.headD * 1.04f, look.headD * 0.78f, look.headD * 1.1f), hair);
+                    if (look.female && style < 0.5)
+                        Part(cap, new Vector3(0f, headY - look.headD * 0.2f, -look.headD * 0.3f), Quaternion.identity, new Vector3(look.headD * 1.02f, look.headD * 1.3f, look.headD * 0.6f), hair); // omza inen saç
+                    else if (look.female && style < 0.72)
+                        Part(cap, new Vector3(0f, headY + look.headD * 0.5f, -look.headD * 0.34f), Quaternion.identity, Vector3.one * look.headD * 0.46f, hair); // topuz
+                }
+
+                // Taraftar atkısı
+                if (rng.NextDouble() < 0.18)
+                {
+                    Color team = rng.NextDouble() < 0.5 ? new Color(0.82f, 0.16f, 0.18f) : new Color(0.14f, 0.36f, 0.82f);
+                    Part(limb, new Vector3(0f, neckY + 0.07f, 0f), Quaternion.identity, new Vector3(look.torsoW * 0.62f, 0.12f, look.torsoD * 0.95f), team);
+                    Part(box, new Vector3(look.torsoW * 0.16f, neckY - look.torsoH * 0.2f, look.torsoD * 0.46f), Quaternion.identity, new Vector3(0.11f, look.torsoH * 0.42f, 0.04f), team);
+                }
+
+                // Kollar: üst kol (giysi rengi) + ön kol (uzun kolluysa giysi, değilse ten) + el.
+                // Duruşlar: kollar aşağıda, iki kol havada, alkış, telefonla çekim (flaşlı), tek kolla el sallama.
+                float shoulderY = look.legH + look.torsoH * 0.86f;
+                float shoulderX = look.torsoW * 0.46f;
+                float upperLength = look.torsoH * 0.5f, foreLength = look.torsoH * 0.48f;
+                float armWidth = 0.12f * build;
+
+                Vector3 Arm(int side, Vector3 upperDir, Vector3 foreDir)
+                {
+                    var elbow = Limb(new Vector3(side * shoulderX, shoulderY, 0f), upperDir, upperLength, armWidth * 1.15f, sleeve);
+                    var wrist = Limb(elbow, foreDir, foreLength, armWidth, forearm);
+                    Part(cap, wrist, Quaternion.identity, Vector3.one * armWidth * 1.05f, skin);
+                    return wrist;
+                }
+
+                Vector3 Down(int side) => Arm(side, new Vector3(side * 0.14f, -1f, 0.04f), new Vector3(side * 0.04f, -1f, 0.16f));
+                Vector3 Up(int side) => Arm(side, new Vector3(side * 0.4f, 0.85f, 0.1f), new Vector3(side * 0.08f, 1f, 0.06f));
+
+                double action = animate ? rng.NextDouble() : 1.0;
+                if (action < 0.16)
+                {
+                    // Telefonla çekim: sağ kol önde, elde telefon, telefondan flaş
+                    var hand = Arm(1, new Vector3(0.15f, 0.15f, 0.85f), new Vector3(-0.1f, 0.85f, 0.45f));
+                    Down(-1);
+                    Vector3 phonePos = hand + new Vector3(0f, 0.1f, 0.03f);
+                    Part(box, phonePos, Quaternion.Euler(-15f, 0f, 0f), new Vector3(0.15f, 0.24f, 0.03f), PhoneColor);
                     if (rng.NextDouble() < 0.8)
-                        flashes[rng.Next(FlashGroups)].Add(new CombineInstance { mesh = head, transform = root * Matrix4x4.TRS(phonePos + dir * 0.1f, Quaternion.identity, Vector3.one * 0.30f) });
+                        flashes[rng.Next(FlashGroups)].Add(new CombineInstance { mesh = head, transform = root * Matrix4x4.TRS(phonePos + new Vector3(0f, 0.04f, 0.08f), Quaternion.identity, Vector3.one * 0.30f) });
                 }
                 else if (action < 0.36)
                 {
-                    // İki kol havada
+                    Up(-1);
+                    Up(1);
+                }
+                else if (action < 0.50)
+                {
+                    // Alkış: eller göğüs önünde buluşur
                     for (int side = -1; side <= 1; side += 2)
-                    {
-                        Vector3 dir = new Vector3(side * 0.28f, 1f, 0.1f).normalized;
-                        Vector3 shoulder = new Vector3(side * shoulderX, shoulderY, 0f);
-                        float length = 0.5f;
-                        Part(box, shoulder + dir * (length / 2f), Quaternion.LookRotation(dir), new Vector3(0.12f, 0.12f, length), skin);
-                    }
+                        Arm(side, new Vector3(side * 0.12f, -0.8f, 0.45f), new Vector3(-side * 0.6f, 0.4f, 0.6f));
+                }
+                else if (action < 0.60)
+                {
+                    Up(1);
+                    Down(-1);
+                }
+                else
+                {
+                    Down(-1);
+                    Down(1);
                 }
             }
 
