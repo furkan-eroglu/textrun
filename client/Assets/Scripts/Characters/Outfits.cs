@@ -28,6 +28,8 @@ namespace TextRun.Characters
             public Transform[] feet = new Transform[2];
             public Transform[] armMeshes = new Transform[2];
             public Transform[] legMeshes = new Transform[2];
+            public float[] torsoProfile = CharacterBuilder.TorsoProfile; // kadın bedeninde farklıdır
+            public Color skin = CharacterBuilder.Skin;
 
             // Hazır şekil (küre, silindir)
             public GameObject Add(PrimitiveType type, Transform parent, float x, float y, float z, float sx, float sy, float sz, Color color, float rx = 0f, float ry = 0f, float rz = 0f, float smooth = 0.1f)
@@ -92,7 +94,7 @@ namespace TextRun.Characters
             // Gövdeyi saran bant (kemer, etek ucu, yaka, çizgi)
             public void TorsoBand(float y0, float y1, float grow, Color color, float smooth = 0.1f)
             {
-                var go = Put(MeshKit.Lathe(BandProfile(TorsoProfile, y0, y1, grow)), visual, 0f, 0f, 0f, color, 0f, 0f, 0f, smooth);
+                var go = Put(MeshKit.Lathe(BandProfile(torsoProfile, y0, y1, grow)), visual, 0f, 0f, 0f, color, 0f, 0f, 0f, smooth);
                 go.transform.localScale = new Vector3(1f, 1f, TorsoDepth);
             }
 
@@ -105,7 +107,7 @@ namespace TextRun.Characters
             // Gövdenin ön yüzünün (x, y) noktasındaki derinliği
             public float Front(float x, float y)
             {
-                float radius = MeshKit.RadiusAt(TorsoProfile, y);
+                float radius = MeshKit.RadiusAt(torsoProfile, y);
                 return TorsoDepth * Mathf.Sqrt(Mathf.Max(0f, radius * radius - x * x));
             }
 
@@ -156,7 +158,7 @@ namespace TextRun.Characters
             { "bottom_cargo", c => { var olive = C(0x6B7A3A); var dark = C(0x56642C); c.Pants(olive); c.Belt(C(0x3C2A14)); c.BothSides((s, i) => { c.Box(c.legs[i], s * 0.118f, -0.3f, 0.01f, 0.05f, 0.16f, 0.14f, 0.018f, dark); c.Box(c.legs[i], s * 0.124f, -0.235f, 0.01f, 0.05f, 0.045f, 0.15f, 0.012f, C(0x4A5726)); c.LimbBand(c.legs[i], LegProfile, -0.745f, -0.69f, 0.012f, dark); }); } },
             { "bottom_camo", c => { c.Pants(C(0x5E6B3C)); c.Belt(C(0x2E3320)); c.BothSides((s, i) => { c.Add(Ball, c.legs[i], 0.03f, -0.2f, 0.085f, 0.12f, 0.14f, 0.07f, C(0x3A4426)); c.Add(Ball, c.legs[i], -0.04f, -0.44f, 0.07f, 0.1f, 0.12f, 0.06f, C(0x8A8F5A)); c.Add(Ball, c.legs[i], 0.02f, -0.62f, 0.06f, 0.09f, 0.1f, 0.05f, C(0x3A4426)); c.Add(Ball, c.legs[i], s * 0.085f, -0.33f, 0f, 0.07f, 0.14f, 0.12f, C(0x8A8F5A)); c.Add(Ball, c.legs[i], -0.02f, -0.3f, -0.085f, 0.12f, 0.14f, 0.06f, C(0x3A4426)); c.Add(Ball, c.legs[i], 0.03f, -0.55f, -0.065f, 0.09f, 0.11f, 0.05f, C(0x8A8F5A)); }); } },
             { "bottom_suit", c => { var navy = C(0x1C2036); c.Pants(navy); c.Belt(C(0x0E0E14)); c.BothSides((s, i) => { c.Box(c.legs[i], s * 0.106f, -0.37f, 0f, 0.014f, 0.7f, 0.04f, 0.005f, C(0x3A4066), 0f, 0f, s * -3f, 0.6f); c.LimbBand(c.legs[i], LegProfile, -0.745f, -0.7f, 0.011f, C(0x12152A)); }); } },
-            { "bottom_ripped", c => { c.Pants(C(0x6FA0DC)); c.Belt(C(0x16161C)); c.BothSides((s, i) => { c.Box(c.legs[i], 0f, -0.36f, 0.092f, 0.13f, 0.07f, 0.03f, 0.014f, Skin, -4f); c.Box(c.legs[i], 0.01f, -0.2f, 0.108f, 0.1f, 0.035f, 0.03f, 0.012f, Skin); c.Box(c.legs[i], 0f, -0.33f, 0.1f, 0.14f, 0.008f, 0.024f, 0.003f, C(0xDCE8F8)); c.Box(c.legs[i], 0f, -0.39f, 0.097f, 0.14f, 0.008f, 0.024f, 0.003f, C(0xDCE8F8)); c.LimbBand(c.legs[i], LegProfile, -0.745f, -0.7f, 0.011f, C(0x8DB6EA)); }); } },
+            { "bottom_ripped", c => { c.Pants(C(0x6FA0DC)); c.Belt(C(0x16161C)); c.BothSides((s, i) => { c.Box(c.legs[i], 0f, -0.36f, 0.092f, 0.13f, 0.07f, 0.03f, 0.014f, c.skin, -4f); c.Box(c.legs[i], 0.01f, -0.2f, 0.108f, 0.1f, 0.035f, 0.03f, 0.012f, c.skin); c.Box(c.legs[i], 0f, -0.33f, 0.1f, 0.14f, 0.008f, 0.024f, 0.003f, C(0xDCE8F8)); c.Box(c.legs[i], 0f, -0.39f, 0.097f, 0.14f, 0.008f, 0.024f, 0.003f, C(0xDCE8F8)); c.LimbBand(c.legs[i], LegProfile, -0.745f, -0.7f, 0.011f, C(0x8DB6EA)); }); } },
             { "bottom_ninja", c => { var dark = C(0x20222C); var red = C(0xD62828); c.Pants(dark); c.TorsoBand(0.04f, 0.12f, 0.018f, red); c.BothSides((s, i) => { c.LimbBand(c.legs[i], LegProfile, -0.52f, 0.03f, 0.03f, C(0x2A2D3A)); c.LimbBand(c.legs[i], LegProfile, -0.745f, -0.56f, 0.012f, red); c.LimbBand(c.legs[i], LegProfile, -0.69f, -0.66f, 0.016f, C(0x8A1414)); c.LimbBand(c.legs[i], LegProfile, -0.62f, -0.59f, 0.016f, C(0x8A1414)); }); } },
             { "bottom_flame", c => { c.Pants(C(0x16161C)); c.Belt(C(0xFF7A1A)); int[] fire = { 0xE23B1A, 0xFF8A1A, 0xFFD23C }; c.BothSides((s, i) => { for (int k = 0; k < 9; k++) { float a = k * 40f; float radius = MeshKit.RadiusAt(LegProfile, -0.66f) + 0.006f; c.Prism(c.legs[i], Mathf.Sin(a * Mathf.Deg2Rad) * radius, -0.755f, Mathf.Cos(a * Mathf.Deg2Rad) * radius, 0.014f, C(fire[k % 3]), 0f, a, 0f, 0.3f, new[] { -0.036f, 0f, 0.036f, 0f, 0.02f, 0.1f, 0.004f, 0.16f + (k % 3) * 0.04f, -0.018f, 0.08f }); } }); } },
             { "bottom_gold", c => { var gold = C(0xFFCC33); c.Pants(gold, 0.8f); c.TorsoBand(0.07f, 0.115f, 0.017f, C(0xFFF0A0), 0.8f); c.BothSides((s, i) => { c.LimbBand(c.legs[i], LegProfile, -0.745f, -0.69f, 0.012f, C(0xFFF0A0), 0.8f); c.Prism(c.legs[i], s * 0.118f, -0.3f, 0f, 0.012f, C(0xFFF7CC), 0f, s * 90f, 0f, 0.8f, MeshKit.Star(4, 0.05f, 0.4f)); }); } },
@@ -180,7 +182,7 @@ namespace TextRun.Characters
             { "cape_striped", c => c.Cape(0.1f, C(0xF4F4F4), C(0xD62828), C(0xF4F4F4), C(0xD62828), C(0xF4F4F4), C(0xD62828)) },
             { "cape_hero", c => { c.Cape(0.1f, C(0xD62828)); c.CapeMark(0f, 0.42f, C(0xFFD23C), 0.7f, MeshKit.Star(5, 0.13f)); c.Add(Ball, c.visual, 0f, 0.575f, c.Front(0f, 0.575f) + 0.03f, 0.08f, 0.08f, 0.04f, C(0xFFD23C), 0f, 0f, 0f, 0.7f); } },
             { "cape_night", c => { c.Cape(0.1f, C(0x161B3A)); float[] su = { -0.6f, 0.45f, -0.15f, 0.65f, -0.7f, 0.2f, -0.35f }; float[] sv = { 0.16f, 0.24f, 0.4f, 0.52f, 0.62f, 0.74f, 0.86f }; for (int i = 0; i < 7; i++) c.CapeMark(su[i], sv[i], C(0xFFE98A), 0.6f, MeshKit.Star(5, 0.032f + (i % 3) * 0.008f)); c.CapeMark(0.4f, 0.4f, C(0xF4F4F4), 0.6f, MeshKit.Arc(0.07f, 0.07f, 70f, 290f)); } },
-            { "cape_royal", c => { var white = C(0xF4F4F4); c.Cape(0.1f, C(0x6A2FB8), C(0x6A2FB8), C(0x6A2FB8), C(0x6A2FB8), C(0x6A2FB8), C(0x6A2FB8), C(0x6A2FB8), C(0xFFCC33), white, white); c.TorsoBand(0.535f, 0.645f, 0.04f, white); for (int i = 0; i < 9; i++) { float a = i * 40f * Mathf.Deg2Rad; float radius = MeshKit.RadiusAt(TorsoProfile, 0.59f) + 0.04f; c.Add(Ball, c.visual, Mathf.Sin(a) * radius, 0.59f, Mathf.Cos(a) * radius * TorsoDepth, 0.035f, 0.045f, 0.03f, C(0x16161C)); } foreach (float u in new[] { -0.75f, -0.4f, -0.05f, 0.3f, 0.65f }) c.CapeMark(u, 0.9f + (u > 0f ? 0.03f : 0f), C(0x16161C), 0.1f, MeshKit.Arc(0.016f, 0.024f, 0f, 360f, 8)); } },
+            { "cape_royal", c => { var white = C(0xF4F4F4); c.Cape(0.1f, C(0x6A2FB8), C(0x6A2FB8), C(0x6A2FB8), C(0x6A2FB8), C(0x6A2FB8), C(0x6A2FB8), C(0x6A2FB8), C(0xFFCC33), white, white); c.TorsoBand(0.535f, 0.645f, 0.04f, white); for (int i = 0; i < 9; i++) { float a = i * 40f * Mathf.Deg2Rad; float radius = MeshKit.RadiusAt(c.torsoProfile, 0.59f) + 0.04f; c.Add(Ball, c.visual, Mathf.Sin(a) * radius, 0.59f, Mathf.Cos(a) * radius * TorsoDepth, 0.035f, 0.045f, 0.03f, C(0x16161C)); } foreach (float u in new[] { -0.75f, -0.4f, -0.05f, 0.3f, 0.65f }) c.CapeMark(u, 0.9f + (u > 0f ? 0.03f : 0f), C(0x16161C), 0.1f, MeshKit.Arc(0.016f, 0.024f, 0f, 360f, 8)); } },
             { "cape_fire", c => c.Cape(0.2f, C(0xB81E1E), C(0xD62828), C(0xF05A1A), C(0xFF8A1A), C(0xFFB52E), C(0xFFE03C)) },
             { "cape_wings", c => { float[] feather = { 0f, 0f, 0.065f, 0.1f, 0.055f, 0.34f, 0f, 0.47f, -0.055f, 0.34f, -0.065f, 0.1f }; int[] tone = { 0xFFFFFF, 0xF4F8FF, 0xE9F0FF, 0xDDE7FF, 0xD0DDFA }; c.BothSides((s, i) => { for (int k = 0; k < 5; k++) { var go = c.Prism(c.visual, s * (0.06f + k * 0.012f), 0.44f - k * 0.012f, -0.185f - k * 0.008f, 0.018f, C(tone[k]), 8f, 0f, -s * (38f + k * 27f), 0.3f, feather); go.transform.localScale = new Vector3(1f, 1.05f - k * 0.11f, 1f); } c.Add(Ball, c.visual, s * 0.06f, 0.44f, -0.18f, 0.1f, 0.12f, 0.06f, C(0xFFFFFF)); }); c.TorsoBand(0.42f, 0.46f, 0.012f, C(0xFFE9A0), 0.6f); } },
             { "cape_gold", c => { var light = C(0xFFF0A0); c.Cape(0.8f, C(0xFFCC33), C(0xFFCC33), C(0xFFCC33), C(0xFFCC33), C(0xFFCC33), C(0xFFCC33), C(0xFFCC33), C(0xFFCC33), light); c.TorsoBand(0.545f, 0.635f, 0.03f, light, 0.8f); c.CapeMark(0f, 0.42f, light, 0.8f, MeshKit.Star(8, 0.12f, 0.55f)); c.Add(Ball, c.visual, 0f, 0.575f, c.Front(0f, 0.575f) + 0.04f, 0.08f, 0.08f, 0.04f, C(0xE23B3B), 0f, 0f, 0f, 0.8f); } },
@@ -281,7 +283,8 @@ namespace TextRun.Characters
 
         // ---------- Giydirme ----------
 
-        // Karakteri verilen eşya kimlikleriyle giydirir. Önce önceki eşyalar kaldırılır; boş liste çıplak karakterdir.
+        // Karakteri verilen görünümle kurar: eşya kimlikleri ve beden işaretleri ("skin_1", "skin_2", "gender_f").
+        // Önce önceki eşyalar kaldırılır; boş liste açık tenli, erkek bedenli çıplak karakterdir.
         public static void Apply(CharacterAnimator character, IList<string> look)
         {
             if (character == null) return;
@@ -295,11 +298,83 @@ namespace TextRun.Characters
                     UnityEngine.Object.Destroy(t.gameObject);
                 }
             }
-            ResetBase(c);
 
-            if (look == null) return;
-            foreach (var id in look)
-                if (id != null && Registry.TryGetValue(id, out var build)) build(c);
+            int tone = 0;
+            bool female = false, headItem = false;
+            if (look != null)
+            {
+                foreach (var id in look)
+                {
+                    if (id == "skin_1") tone = 1;
+                    else if (id == "skin_2") tone = 2;
+                    else if (id == "gender_f") female = true;
+                    else if (id != null && (id.StartsWith("hat_") || id.StartsWith("hair_"))) headItem = true;
+                }
+            }
+            SetBody(c, CharacterBuilder.SkinTones[tone], female);
+
+            if (look != null)
+                foreach (var id in look)
+                    if (id != null && Registry.TryGetValue(id, out var build)) build(c);
+
+            if (female) FemaleFace(c, !headItem);
+        }
+
+        // Beden: ten rengi her çıplak parçaya işlenir; kadın bedeninde gövde kesiti değişir, kol ve bacaklar incelir
+        static void SetBody(Ctx c, Color skin, bool female)
+        {
+            c.skin = skin;
+            c.torsoProfile = female ? CharacterBuilder.FemaleTorsoProfile : CharacterBuilder.TorsoProfile;
+            c.torso.GetComponent<MeshFilter>().sharedMesh = MeshKit.Lathe(c.torsoProfile);
+
+            float limb = female ? 0.88f : 1f;
+            float shoulder = female ? 0.318f : 0.35f, hip = female ? 0.118f : 0.125f;
+            for (int i = 0; i < 2; i++)
+            {
+                float side = i == 0 ? -1f : 1f;
+                c.arms[i].localPosition = new Vector3(side * shoulder, 0.55f, 0f);
+                c.legs[i].localPosition = new Vector3(side * hip, 0f, 0f);
+                c.arms[i].localScale = new Vector3(limb, 1f, limb);
+                c.legs[i].localScale = new Vector3(limb, 1f, limb);
+                c.Dye(c.armMeshes[i], skin);
+                c.Dye(c.legMeshes[i], skin);
+                c.Dye(c.feet[i], skin);
+                foreach (Transform t in c.arms[i])
+                    if (t.name == "Hand") c.Dye(t, skin);
+            }
+            c.Dye(c.torso, skin);
+
+            Color shade = CharacterBuilder.ShadeOf(skin);
+            c.Dye(c.visual.Find("Neck"), shade);
+            foreach (Transform t in c.head)
+            {
+                if (t.name == "Skull") c.Dye(t, skin);
+                else if (t.name == "Nose" || t.name == "Ear") c.Dye(t, shade);
+                else if (t.name == "Mouth") t.gameObject.SetActive(!female);
+                else if (t.name == "Brow") t.localScale = new Vector3(1f, female ? 0.6f : 1f, 1f);
+            }
+        }
+
+        // Kadın yüzü: kirpikler, dudaklar; kafa eşyası yoksa omuza inen saç
+        static void FemaleFace(Ctx c, bool withHair)
+        {
+            var lash = C(0x16100E);
+            var lip = C(0xC8324A);
+            c.BothSides((s, i) =>
+            {
+                c.Box(c.head, s * 0.122f, 0.128f, 0.292f, 0.16f, 0.022f, 0.02f, 0.008f, lash, 0f, 0f, s * -8f);
+                c.Box(c.head, s * 0.205f, 0.14f, 0.272f, 0.06f, 0.02f, 0.02f, 0.008f, lash, 0f, s * 20f, s * 38f);
+                c.Box(c.head, s * 0.185f, 0.152f, 0.278f, 0.045f, 0.018f, 0.02f, 0.007f, lash, 0f, s * 16f, s * 62f);
+            });
+            c.Add(Ball, c.head, 0f, -0.112f, 0.274f, 0.115f, 0.036f, 0.035f, lip);
+            c.Add(Ball, c.head, 0f, -0.142f, 0.272f, 0.095f, 0.044f, 0.035f, lip);
+
+            if (!withHair) return;
+            var hair = C(0x3A2412);
+            c.Lathe(c.head, 0f, 0f, -0.01f, hair, 0.2f, 0.3f, 0.13f, 0.316f, 0.17f, 0.3f, 0.26f, 0.2f, 0.34f, 0.08f, 0.365f, 0f, 0.367f);
+            c.Box(c.head, 0f, -0.07f, -0.15f, 0.62f, 0.56f, 0.34f, 0.15f, hair, 0f, 0f, 0f, 0.2f);
+            c.BothSides((s, i) => c.Box(c.head, s * 0.29f, -0.05f, -0.03f, 0.1f, 0.5f, 0.3f, 0.045f, hair, 0f, 0f, 0f, 0.2f));
+            c.Box(c.head, 0.08f, 0.2f, 0.24f, 0.36f, 0.09f, 0.1f, 0.04f, hair, 0f, 0f, -14f, 0.2f);
         }
 
         public static string[] AllIds()
@@ -329,17 +404,6 @@ namespace TextRun.Characters
             c.legMeshes[0] = a.leftLeg.Find("LeftLegMesh"); c.legMeshes[1] = a.rightLeg.Find("RightLegMesh");
             c.feet[0] = a.leftLeg.Find("LeftFoot"); c.feet[1] = a.rightLeg.Find("RightFoot");
             return c;
-        }
-
-        static void ResetBase(Ctx c)
-        {
-            c.Dye(c.torso, Skin);
-            for (int i = 0; i < 2; i++)
-            {
-                c.Dye(c.armMeshes[i], Skin);
-                c.Dye(c.legMeshes[i], Skin);
-                c.Dye(c.feet[i], Skin);
-            }
         }
     }
 }

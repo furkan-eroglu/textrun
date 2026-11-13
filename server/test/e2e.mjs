@@ -498,6 +498,15 @@ await test('profil: ad secilir, yarista gorunur, yarisi bitirince XP verilir ve 
   assert.equal(refreshed.profile.diamonds, 900 - refreshed.shop.refreshCost);
   assert.ok(Math.abs(refreshed.shop.secondsLeft - first.shop.secondsLeft) < 120, 'yenileme geri sayimi sifirlamaz');
 
+  // Beden: ten rengi ve cinsiyet kaydedilir, gecersiz deger reddedilir
+  assert.equal(inventory.skin, 0);
+  assert.equal(inventory.gender, 'm');
+  const body = await p.rpc('set_body', { skin: 2, gender: 'f' });
+  assert.equal(body.skin, 2);
+  assert.equal(body.gender, 'f');
+  await assert.rejects(() => p.rpc('set_body', { skin: 7, gender: 'f' }), /bad_body/);
+  assert.equal((await p.rpc('get_inventory', {})).gender, 'f', 'beden kalici');
+
   // Gunluk reklam sandigi: bir kez acilir, sonra geri sayim baslar
   assert.equal(refreshed.profile.adChestSeconds, 0);
   const ad = await p.rpc('claim_ad_chest', {});

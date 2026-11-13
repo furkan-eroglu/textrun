@@ -229,7 +229,11 @@ namespace TextRun.Game
             y += 44f;
 
             if (inventoryTab == ChestTab) DrawChestList(width, y);
-            else DrawCategory(width, height, y, Categories[inventoryTab]);
+            else
+            {
+                DrawCategory(width, height, y, Categories[inventoryTab]);
+                DrawBodyStrip(width, height - 116f);
+            }
 
             if (UiKit.SecondaryButton(new Rect(24f, height - 64f, width - 48f, 50f), T("back"), 20)) { LeaveInventoryTab(); screen = Page.Menu; }
         }
@@ -275,11 +279,11 @@ namespace TextRun.Game
             float cellHeight = cellWidth + 34f;
             int rows = Mathf.Max(1, Mathf.CeilToInt(owned.Count / (float)GridColumns));
             float gridHeight = rows * (cellHeight + 6f);
-            float previewHeight = Mathf.Clamp(height - 72f - y - gridHeight - 12f, 110f, 210f);
+            float previewHeight = Mathf.Clamp(height - 124f - y - gridHeight - 12f, 100f, 210f);
 
             var box = new Rect(16f, y, width - 32f, previewHeight);
             UiKit.Card(box, new Color(1f, 1f, 1f, 0.06f), 18f);
-            preview.Show(inventory?.equipped, category == "cape" ? 180f : 0f);
+            preview.Show(FullLook(), category == "cape" ? 180f : 0f);
             if (preview.Texture != null) GUI.DrawTexture(new Rect(box.center.x - previewHeight * 0.4f, box.y, previewHeight * 0.8f, previewHeight), preview.Texture, ScaleMode.ScaleToFit, true);
             y += previewHeight + 10f;
 
@@ -308,6 +312,54 @@ namespace TextRun.Game
                 }
                 GUI.Label(new Rect(cell.x - 4f, icon.yMax + 3f, cellWidth + 8f, 32f), ItemName(item.tr, item.en), tinyNameStyle);
                 if (GUI.Button(cell, GUIContent.none, GUIStyle.none)) { sound.Click(); ToggleWear(item); }
+            }
+        }
+
+        // Karakterin tam görünümü: takılı eşyalar + beden işaretleri (ten rengi, cinsiyet)
+        string[] FullLook()
+        {
+            var look = new List<string>(inventory?.equipped ?? new string[0]);
+            if (inventory != null)
+            {
+                if (inventory.skin > 0) look.Add("skin_" + inventory.skin);
+                if (inventory.gender == "f") look.Add("gender_f");
+            }
+            return look.ToArray();
+        }
+
+        // Envanterin altındaki sabit şerit: üç ten rengi ve cinsiyet seçimi
+        void DrawBodyStrip(float width, float y)
+        {
+            if (inventory == null) return;
+            for (int tone = 0; tone < Characters.CharacterBuilder.SkinTones.Length; tone++)
+            {
+                var spot = new Rect(18f + tone * 46f, y + 3f, 38f, 38f);
+                if (tone == inventory.skin) UiKit.Card(new Rect(spot.x - 3f, spot.y - 3f, spot.width + 6f, spot.height + 6f), Color.white, 22f);
+                UiKit.Card(new Rect(spot.x - 1f, spot.y - 1f, spot.width + 2f, spot.height + 2f), new Color(0f, 0f, 0f, 0.5f), 20f);
+                UiKit.Card(spot, Characters.CharacterBuilder.SkinTones[tone], 19f);
+                if (GUI.Button(spot, GUIContent.none, GUIStyle.none) && tone != inventory.skin) { sound.Click(); SetBody(tone, inventory.gender); }
+            }
+
+            float left = 18f + 3f * 46f + 8f;
+            int current = inventory.gender == "f" ? 1 : 0;
+            int picked = UiKit.Segmented(new Rect(left, y, width - 16f - left, 44f), new[] { T("male"), T("female") }, current, 16);
+            if (picked >= 0 && picked != current) SetBody(inventory.skin, picked == 1 ? "f" : "m");
+        }
+
+        // Ekran hemen güncellenir, sunucu arkada kaydeder (hata olursa envanter yeniden okunur)
+        async void SetBody(int skin, string gender)
+        {
+            if (inventory == null || net == null) return;
+            inventory.skin = skin;
+            inventory.gender = gender;
+            try
+            {
+                await net.SetBodyAsync(skin, gender);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("Beden kaydedilemedi: " + e.Message);
+                LoadInventory();
             }
         }
 
@@ -584,6 +636,8 @@ namespace TextRun.Game
         }
 
         public void DevSetAdChestTimer(int seconds) { profile = new ProfileDto { name = "Furkan", level = 4, gold = 1250, diamonds = 320, xpIntoLevel = 110, xpForNext = 220, adChestSeconds = seconds }; }
+
+        public void DevSetBody(int skin, string gender) { if (inventory != null) { inventory.skin = skin; inventory.gender = gender; } }
 
         public void DevMarkNew(params string[] ids) { foreach (var id in ids) MarkNewItem(id); }
 

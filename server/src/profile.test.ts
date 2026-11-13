@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CATALOG, SHOP_DIAMOND_CHEST, SHOP_GOLD_CHEST, SHOP_REFRESH_DIAMONDS, itemById, priceOf, rollShop, shopDay, shopSecondsLeft } from "./economy.ts";
 import {
-  SHOP_DIAMOND_CHEST_SLOT, SHOP_GOLD_CHEST_SLOT, adChestReady, applyRace, buyShopSlot, claimAdChest, cleanName, emptyProfile, ensureShop, equipItem, levelOf, lookOf, openChest, racePaysXp, refreshShop,
+  SHOP_DIAMOND_CHEST_SLOT, SHOP_GOLD_CHEST_SLOT, adChestReady, applyRace, buyShopSlot, claimAdChest, cleanName, raceLookOf, setBody, emptyProfile, ensureShop, equipItem, levelOf, lookOf, openChest, racePaysXp, refreshShop,
   unequipCategory, xpForNextLevel, xpForRace,
 } from "./profile.ts";
 
@@ -219,4 +219,18 @@ test("reklam sandigi: gunde bir kez, gece 00.00'da (TR) yenilenir; esya ya da al
   const midnightTr = Date.UTC(2026, 10, 10, 21, 0, 0);
   assert.equal(claimAdChest(profile, midnightTr - 1000), null);
   assert.ok(claimAdChest(profile, midnightTr + 1000), "gece 00.00'dan sonra yeniden acilir");
+});
+
+test("beden: ten rengi ve cinsiyet dogrulanir, yaris gorunumune islenir", () => {
+  const profile = emptyProfile();
+  assert.deepEqual(raceLookOf(profile), [], "varsayilan beden gonderilmez");
+  assert.equal(setBody(profile, 3, "m"), false);
+  assert.equal(setBody(profile, 1.5, "m"), false);
+  assert.equal(setBody(profile, 1, "x"), false);
+  assert.equal(setBody(profile, "1", "f"), false);
+  assert.equal(setBody(profile, 2, "f"), true);
+  profile.items = ["hat_cap"];
+  equipItem(profile, "hat_cap");
+  assert.deepEqual(raceLookOf(profile), ["hat_cap", "skin_2", "gender_f"]);
+  assert.deepEqual(lookOf(profile), ["hat_cap"], "takili esya listesi beden isaretlerini icermez");
 });

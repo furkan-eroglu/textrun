@@ -14,6 +14,16 @@ namespace TextRun.Characters
         static readonly Color EyeWhite = new Color(0.97f, 0.97f, 0.97f);
         static readonly Color Dark = new Color(0.12f, 0.1f, 0.1f);
 
+        // Ten renkleri: 0 açık (varsayılan), 1 kahverengi, 2 koyu. Gölge tonu burun, kulak ve boyunda kullanılır.
+        public static readonly Color[] SkinTones = { Skin, new Color(0.70f, 0.48f, 0.34f), new Color(0.36f, 0.24f, 0.18f) };
+        public static Color ShadeOf(Color skin) => new Color(skin.r * 0.91f, skin.g * 0.87f, skin.b * 0.86f);
+
+        // Kadın gövdesi: daha dar omuz ve bel, hafif geniş kalça
+        public static readonly float[] FemaleTorsoProfile =
+        {
+            0f, -0.03f, 0.13f, -0.025f, 0.212f, 0f, 0.236f, 0.06f, 0.228f, 0.14f, 0.186f, 0.29f, 0.204f, 0.4f, 0.23f, 0.5f, 0.222f, 0.585f, 0.17f, 0.625f, 0.085f, 0.645f, 0f, 0.65f
+        };
+
         // Kesitler: (yarıçap, yükseklik) çiftleri, aşağıdan yukarı. Gövde önden arkaya TorsoDepth oranında basıktır.
         public const float TorsoDepth = 0.6f;
         public static readonly float[] TorsoProfile =

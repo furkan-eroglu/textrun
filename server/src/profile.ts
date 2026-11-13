@@ -20,7 +20,12 @@ export interface Profile {
   diamonds: number;
   shop: ShopState | null; // bugünün mağazası (ilk açılışta kurulur)
   adDay: number; // reklam sandığının en son açıldığı mağaza günü (0 = hiç)
+  skin: number; // ten rengi: 0 açık, 1 kahverengi, 2 koyu
+  gender: Gender; // beden tipi: "m" erkek, "f" kadın
 }
+
+export type Gender = "m" | "f";
+export const SKIN_TONES = 3;
 
 export interface ShopState {
   day: number; // mağaza günü (economy.shopDay)
@@ -43,7 +48,7 @@ export function emptyChests(): Chests {
 }
 
 export function emptyProfile(): Profile {
-  return { name: null, xp: 0, races: 0, wins: 0, gold: 0, chests: emptyChests(), items: [], equipped: {}, diamonds: START_DIAMONDS, shop: null, adDay: 0 };
+  return { name: null, xp: 0, races: 0, wins: 0, gold: 0, chests: emptyChests(), items: [], equipped: {}, diamonds: START_DIAMONDS, shop: null, adDay: 0, skin: 0, gender: "m" };
 }
 
 // Seviye 1'den 2'ye 100 XP; her seviyede gereken miktar 40 artar (100, 140, 180, ...)
@@ -238,4 +243,23 @@ export function claimAdChest(profile: Profile, now: number, rng: () => number = 
   if (opening.duplicate) profile.gold += opening.goldRefund;
   else profile.items.push(opening.itemId);
   return opening;
+}
+
+// ---------- Beden: ten rengi ve cinsiyet (yalnızca görünüm) ----------
+
+// Geçerliyse ten rengini ve cinsiyeti ayarlar; değilse false döner.
+export function setBody(profile: Profile, skin: unknown, gender: unknown): boolean {
+  if (typeof skin !== "number" || Math.floor(skin) !== skin || skin < 0 || skin >= SKIN_TONES) return false;
+  if (gender !== "m" && gender !== "f") return false;
+  profile.skin = skin;
+  profile.gender = gender;
+  return true;
+}
+
+// Yarışta diğer oyunculara giden görünüm: takılı eşyalar + beden işaretleri (varsayılanlar gönderilmez)
+export function raceLookOf(profile: Profile): string[] {
+  const look = lookOf(profile);
+  if (profile.skin > 0) look.push("skin_" + profile.skin);
+  if (profile.gender === "f") look.push("gender_f");
+  return look;
 }

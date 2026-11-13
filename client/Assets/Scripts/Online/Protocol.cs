@@ -171,6 +171,8 @@ namespace TextRun.Online
     {
         public ItemDto[] items;
         public string[] equipped; // takılı eşya kimlikleri
+        public int skin;          // ten rengi: 0 açık, 1 kahverengi, 2 koyu
+        public string gender;     // "m" erkek, "f" kadın
     }
 
     // Mağaza: günün eşya yuvası

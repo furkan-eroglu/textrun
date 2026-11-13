@@ -5,7 +5,7 @@ import { isSupportedLang } from "./words.ts";
 import { itemById } from "./economy.ts";
 import type { ChestTier } from "./economy.ts";
 import { cleanName, isChestTier } from "./profile.ts";
-import { AD_TIER, claimAdChestFor, equipFor, inventoryView, isRegistered, openChestFor, profileView, readProfile, saveProfile, shopFor, shopView } from "./profileStore.ts";
+import { AD_TIER, claimAdChestFor, equipFor, inventoryView, setBodyFor, isRegistered, openChestFor, profileView, readProfile, saveProfile, shopFor, shopView } from "./profileStore.ts";
 
 export function pingRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
   return JSON.stringify({ ok: true, message: "TextRun sunucusu calisiyor", time: Date.now() });
@@ -179,7 +179,7 @@ export function setNameRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk:
 // Sahip olunan eşyalar (envanter ekranı). Misafirin envanteri yoktur.
 export function getInventoryRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
   if (!ctx.userId) throw new Error("giris gerekli");
-  if (!isRegistered(nk, ctx.userId)) return JSON.stringify({ items: [], equipped: [] });
+  if (!isRegistered(nk, ctx.userId)) return JSON.stringify({ items: [], equipped: [], skin: 0, gender: "m" });
   return JSON.stringify(inventoryView(readProfile(nk, ctx.userId).profile));
 }
 
@@ -210,6 +210,21 @@ function shopRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime
   if (result.outcome === "bad_slot") fail("bad_slot", CODE_INVALID_ARGUMENT);
   if (result.outcome !== "ok") fail(result.outcome, CODE_FAILED_PRECONDITION);
   return JSON.stringify({ shop: shopView(result.profile, Date.now()), profile: profileView(result.profile, false) });
+}
+
+// Ten rengi (0 açık, 1 kahverengi, 2 koyu) ve cinsiyet ("m" | "f"). Geçersizse "bad_body", misafir "guest_account".
+export function setBodyRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+  if (!ctx.userId) throw new Error("giris gerekli");
+  let request: { skin?: unknown; gender?: unknown };
+  try {
+    request = JSON.parse(payload);
+  } catch (e) {
+    throw new Error("gecersiz istek");
+  }
+  if (!isRegistered(nk, ctx.userId)) fail("guest_account", CODE_INVALID_ARGUMENT);
+  const profile = setBodyFor(nk, logger, ctx.userId, request.skin, request.gender);
+  if (!profile) fail("bad_body", CODE_INVALID_ARGUMENT);
+  return JSON.stringify(inventoryView(profile!));
 }
 
 // Günlük reklam sandığı: günde bir kez (gece 00.00'da yenilenir). Yanıt open_chest ile aynı biçimdedir.
@@ -295,6 +310,7 @@ export function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk:
   initializer.registerRpc("shop_buy", shopBuyRpc);
   initializer.registerRpc("shop_refresh", shopRefreshRpc);
   initializer.registerRpc("claim_ad_chest", claimAdChestRpc);
+  initializer.registerRpc("set_body", setBodyRpc);
   initializer.registerMatch("race", { matchInit, matchJoinAttempt, matchJoin, matchLeave, matchLoop, matchTerminate, matchSignal });
   logger.info("TextRun modulu yuklendi");
 }

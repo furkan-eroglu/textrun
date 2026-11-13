@@ -105,6 +105,14 @@ namespace TextRun.Game
             controller.DevMarkNew("hat_pirate", "cape_wings");
             yield return new WaitForSeconds(0.8f);
             yield return Shot("1j-inventory-head");
+            controller.DevShowInventory(1);
+            controller.DevSetBody(1, "f");
+            yield return new WaitForSeconds(0.8f);
+            yield return Shot("1j-inventory-female-brown");
+            controller.DevShowInventory(3);
+            controller.DevSetBody(2, "m");
+            yield return new WaitForSeconds(0.8f);
+            yield return Shot("1j-inventory-male-dark");
             controller.DevShowInventory(4);
             yield return new WaitForSeconds(2.0f);
             yield return Shot("1j-inventory-cape");

@@ -964,7 +964,7 @@ namespace TextRun.Game
             float stageTop = top + 170f;
             float stageHeight = Mathf.Clamp(height - stageTop - 240f - (devBox ? 104f : 20f) - 8f, 100f, 210f);
             if (!profile.guest && inventory == null && net != null && Time.realtimeSinceStartup - inventoryTriedAt > 5f) LoadInventory();
-            preview.Show(profile.guest ? null : inventory?.equipped);
+            preview.Show(profile.guest ? null : FullLook());
             var stage = new Rect(width / 2f - stageHeight * 0.4f, stageTop, stageHeight * 0.8f, stageHeight);
             UiKit.Card(new Rect(stage.center.x - stageHeight * 0.2f, stage.yMax - 20f, stageHeight * 0.4f, 10f), new Color(0f, 0f, 0f, 0.30f), 5f); // ayak altı gölge
             if (preview.Texture != null) GUI.DrawTexture(stage, preview.Texture, ScaleMode.ScaleToFit, true);

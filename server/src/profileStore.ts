@@ -2,7 +2,7 @@
 import { AD_CHEST_TIER, CHEST_TIERS, START_GOLD, SHOP_DIAMOND_CHEST, SHOP_GOLD_CHEST, SHOP_REFRESH_DIAMONDS, itemById, priceOf, shopSecondsLeft } from "./economy.ts";
 import type { ChestOpening, ChestTier } from "./economy.ts";
 import {
-  SHOP_DIAMOND_CHEST_SLOT, SHOP_GOLD_CHEST_SLOT, adChestReady, applyRace, buyShopSlot, claimAdChest, emptyProfile, ensureShop, equipItem, levelOf, lookOf, openChest, refreshShop, unequipCategory,
+  SHOP_DIAMOND_CHEST_SLOT, SHOP_GOLD_CHEST_SLOT, adChestReady, applyRace, buyShopSlot, claimAdChest, emptyProfile, ensureShop, equipItem, levelOf, lookOf, openChest, raceLookOf, refreshShop, setBody, unequipCategory,
 } from "./profile.ts";
 import type { Profile, Reward, ShopOutcome } from "./profile.ts";
 
@@ -28,6 +28,7 @@ function parse(value: { [key: string]: any } | undefined): Profile {
   if (Array.isArray(value.items)) profile.items = value.items.filter((id: unknown) => typeof id === "string" && !!itemById(id as string));
   if (typeof value.diamonds === "number") profile.diamonds = value.diamonds;
   if (typeof value.adDay === "number") profile.adDay = value.adDay;
+  setBody(profile, value.skin, value.gender); // geçersiz ya da eksikse varsayılan kalır
   const shop = value.shop;
   if (shop && typeof shop === "object" && typeof shop.day === "number" && Array.isArray(shop.items) && Array.isArray(shop.bought)) {
     const items = shop.items.filter((id: unknown) => typeof id === "string" && !!itemById(id as string));
@@ -113,6 +114,8 @@ export function inventoryView(profile: Profile) {
       return { id: entry.id, category: entry.category, rarity: entry.rarity, tr: entry.tr, en: entry.en };
     }),
     equipped: lookOf(profile),
+    skin: profile.skin,
+    gender: profile.gender,
   };
 }
 
@@ -157,7 +160,7 @@ export function awardRace(
 // Oyuncunun takılı eşyaları (yarış odasında herkese gösterilir). Okunamazsa boş döner.
 export function lookFor(nk: nkruntime.Nakama, userId: string): string[] {
   try {
-    return lookOf(readProfile(nk, userId).profile);
+    return raceLookOf(readProfile(nk, userId).profile);
   } catch (e) {
     return [];
   }
@@ -246,3 +249,18 @@ export function claimAdChestFor(nk: nkruntime.Nakama, logger: nkruntime.Logger, 
 }
 
 export const AD_TIER = AD_CHEST_TIER;
+
+// Ten rengini ve cinsiyeti kaydeder. Değerler geçersizse null döner.
+export function setBodyFor(nk: nkruntime.Nakama, logger: nkruntime.Logger, userId: string, skin: unknown, gender: unknown): Profile | null {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const stored = readProfile(nk, userId);
+      if (!setBody(stored.profile, skin, gender)) return null;
+      saveProfile(nk, userId, stored);
+      return stored.profile;
+    } catch (e) {
+      logger.warn("Beden yazilamadi (deneme %d): %s", attempt + 1, String(e));
+    }
+  }
+  throw new Error("beden kaydedilemedi");
+}

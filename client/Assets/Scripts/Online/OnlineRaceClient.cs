@@ -379,6 +379,13 @@ namespace TextRun.Online
             return JsonUtility.FromJson<ShopResultDto>(rpc.Payload);
         }
 
+        // Ten rengini (0-2) ve cinsiyeti ("m" | "f") kaydeder; güncel envanteri döner
+        public async Task<InventoryDto> SetBodyAsync(int skin, string gender)
+        {
+            var rpc = await client.RpcAsync(session, "set_body", "{\"skin\":" + skin + ",\"gender\":\"" + gender + "\"}");
+            return JsonUtility.FromJson<InventoryDto>(rpc.Payload);
+        }
+
         // Günlük reklam sandığı (günde bir kez). Bugün açıldıysa istisna: IsError(e, "ad_not_ready")
         public async Task<ChestResultDto> ClaimAdChestAsync()
         {
