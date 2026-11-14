@@ -348,6 +348,12 @@ namespace TextRun.EditorTools
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
+
+            // Uygulama simgesi (Assets/Icon/app_icon.png, tools ile üretilir)
+            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Icon/app_icon.png");
+            if (icon != null) PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
+            else Debug.LogWarning("Uygulama simgesi bulunamadi: Assets/Icon/app_icon.png");
+
             // Geliştirme sunucusu http/ws kullanır; canlı sürümde https/wss olacak ve bu ayar kapatılacak.
             PlayerSettings.insecureHttpOption = InsecureHttpOption.AlwaysAllowed;
 

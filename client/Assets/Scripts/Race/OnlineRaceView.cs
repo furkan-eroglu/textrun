@@ -37,6 +37,7 @@ namespace TextRun.Race
         string[] lookKeys;
         bool racing;
         int localSlot = 2;
+        int ownPredicted; // oyuncunun yerelde ulaştığı kelime (sunucu cevabı gelmeden karakteri ilerletmek için)
         float cameraX;
         Transform trackRoot;
 
@@ -113,6 +114,7 @@ namespace TextRun.Race
                 runners[i].state = CharacterState.Idle;
             }
             racing = false;
+            ownPredicted = 0;
         }
 
         // Odadaki oyuncuları yerleştirir (slot = kulvar). Boş slotlar gizlenir.
@@ -153,10 +155,22 @@ namespace TextRun.Race
             foreach (var p in players)
             {
                 if (p.slot < 0 || p.slot >= laneCount) continue;
+                // Kendi karakterin: sunucudan gelen değer yereldeki tahminin gerisindeyse tahmin geçerlidir (gecikme hissedilmez)
+                int index = p.slot == localSlot ? Mathf.Max(p.index, ownPredicted) : p.index;
                 targetZ[p.slot] = p.finished && !p.disqualified
                     ? trackLength + FinishOvershoot
-                    : trackLength * Mathf.Clamp01((float)p.index / wordCount);
+                    : trackLength * Mathf.Clamp01((float)index / wordCount);
             }
+        }
+
+        // Oyuncu bir kelimeyi doğru yazınca çağrılır: karakter sunucu cevabını beklemeden ilerler.
+        // exact=true: sunucu yereldeki ilerlemeyi düzeltti, tahmin o değere çekilir.
+        public void PredictOwnProgress(int index, int wordCount, bool exact = false)
+        {
+            if (wordCount <= 0) return;
+            ownPredicted = exact ? index : Mathf.Max(ownPredicted, index);
+            float z = trackLength * Mathf.Clamp01((float)ownPredicted / wordCount);
+            if (exact || z > targetZ[localSlot]) targetZ[localSlot] = z;
         }
 
         public void SetRacing(bool value)

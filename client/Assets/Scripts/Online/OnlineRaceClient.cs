@@ -358,6 +358,13 @@ namespace TextRun.Online
             return JsonUtility.FromJson<InventoryDto>(rpc.Payload);
         }
 
+        // Liderlik tablosu: seviyesi en yüksek ilk 10 oyuncu ve kendi sıran
+        public async Task<LeaderboardDto> GetLeaderboardAsync()
+        {
+            var rpc = await client.RpcAsync(session, "get_leaderboard", "{}");
+            return JsonUtility.FromJson<LeaderboardDto>(rpc.Payload);
+        }
+
         // Mağaza: günün eşyaları, fiyatlar ve bakiyeler
         public async Task<ShopResultDto> GetShopAsync()
         {

@@ -175,6 +175,24 @@ namespace TextRun.Online
         public string gender;     // "m" erkek, "f" kadın
     }
 
+    // Liderlik tablosu satırı
+    [Serializable]
+    public class LeaderRowDto
+    {
+        public int rank;
+        public string name;
+        public int level;
+        public int xp;
+        public bool me;
+    }
+
+    [Serializable]
+    public class LeaderboardDto
+    {
+        public LeaderRowDto[] top;
+        public LeaderRowDto me; // oyuncunun kendi sırası (tabloda yoksa rank 0 gelir)
+    }
+
     // Mağaza: günün eşya yuvası
     [Serializable]
     public class ShopSlotDto

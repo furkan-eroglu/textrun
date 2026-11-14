@@ -15,7 +15,7 @@ namespace TextRun.Game
     // burada yalnızca yazma girişi alınır, sunucudan gelenler gösterilir.
     public partial class OnlineGameController : MonoBehaviour
     {
-        enum Page { Connecting, Welcome, Login, NameEntry, Settings, Menu, PrivateMenu, JoinCode, RoomLobby, Searching, MatchFound, Countdown, Racing, Results, Error, Inventory, Shop }
+        enum Page { Connecting, Welcome, Login, NameEntry, Settings, Menu, PrivateMenu, JoinCode, RoomLobby, Searching, MatchFound, Countdown, Racing, Results, Error, Inventory, Shop, Leaderboard }
 
         const string LanguageKey = "textrun.language";
 
@@ -338,7 +338,7 @@ namespace TextRun.Game
         void OnClosed(string reason)
         {
             if (screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.Connecting || screen == Page.Error
-                || screen == Page.Welcome || screen == Page.Login || screen == Page.NameEntry || screen == Page.Settings || screen == Page.Results || screen == Page.Inventory || screen == Page.Shop) return;
+                || screen == Page.Welcome || screen == Page.Login || screen == Page.NameEntry || screen == Page.Settings || screen == Page.Results || screen == Page.Inventory || screen == Page.Shop || screen == Page.Leaderboard) return;
 
             // Başlamış yarış sürerken kopma: hata ekranı yerine yarışa geri dönülür
             if (screen == Page.MatchFound || screen == Page.Countdown || screen == Page.Racing)
@@ -629,6 +629,7 @@ namespace TextRun.Game
             if (TypingSession.ShouldResync(ack.index, typing.CurrentIndex, pendingAcks, ack.kind == AckKind.Wrong))
             {
                 typing.SyncTo(ack.index);
+                view.PredictOwnProgress(ack.index, wordCount, true); // sunucu düzeltti: karakter de geri alınır
                 pendingAcks = 0;
                 BeginInput();
             }
@@ -810,6 +811,7 @@ namespace TextRun.Game
             // Yerelde hemen ilerletiriz (gecikme hissedilmesin); sunucu cevabı (ACK) gerekirse düzeltir.
             typing.Submit(word, Time.realtimeSinceStartup);
             typing.RegisterMistakes(mistakes);
+            view.PredictOwnProgress(typing.CurrentIndex, wordCount); // karakter sunucu cevabını beklemeden ilerler
             net.SubmitWord(word, mistakes);
             pendingAcks++;
 
@@ -871,7 +873,7 @@ namespace TextRun.Game
             float height = UnityEngine.Screen.height / scale;
             float top = (UnityEngine.Screen.height - UnityEngine.Screen.safeArea.yMax) / scale + 6f;
 
-            if (screen == Page.Connecting || screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.RoomLobby || screen == Page.Searching || screen == Page.MatchFound || screen == Page.Error || screen == Page.Inventory || screen == Page.Shop)
+            if (screen == Page.Connecting || screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.RoomLobby || screen == Page.Searching || screen == Page.MatchFound || screen == Page.Error || screen == Page.Inventory || screen == Page.Shop || screen == Page.Leaderboard)
                 backdrop.Draw(width, height);
 
             switch (screen)
@@ -885,6 +887,7 @@ namespace TextRun.Game
                 case Page.Menu: DrawMenu(width, height, top); break;
                 case Page.Inventory: DrawInventory(width, height, top); break;
                 case Page.Shop: DrawShop(width, height, top); break;
+                case Page.Leaderboard: DrawLeaderboard(width, height, top); break;
                 case Page.PrivateMenu: DrawPrivateMenu(width, height, top); break;
                 case Page.JoinCode: DrawJoinCode(width, height, top); break;
                 case Page.RoomLobby: DrawRoomLobby(width, height, top); break;
@@ -962,7 +965,7 @@ namespace TextRun.Game
             // Oyuncunun karakteri (giydikleriyle) ve yanında günlük reklam sandığı
             bool devBox = Application.isEditor || ServerSettings.DevTools;
             float stageTop = top + 170f;
-            float stageHeight = Mathf.Clamp(height - stageTop - 240f - (devBox ? 104f : 20f) - 8f, 100f, 210f);
+            float stageHeight = Mathf.Clamp(height - stageTop - 298f - (devBox ? 104f : 20f) - 8f, 100f, 210f);
             if (!profile.guest && inventory == null && net != null && Time.realtimeSinceStartup - inventoryTriedAt > 5f) LoadInventory();
             preview.Show(profile.guest ? null : FullLook());
             var stage = new Rect(width / 2f - stageHeight * 0.4f, stageTop, stageHeight * 0.8f, stageHeight);
@@ -1000,7 +1003,10 @@ namespace TextRun.Game
                 if (UiKit.SecondaryButton(inventoryButton, T("inventory"), 19)) OpenInventory();
                 if (news > 0) DrawBadge(new Rect(inventoryButton.xMax - 20f, inventoryButton.y - 8f, 26f, 26f), news, tabStyle);
                 if (UiKit.SecondaryButton(new Rect(24f + halfWidth + 12f, y, halfWidth, 50f), T("shop"), 19)) OpenShop();
+                y += 58f;
             }
+
+            if (UiKit.SecondaryButton(new Rect(24f, y, width - 48f, 50f), T("leaderboard"), 19)) OpenLeaderboard();
 
             // Geliştirme: telefonda sunucu adresini (bilgisayarın yerel IP'si) girmek için
             if (devBox)

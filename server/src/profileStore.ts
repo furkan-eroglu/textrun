@@ -5,6 +5,7 @@ import {
   SHOP_DIAMOND_CHEST_SLOT, SHOP_GOLD_CHEST_SLOT, adChestReady, applyRace, buyShopSlot, claimAdChest, emptyProfile, ensureShop, equipItem, levelOf, lookOf, openChest, raceLookOf, refreshShop, setBody, unequipCategory,
 } from "./profile.ts";
 import type { Profile, Reward, ShopOutcome } from "./profile.ts";
+import { recordXp } from "./leaderboard.ts";
 
 const COLLECTION = "profile";
 const KEY = "main";
@@ -149,6 +150,7 @@ export function awardRace(
       const stored = readProfile(nk, userId);
       const reward = applyRace(stored.profile, rank, status);
       saveProfile(nk, userId, stored);
+      recordXp(nk, logger, userId, stored.profile); // liderlik tablosu
       return reward;
     } catch (e) {
       logger.warn("XP yazilamadi (deneme %d): %s", attempt + 1, String(e));

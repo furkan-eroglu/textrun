@@ -498,6 +498,14 @@ await test('profil: ad secilir, yarista gorunur, yarisi bitirince XP verilir ve 
   assert.equal(refreshed.profile.diamonds, 900 - refreshed.shop.refreshCost);
   assert.ok(Math.abs(refreshed.shop.secondsLeft - first.shop.secondsLeft) < 120, 'yenileme geri sayimi sifirlamaz');
 
+  // Liderlik tablosu: yaris bitiren oyuncu adiyla ve seviyesiyle listede, kendi sirasi da doner
+  const board = await p.rpc('get_leaderboard', {});
+  assert.ok(board.top.length >= 1 && board.top.length <= 10);
+  assert.ok(board.me && board.me.rank >= 1 && board.me.level === levelled.level, 'kendi sirasi ve seviyesi');
+  for (let i = 1; i < board.top.length; i++) assert.ok(board.top[i - 1].xp >= board.top[i].xp, 'XP azalan sirada');
+  const mine = board.top.find((row) => row.me);
+  if (mine) assert.equal(mine.name, board.me.name);
+
   // Beden: ten rengi ve cinsiyet kaydedilir, gecersiz deger reddedilir
   assert.equal(inventory.skin, 0);
   assert.equal(inventory.gender, 'm');

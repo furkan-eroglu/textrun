@@ -161,6 +161,9 @@ namespace TextRun.Game
             yield return new WaitForSeconds(0.3f);
             yield return Shot("1i-menu-ad-timer");
 
+            controller.DevShowLeaderboard();
+            yield return new WaitForSeconds(0.4f);
+            yield return Shot("1p-leaderboard");
             controller.DevShowShop();
             yield return new WaitForSeconds(0.8f);
             yield return Shot("1o-shop");

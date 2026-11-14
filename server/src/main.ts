@@ -5,6 +5,7 @@ import { isSupportedLang } from "./words.ts";
 import { itemById } from "./economy.ts";
 import type { ChestTier } from "./economy.ts";
 import { cleanName, isChestTier } from "./profile.ts";
+import { createLeaderboard, leaderboardView, recordXp } from "./leaderboard.ts";
 import { AD_TIER, claimAdChestFor, equipFor, inventoryView, setBodyFor, isRegistered, openChestFor, profileView, readProfile, saveProfile, shopFor, shopView } from "./profileStore.ts";
 
 export function pingRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
@@ -173,7 +174,16 @@ export function setNameRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk:
   const stored = readProfile(nk, ctx.userId);
   stored.profile.name = name;
   saveProfile(nk, ctx.userId, stored);
+  recordXp(nk, logger, ctx.userId, stored.profile); // liderlik tablosundaki ad da güncellenir
   return JSON.stringify(profileView(stored.profile, false));
+}
+
+// Liderlik tablosu: seviyesi en yüksek ilk 10 oyuncu ve isteyenin kendi sırası. Misafir de görebilir (kendi sırası olmaz).
+// Dönen değer: { top: [{ rank, name, level, xp, me }], me: { rank, name, level, xp, me } | null }
+export function getLeaderboardRpc(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+  if (!ctx.userId) throw new Error("giris gerekli");
+  if (isRegistered(nk, ctx.userId)) recordXp(nk, logger, ctx.userId, readProfile(nk, ctx.userId).profile); // kendi kaydı güncel olsun
+  return JSON.stringify(leaderboardView(nk, ctx.userId));
 }
 
 // Sahip olunan eşyalar (envanter ekranı). Misafirin envanteri yoktur.
@@ -311,6 +321,8 @@ export function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk:
   initializer.registerRpc("shop_refresh", shopRefreshRpc);
   initializer.registerRpc("claim_ad_chest", claimAdChestRpc);
   initializer.registerRpc("set_body", setBodyRpc);
+  initializer.registerRpc("get_leaderboard", getLeaderboardRpc);
+  createLeaderboard(nk, logger);
   initializer.registerMatch("race", { matchInit, matchJoinAttempt, matchJoin, matchLeave, matchLoop, matchTerminate, matchSignal });
   logger.info("TextRun modulu yuklendi");
 }
