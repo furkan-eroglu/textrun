@@ -859,6 +859,9 @@ namespace TextRun.Game
             UiKit.SetAllTextColors(rankStyle, new Color(1f, 0.88f, 0.45f));
         }
 
+        const float IntroSeconds = 2.2f;
+        float introStartedAt = -1f;
+
         void OnGUI()
         {
             if (DevSuppressGui) return;
@@ -872,6 +875,16 @@ namespace TextRun.Game
             float width = UnityEngine.Screen.width / scale;
             float height = UnityEngine.Screen.height / scale;
             float top = (UnityEngine.Screen.height - UnityEngine.Screen.safeArea.yMax) / scale + 6f;
+
+            // Açılış: oyun ilk açıldığında kısa süre yalnızca logo görünür (bağlantı arkada kurulur)
+            if (introStartedAt < 0f) introStartedAt = Time.realtimeSinceStartup;
+            float introElapsed = Time.realtimeSinceStartup - introStartedAt;
+            if (introElapsed < IntroSeconds)
+            {
+                backdrop.Draw(width, height);
+                logo.Draw(width, height * 0.42f, introElapsed);
+                return;
+            }
 
             if (screen == Page.Connecting || screen == Page.Menu || screen == Page.PrivateMenu || screen == Page.JoinCode || screen == Page.RoomLobby || screen == Page.Searching || screen == Page.MatchFound || screen == Page.Error || screen == Page.Inventory || screen == Page.Shop || screen == Page.Leaderboard)
                 backdrop.Draw(width, height);

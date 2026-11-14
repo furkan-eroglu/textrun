@@ -60,6 +60,11 @@ namespace TextRun.Game
             var audio = GetComponent<TextRun.Audio.RaceAudio>();
             audio.Enabled = true; // önceki yarım kalan çalıştırmadan kalan ayar sonucu bozmasın
 
+            // Açılış logosu
+            yield return new WaitForSeconds(1.3f);
+            yield return Shot("0-intro");
+            yield return new WaitForSeconds(1.2f);
+
             // Oyun açılınca karşılama gelir: misafir olarak girilir (gerçek sunucuda geçici hesap + otomatik ad)
             float waited = Time.realtimeSinceStartup;
             while (controller.DevPageName != "Welcome" && controller.DevPageName != "Menu" && Time.realtimeSinceStartup - waited < 30f) yield return null;
