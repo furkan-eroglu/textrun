@@ -385,8 +385,10 @@ namespace TextRun.Characters
             }
             else
             {
-                // Kısa düz saç: yanları ve arkayı kulak hizasına kadar saran tek parça (yüz tarafı açık)
-                c.Put(MeshKit.Lathe(new[] { 0.3f, -0.04f, 0.322f, -0.03f, 0.32f, 0.05f, 0.298f, 0.12f, 0.262f, 0.19f, 0.236f, 0.19f, 0.27f, 0.12f, 0.29f, 0.05f, 0.29f, -0.03f }, 20, 148f, 244f), c.head, 0f, 0f, -0.012f, hair, 0f, 0f, 0f, 0.2f);
+                // Kısa düz saç: kafaya yapışık durur. Yanlarda kulak hizasına kadar iner (yüz tarafı açık),
+                // arkada enseye doğru kafanın biçimini izleyerek daralır: şapka gibi dışarı taşmaz.
+                c.Put(MeshKit.Lathe(new[] { 0.296f, -0.035f, 0.314f, -0.03f, 0.314f, 0.05f, 0.292f, 0.12f, 0.258f, 0.19f, 0.236f, 0.19f, 0.27f, 0.12f, 0.29f, 0.05f, 0.29f, -0.03f }, 20, 148f, 244f), c.head, 0f, 0f, -0.012f, hair, 0f, 0f, 0f, 0.2f);
+                c.Put(MeshKit.Lathe(new[] { 0.172f, -0.26f, 0.192f, -0.25f, 0.262f, -0.16f, 0.3f, -0.08f, 0.314f, -0.02f, 0.29f, -0.02f, 0.28f, -0.08f, 0.244f, -0.16f, 0.176f, -0.25f }, 12, 200f, 140f), c.head, 0f, 0f, -0.012f, hair, 0f, 0f, 0f, 0.2f);
             }
         }
 

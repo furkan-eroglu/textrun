@@ -641,6 +641,8 @@ namespace TextRun.Game
 
         public void DevClearHead() { if (inventory?.equipped != null) inventory.equipped = System.Array.FindAll(inventory.equipped, id => Characters.Outfits.CategoryOf(id) != "head"); }
 
+        public void DevClearCape() { if (inventory?.equipped != null) inventory.equipped = System.Array.FindAll(inventory.equipped, id => Characters.Outfits.CategoryOf(id) != "cape"); }
+
         public void DevMarkNew(params string[] ids) { foreach (var id in ids) MarkNewItem(id); }
 
         public bool DevSuppressGui;

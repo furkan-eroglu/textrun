@@ -117,6 +117,13 @@ namespace TextRun.Game
             controller.DevClearHead();
             yield return new WaitForSeconds(0.9f);
             yield return Shot("1j-hair-male");
+            controller.DevShowInventory(4);
+            controller.DevClearHead();
+            controller.DevClearCape();
+            yield return new WaitForSeconds(2.0f);
+            yield return Shot("1j-hair-male-back");
+            controller.DevShowInventory(0);
+            controller.DevClearHead();
             controller.DevSetBody(0, "f");
             yield return new WaitForSeconds(0.9f);
             yield return Shot("1j-hair-female");
