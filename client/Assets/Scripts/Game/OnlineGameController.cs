@@ -637,6 +637,7 @@ namespace TextRun.Game
 
         void OnResults(ResultsDto r)
         {
+            devPodiumLooks = null;
             ClearResume(); // yarış bitti: geri dönülecek yarış kalmadı (misafirin saklanan kimliği de silinir)
             results = r.results ?? new ResultDto[0];
             myReward = null;
@@ -713,6 +714,7 @@ namespace TextRun.Game
                 if (screen != Page.Countdown && screen != Page.Racing) keyboard.Close();
             }
             if (screen != Page.Inventory && screen != Page.Menu) preview.Hide();
+            if (screen != Page.Results) podium.Hide();
             ItemIcons.Tick();
             ReleaseFieldKeyboardIfUnfocused();
 
@@ -1971,6 +1973,64 @@ namespace TextRun.Game
         // Ödül sırası: kupa rengi, konfeti ve zafer müziği için TEK kural, yalnızca SIRAYA bağlı.
         // İlk üçte olan (yarışı bitirsin ya da süre dolduğu için bitirmesin) altın/gümüş/bronz kupayı, konfetiyi ve zafer müziğini alır.
         // Sıralamayı sunucu zaten adil kurar: diskalifiyeler en sona atılır, bu yüzden ilk üçe giremezler.
+        // ---------- Kürsü: ilk üç oyuncunun karakterleri ----------
+
+        readonly PodiumScene podium = new PodiumScene();
+        GUIStyle podiumNameStyle;
+        string[][] devPodiumLooks; // DevHarness: örnek görünümler
+
+        // Sonuçlardaki ilk üç oyuncunun görünümleri (oyuncu yarıştan ayrılmış olsa da odadaki son bilgisiyle)
+        IList<string>[] PodiumLooks()
+        {
+            var looks = new IList<string>[3];
+            foreach (var r in results)
+            {
+                if (r.rank < 1 || r.rank > 3) continue;
+                string[] look = new string[0];
+                if (devPodiumLooks != null) look = devPodiumLooks[r.rank - 1];
+                else if (players != null)
+                    foreach (var p in players)
+                        if (p.id == r.userId && p.look != null) look = p.look;
+                looks[r.rank - 1] = look;
+            }
+            return looks;
+        }
+
+        void DrawPodium(Rect area, int myRank)
+        {
+            podium.Show(PodiumLooks());
+            if (podium.Texture == null) return;
+
+            // Doku 2:1 oranındadır: alana ortalanarak sığdırılır
+            float w = Mathf.Min(area.width, area.height * PodiumScene.Aspect), h = w / PodiumScene.Aspect;
+            var frame = new Rect(area.center.x - w / 2f, area.yMax - h, w, h);
+            GUI.DrawTexture(frame, podium.Texture, ScaleMode.StretchToFill, true);
+
+            if (podiumNameStyle == null) podiumNameStyle = new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Bold, alignment = TextAnchor.LowerCenter, clipping = TextClipping.Overflow, wordWrap = false };
+
+            foreach (var r in results)
+            {
+                if (r.rank < 1 || r.rank > 3) continue;
+                bool mine = r.userId == net.UserId;
+                var point = podium.NamePoint(r.rank - 1);
+                var at = new Vector2(frame.x + point.x * frame.width, frame.y + point.y * frame.height);
+                string name = r.isBot ? T("bot") : r.name;
+                var label = new Rect(at.x - 70f, at.y - 22f, 140f, 22f);
+
+                // Kendi adın sarı ve altı çizili: kürsüdeki karakterin sen olduğun belli olsun
+                podiumNameStyle.normal.textColor = Color.black;
+                foreach (var offset in new[] { new Vector2(-1f, 0f), new Vector2(1f, 0f), new Vector2(0f, -1f), new Vector2(0f, 1f) })
+                    GUI.Label(new Rect(label.x + offset.x, label.y + offset.y, label.width, label.height), name, podiumNameStyle);
+                podiumNameStyle.normal.textColor = mine ? new Color(1f, 0.90f, 0.35f) : Color.white;
+                GUI.Label(label, name, podiumNameStyle);
+                if (mine)
+                {
+                    float underline = Mathf.Min(120f, podiumNameStyle.CalcSize(new GUIContent(name)).x + 6f);
+                    UiKit.Card(new Rect(at.x - underline / 2f, at.y + 1f, underline, 3f), new Color(1f, 0.90f, 0.35f), 1.5f);
+                }
+            }
+        }
+
         int PodiumRank()
         {
             foreach (var r in results)
@@ -1984,13 +2044,15 @@ namespace TextRun.Game
             FullViewport();
 
             int podiumRank = PodiumRank();
-            const float trophySize = 128f;
-            var trophyCenter = new Vector2(width / 2f, top + 8f + trophySize / 2f);
-            resultsBackdrop.Draw(width, height, trophyCenter, trophySize, podiumRank);
+            // Üstte kürsü: ilk üç oyuncunun karakterleri ve adları (arkada sıraya göre renklenen ışınlar, ilk üçte konfeti)
+            const float podiumHeight = 158f;
+            var podiumArea = new Rect(8f, top + 4f, width - 16f, podiumHeight);
+            resultsBackdrop.Draw(width, height, new Vector2(width / 2f, podiumArea.center.y), 128f, podiumRank, false);
+            DrawPodium(podiumArea, podiumRank);
 
-            float y = top + trophySize + 10f;
-            GUI.Label(new Rect(0f, y, width, 36f), T("results"), headingStyle);
-            y += 44f;
+            float y = podiumArea.yMax + 4f;
+            GUI.Label(new Rect(0f, y, width, 32f), T("results"), headingStyle);
+            y += 36f;
 
             foreach (var r in results)
             {
@@ -1998,19 +2060,19 @@ namespace TextRun.Game
                 string name = r.isBot ? T("bot") + " (" + r.name + ")" : r.name; // kendi adım sarı renkle ayrılır
                 string status = r.status == "finished" ? "" : r.status == "disqualified" ? T("disqualified") : T("dnf");
 
-                var card = new Rect(16f, y, width - 32f, 44f);
+                var card = new Rect(16f, y, width - 32f, 42f);
                 UiKit.Card(card, mine ? new Color(1f, 0.82f, 0.30f, 0.24f) : new Color(1f, 1f, 1f, 0.07f), 14f);
 
                 GUI.Label(new Rect(card.x + 10f, card.y, 36f, card.height), r.rank.ToString(), rankStyle);
 
                 var oldColor = GUI.color;
                 GUI.color = mine ? new Color(1f, 0.92f, 0.45f) : Color.white;
-                GUI.Label(new Rect(card.x + 52f, card.y + 4f, card.width - 60f, 24f), name, labelStyle);
+                GUI.Label(new Rect(card.x + 52f, card.y + 2f, card.width - 60f, 24f), name, labelStyle);
                 GUI.color = oldColor;
 
-                GUI.Label(new Rect(card.x + 52f, card.y + 26f, card.width - 60f, 20f),
+                GUI.Label(new Rect(card.x + 52f, card.y + 23f, card.width - 60f, 20f),
                     r.wpm.ToString("0") + " " + T("wpm") + "   %" + (r.accuracy * 100f).ToString("0") + "   " + (r.finishMs > 0 ? (r.finishMs / 1000f).ToString("0.0") + " s" : "") + "   " + status, smallStyle);
-                y += 48f;
+                y += 45f;
             }
 
             // Misafir: XP ve ödül yok, hesap açmaya davet
@@ -2112,6 +2174,7 @@ namespace TextRun.Game
                 myReward = null; // misafir: XP kutusu yok, hesap açma notu var
                 profile = new ProfileDto { guest = true };
             }
+            devPodiumLooks = new[] { new[] { "hat_kavuk", "top_armor", "bottom_gold", "shoes_wing", "cape_royal" }, new[] { "hat_pop", "top_hawaii", "bottom_jeans", "shoes_sneaker", "gender_f", "skin_1" }, new[] { "top_white", "bottom_shorts", "skin_2" } };
             var list = new ResultDto[5];
             for (int i = 0; i < 5; i++)
             {

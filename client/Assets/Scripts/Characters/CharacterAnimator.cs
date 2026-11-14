@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace TextRun.Characters
 {
-    public enum CharacterState { Idle, Run }
+    public enum CharacterState { Idle, Run, Cheer }
 
     // Uzuvları kod ile sallayarak koşu ve bekleme hareketi verir.
     public class CharacterAnimator : MonoBehaviour
@@ -10,6 +10,7 @@ namespace TextRun.Characters
         const float HipHeight = 0.8f;
         const float RunFrequency = 9f;
         const float IdleFrequency = 1.6f;
+        const float CheerFrequency = 7f;
 
         public Transform visual;
         public Transform head;
@@ -31,7 +32,7 @@ namespace TextRun.Characters
         {
             float frequency = state == CharacterState.Run
                 ? RunFrequency * Mathf.Max(runSpeed, 0.3f)
-                : IdleFrequency;
+                : state == CharacterState.Cheer ? CheerFrequency * Mathf.Max(runSpeed, 0.3f) : IdleFrequency;
             phase += dt * frequency;
             Pose(phase);
         }
@@ -39,6 +40,7 @@ namespace TextRun.Characters
         public void Pose(float p)
         {
             if (state == CharacterState.Run) PoseRun(p);
+            else if (state == CharacterState.Cheer) PoseCheer(p);
             else PoseIdle(p);
         }
 
@@ -54,6 +56,23 @@ namespace TextRun.Characters
             visual.localRotation = Quaternion.Euler(12f, 0f, 0f);
             visual.localPosition = new Vector3(0f, HipHeight + Mathf.Abs(s) * 0.07f, 0f);
             head.localRotation = Quaternion.Euler(-8f, 0f, 0f);
+        }
+
+        // Kürsüde sevinç: kollar havada sallanır, karakter hafifçe zıplar
+        void PoseCheer(float p)
+        {
+            float s = Mathf.Sin(p);
+            float hop = Mathf.Abs(Mathf.Sin(p * 0.5f));
+
+            leftLeg.localRotation = Quaternion.Euler(-hop * 8f, 0f, 0f);
+            rightLeg.localRotation = Quaternion.Euler(-hop * 8f, 0f, 0f);
+            leftArm.localRotation = Quaternion.Euler(0f, 0f, -150f + s * 16f);
+            rightArm.localRotation = Quaternion.Euler(0f, 0f, 150f - s * 16f);
+
+            visual.localRotation = Quaternion.identity;
+            visual.localScale = Vector3.one;
+            visual.localPosition = new Vector3(0f, HipHeight + hop * 0.1f, 0f);
+            head.localRotation = Quaternion.Euler(-6f, 0f, s * 5f);
         }
 
         void PoseIdle(float p)

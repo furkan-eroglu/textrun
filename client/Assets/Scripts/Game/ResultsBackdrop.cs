@@ -39,7 +39,8 @@ namespace TextRun.Game
         }
 
         // trophyCenter: kupanın ekran konumu (arayüz birimi), trophySize: kenar uzunluğu
-        public void Draw(float width, float height, Vector2 trophyCenter, float trophySize, int rank)
+        // drawTrophy=false: ortadaki büyük kupa çizilmez (yerinde kürsü gösterilir); ışınlar ve konfeti kalır
+        public void Draw(float width, float height, Vector2 trophyCenter, float trophySize, int rank, bool drawTrophy = true)
         {
             Prepare();
 
@@ -58,6 +59,13 @@ namespace TextRun.Game
             float glowRadius = width * 0.75f;
             GUI.color = new Color(accent.r, accent.g, accent.b, 0.30f);
             GUI.DrawTexture(new Rect(trophyCenter.x - glowRadius, trophyCenter.y - glowRadius, glowRadius * 2f, glowRadius * 2f), glow);
+
+            if (!drawTrophy)
+            {
+                GUI.color = old;
+                if (rank <= 3) DrawConfetti(width, height);
+                return;
+            }
 
             // Kupanın yer gölgesi ve kupa
             GUI.color = new Color(0f, 0f, 0f, 0.35f);
