@@ -604,8 +604,8 @@ namespace TextRun.Game
                 items = new[]
                 {
                     DevItem("hat_cap", "common", "Spor Şapka"), DevItem("hair_afro", "uncommon", "Afro"), DevItem("hat_bucket", "uncommon", "Balıkçı Şapkası"),
-                    DevItem("hat_pop", "rare", "Popstar Şapkası"), DevItem("hat_pirate", "epic", "Korsan Şapkası"), DevItem("hat_crown", "legendary", "Kral Tacı"),
-                    DevItem("top_hawaii", "rare", "Hawaii Gömleği"), DevItem("top_ninja", "epic", "Ninja Kıyafeti"),
+                    DevItem("hat_pop", "rare", "Popstar Şapkası"), DevItem("hat_pirate", "epic", "Korsan Şapkası"), DevItem("hat_crown", "legendary", "Kral Tacı"), DevItem("hat_kavuk", "legendary", "Padişah Kavuğu"),
+                    DevItem("top_white", "common", "Beyaz Atlet"), DevItem("top_hawaii", "rare", "Hawaii Gömleği"), DevItem("top_ninja", "epic", "Ninja Kıyafeti"),
                     DevItem("bottom_jeans", "common", "Mavi Kot"), DevItem("bottom_flame", "epic", "Alevli Pantolon"),
                     DevItem("shoes_sneaker", "common", "Spor Ayakkabı"), DevItem("shoes_skate", "epic", "Tekerlekli Paten"),
                     DevItem("cape_hero", "rare", "Kahraman Pelerini"), DevItem("cape_wings", "legendary", "Melek Kanatları"),
@@ -642,6 +642,8 @@ namespace TextRun.Game
         public void DevClearHead() { if (inventory?.equipped != null) inventory.equipped = System.Array.FindAll(inventory.equipped, id => Characters.Outfits.CategoryOf(id) != "head"); }
 
         public void DevClearCape() { if (inventory?.equipped != null) inventory.equipped = System.Array.FindAll(inventory.equipped, id => Characters.Outfits.CategoryOf(id) != "cape"); }
+
+        public void DevWear(params string[] ids) { if (inventory != null) inventory.equipped = ids; }
 
         public void DevMarkNew(params string[] ids) { foreach (var id in ids) MarkNewItem(id); }
 

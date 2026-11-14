@@ -19,7 +19,7 @@ export const RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legend
 export const CHEST_TIERS: ChestTier[] = ["bronze", "silver", "gold"];
 export const CATEGORIES: Category[] = ["head", "top", "bottom", "shoes", "cape"];
 
-// Eşya listesi: her kategoride 10 eşya. Görseller istemcide aynı kimliklerle çizilir
+// Eşya listesi: her kategoride en az 10 eşya. Görseller istemcide aynı kimliklerle çizilir
 // (client/Assets/Scripts/Characters/Outfits.cs); yeni eşya eklerken iki yerde de aynı kimlik kullanılmalıdır.
 function item(id: string, category: Category, rarity: Rarity, tr: string, en: string, flags: { diamond?: boolean } = {}): Item {
   const diamond = !!flags.diamond;
@@ -40,9 +40,11 @@ export const CATALOG: Item[] = [
   item("hair_mohawk", "head", "rare", "Mohawk", "Mohawk"),
   item("hat_pirate", "head", "epic", "Korsan Şapkası", "Pirate Hat"),
   item("hat_crown", "head", "legendary", "Kral Tacı", "King's Crown"),
+  item("hat_kavuk", "head", "legendary", "Padişah Kavuğu", "Sultan's Turban"),
   // Üst giyim
   item("top_tee", "top", "common", "Basit Tişört", "Plain Tee"),
   item("top_tank", "top", "common", "Spor Atlet", "Sport Tank"),
+  item("top_white", "top", "common", "Beyaz Atlet", "White Undershirt"),
   item("top_hoodie", "top", "uncommon", "Sokak Kapüşonu", "Street Hoodie"),
   item("top_jersey", "top", "uncommon", "Takım Forması", "Team Jersey"),
   item("top_stripe", "top", "uncommon", "Çizgili Kazak", "Striped Sweater"),

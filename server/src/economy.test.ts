@@ -29,9 +29,9 @@ test("eşya listesi: kimlikler benzersiz, her nadirlikten ve sandıktan çıkan 
   assert.equal(itemById("yok"), undefined);
 });
 
-test("eşya listesi: 5 kategori, her birinde 10 eşya; elmasa özel eşya sandıktan çıkmaz", () => {
-  for (const category of CATEGORIES) assert.equal(CATALOG.filter((entry) => entry.category === category).length, 10, category);
-  assert.equal(CATALOG.length, 50);
+test("eşya listesi: 5 kategori, her birinde en az 10 eşya; elmasa özel eşya sandıktan çıkmaz", () => {
+  for (const category of CATEGORIES) assert.ok(CATALOG.filter((entry) => entry.category === category).length >= 10, category);
+  assert.equal(CATALOG.length, 52);
   for (const tier of CHEST_TIERS) {
     for (let i = 0; i < 400; i++) assert.equal(itemById(rollChest(tier, [], () => Math.random()).itemId)!.diamond, false);
   }
