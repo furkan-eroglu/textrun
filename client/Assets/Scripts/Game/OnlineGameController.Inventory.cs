@@ -639,6 +639,8 @@ namespace TextRun.Game
 
         public void DevSetBody(int skin, string gender) { if (inventory != null) { inventory.skin = skin; inventory.gender = gender; } }
 
+        public void DevClearHead() { if (inventory?.equipped != null) inventory.equipped = System.Array.FindAll(inventory.equipped, id => Characters.Outfits.CategoryOf(id) != "head"); }
+
         public void DevMarkNew(params string[] ids) { foreach (var id in ids) MarkNewItem(id); }
 
         public bool DevSuppressGui;

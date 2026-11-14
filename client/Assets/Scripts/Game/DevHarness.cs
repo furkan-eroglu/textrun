@@ -113,6 +113,13 @@ namespace TextRun.Game
             controller.DevSetBody(2, "m");
             yield return new WaitForSeconds(0.8f);
             yield return Shot("1j-inventory-male-dark");
+            controller.DevShowInventory(0);
+            controller.DevClearHead();
+            yield return new WaitForSeconds(0.9f);
+            yield return Shot("1j-hair-male");
+            controller.DevSetBody(0, "f");
+            yield return new WaitForSeconds(0.9f);
+            yield return Shot("1j-hair-female");
             controller.DevShowInventory(4);
             yield return new WaitForSeconds(2.0f);
             yield return Shot("1j-inventory-cape");

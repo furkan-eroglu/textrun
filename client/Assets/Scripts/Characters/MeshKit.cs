@@ -35,9 +35,10 @@ namespace TextRun.Characters
 
         // Kesit çizgisini (yarıçap, yükseklik çiftleri) dikey eksen etrafında döndürür. Kesit kapalı bir halka da olabilir
         // (ör. şapka kenarı: alttan dışa, üstten içe). Yüzeyin dışa bakması için yön kendiliğinden düzeltilir.
-        public static Mesh Lathe(float[] profile, int segments = 24)
+        // fromDegrees/sweepDegrees: tam tur yerine yalnızca bir yay döndürülür (0 derece +X, 90 derece +Z yani yüz tarafı).
+        public static Mesh Lathe(float[] profile, int segments = 24, float fromDegrees = 0f, float sweepDegrees = 360f)
         {
-            string key = Key("lathe", profile, segments);
+            string key = Key("lathe", profile, segments, fromDegrees, sweepDegrees);
             if (cache.TryGetValue(key, out var cached) && cached != null) return cached;
 
             int points = profile.Length / 2;
@@ -63,7 +64,7 @@ namespace TextRun.Characters
                 float radius = profile[i * 2], y = profile[i * 2 + 1];
                 for (int s = 0; s <= segments; s++)
                 {
-                    float angle = s * Mathf.PI * 2f / segments;
+                    float angle = (fromDegrees + s * sweepDegrees / segments) * Mathf.Deg2Rad;
                     vertices.Add(new Vector3(Mathf.Cos(angle) * radius, y, Mathf.Sin(angle) * radius));
                 }
             }
@@ -79,6 +80,7 @@ namespace TextRun.Characters
 
             var mesh = Finish(key, vertices, triangles);
             // Dikiş: halkanın ilk ve son köşesi aynı yerdedir; normalleri eşitlenir ki çizgi görünmesin
+            if (sweepDegrees < 359.9f) return mesh; // yay: uçlar birleşmez
             var normals = mesh.normals;
             for (int i = 0; i < points; i++)
             {

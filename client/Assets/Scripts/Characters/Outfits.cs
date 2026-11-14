@@ -317,7 +317,8 @@ namespace TextRun.Characters
                 foreach (var id in look)
                     if (id != null && Registry.TryGetValue(id, out var build)) build(c);
 
-            if (female) FemaleFace(c, !headItem);
+            if (female) FemaleFace(c);
+            if (!headItem) BaseHair(c, female);
         }
 
         // Beden: ten rengi her çıplak parçaya işlenir; kadın bedeninde gövde kesiti değişir, kol ve bacaklar incelir
@@ -355,8 +356,8 @@ namespace TextRun.Characters
             }
         }
 
-        // Kadın yüzü: kirpikler, dudaklar; kafa eşyası yoksa omuza inen saç
-        static void FemaleFace(Ctx c, bool withHair)
+        // Kadın yüzü: kirpikler ve dudaklar
+        static void FemaleFace(Ctx c)
         {
             var lash = C(0x16100E);
             var lip = C(0xC8324A);
@@ -368,13 +369,25 @@ namespace TextRun.Characters
             });
             c.Add(Ball, c.head, 0f, -0.112f, 0.274f, 0.115f, 0.036f, 0.035f, lip);
             c.Add(Ball, c.head, 0f, -0.142f, 0.272f, 0.095f, 0.044f, 0.035f, lip);
+        }
 
-            if (!withHair) return;
-            var hair = C(0x3A2412);
-            c.Lathe(c.head, 0f, 0f, -0.01f, hair, 0.2f, 0.3f, 0.13f, 0.316f, 0.17f, 0.3f, 0.26f, 0.2f, 0.34f, 0.08f, 0.365f, 0f, 0.367f);
-            c.Box(c.head, 0f, -0.07f, -0.15f, 0.62f, 0.56f, 0.34f, 0.15f, hair, 0f, 0f, 0f, 0.2f);
-            c.BothSides((s, i) => c.Box(c.head, s * 0.29f, -0.05f, -0.03f, 0.1f, 0.5f, 0.3f, 0.045f, hair, 0f, 0f, 0f, 0.2f));
-            c.Box(c.head, 0.08f, 0.2f, 0.24f, 0.36f, 0.09f, 0.1f, 0.04f, hair, 0f, 0f, -14f, 0.2f);
+        // Temel saç (kafa eşyası takılı değilken): erkekte kısa, kadında omuza inen. Şapka ya da saç eşyası takılınca çizilmez.
+        static void BaseHair(Ctx c, bool female)
+        {
+            var hair = female ? C(0x3A2412) : C(0x2A1A10);
+            // Kafanın üstünü saran ince tabaka (alın çizgisi kaşların hemen üstünde)
+            c.Lathe(c.head, 0f, 0f, -0.012f, hair, 0.2f, 0.262f, 0.175f, 0.232f, 0.22f, 0.178f, 0.268f, 0.105f, 0.305f, 0f, 0.325f);
+            if (female)
+            {
+                c.Box(c.head, 0f, -0.07f, -0.15f, 0.62f, 0.56f, 0.34f, 0.15f, hair, 0f, 0f, 0f, 0.2f);
+                c.BothSides((s, i) => c.Box(c.head, s * 0.29f, -0.05f, -0.03f, 0.1f, 0.5f, 0.3f, 0.045f, hair, 0f, 0f, 0f, 0.2f));
+                c.Box(c.head, 0.08f, 0.2f, 0.225f, 0.34f, 0.08f, 0.1f, 0.036f, hair, 0f, 0f, -14f, 0.2f);
+            }
+            else
+            {
+                // Kısa düz saç: yanları ve arkayı kulak hizasına kadar saran tek parça (yüz tarafı açık)
+                c.Put(MeshKit.Lathe(new[] { 0.3f, -0.04f, 0.322f, -0.03f, 0.32f, 0.05f, 0.298f, 0.12f, 0.262f, 0.19f, 0.236f, 0.19f, 0.27f, 0.12f, 0.29f, 0.05f, 0.29f, -0.03f }, 20, 148f, 244f), c.head, 0f, 0f, -0.012f, hair, 0f, 0f, 0f, 0.2f);
+            }
         }
 
         public static string[] AllIds()
