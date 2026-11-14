@@ -1,0 +1,4 @@
+# HTTPS sertifikası kendiliğinden alınır ve yenilenir. Alan adı alınınca bu satır değişir.
+2-31-32-138.sslip.io {
+	reverse_proxy nakama:7350
+}

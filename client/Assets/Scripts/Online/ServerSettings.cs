@@ -2,31 +2,37 @@ using UnityEngine;
 
 namespace TextRun.Online
 {
-    // Sunucu adresi. Geliştirme sırasında telefonda test için adres oyun içinden değiştirilebilir.
+    // Sunucu adresi. Telefon ve tabletteki oyun canlı sunucuya (şifreli bağlantı) bağlanır.
+    // Bilgisayardaki sürüm (Unity editörü, otomatik denemeler) bu bilgisayarda çalışan yerel geliştirme sunucusuna bağlanır.
     public static class ServerSettings
     {
         const string HostKey = "textrun.serverHost";
 
-        public const string Scheme = "http";
-        public const int Port = 7350;
-        // Yerel geliştirme anahtarı. Canlı sunucuda farklı bir değer kullanılacak.
-        public const string ServerKey = "defaultkey";
+        // Canlı sunucu (Hetzner). Alan adı alınınca LiveHost değişir. Sunucu anahtarı gizli değildir (uygulamanın içinde gider),
+        // yalnızca varsayılan anahtar olmamalıdır; gizli anahtarlar sunucudaki .env dosyasındadır (bkz. server/deploy).
+        const string LiveHost = "2-31-32-138.sslip.io";
+        const string LiveServerKey = "895bc52e679f7d72cf38b28b6c89ac52";
 
-        // Geliştirme bilgisayarının yerel ağ adresi: telefona kurulan geliştirme sürümü varsayılan olarak buna bağlanır.
-        // Başka bir ağa geçilirse oyun içindeki "Sunucu adresi" kutusundan değiştirilir.
-        const string DevLanHost = "192.168.1.114";
+        // Yerel geliştirme sunucusu
+        const string LocalHost = "127.0.0.1";
+        const string LocalServerKey = "defaultkey";
 
-        // Geliştirme araçları: menüdeki "Sunucu adresi" kutusu. Canlı sunucuya geçilince false yapılacak.
-        public const bool DevTools = true;
+        public static bool Live => Application.isMobilePlatform;
 
-        static string DefaultHost => Application.isMobilePlatform && DevTools ? DevLanHost : "127.0.0.1";
+        public static string Scheme => Live ? "https" : "http";
+        public static int Port => Live ? 443 : 7350;
+        public static string ServerKey => Live ? LiveServerKey : LocalServerKey;
+
+        // Geliştirme araçları: menüdeki "Sunucu adresi" kutusu (telefonu yerel ağdaki bilgisayara bağlamak içindi).
+        // Canlı sunucuya geçildiği için kapalı.
+        public const bool DevTools = false;
 
         public static string Host
         {
-            get => PlayerPrefs.GetString(HostKey, DefaultHost);
+            get => Live ? LiveHost : PlayerPrefs.GetString(HostKey, LocalHost);
             set
             {
-                PlayerPrefs.SetString(HostKey, string.IsNullOrWhiteSpace(value) ? DefaultHost : value.Trim());
+                PlayerPrefs.SetString(HostKey, string.IsNullOrWhiteSpace(value) ? LocalHost : value.Trim());
                 PlayerPrefs.Save();
             }
         }
