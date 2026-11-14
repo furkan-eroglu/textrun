@@ -357,7 +357,7 @@ namespace TextRun.EditorTools
                 scenes = new[] { ScenePath },
                 locationPathName = ApkPath,
                 target = BuildTarget.Android,
-                options = BuildOptions.Development
+                options = BuildOptions.None // geliştirme derlemesi değil: dosya küçülür, oyun hızlanır
             });
             var summary = report.summary;
             Debug.Log("Derleme sonucu: " + summary.result + ", sure: " + summary.totalTime);

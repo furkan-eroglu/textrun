@@ -128,6 +128,12 @@ namespace TextRun.Game
             yield return new WaitForSeconds(0.9f);
             yield return Shot("1j-hair-female");
             controller.DevShowInventory(4);
+            controller.DevClearHead();
+            controller.DevClearCape();
+            controller.DevSetBody(0, "f");
+            yield return new WaitForSeconds(2.0f);
+            yield return Shot("1j-hair-female-back");
+            controller.DevShowInventory(4);
             yield return new WaitForSeconds(2.0f);
             yield return Shot("1j-inventory-cape");
             controller.DevShowInventory(2);

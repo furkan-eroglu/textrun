@@ -922,7 +922,7 @@ namespace TextRun.Game
             GUI.Label(new Rect(30f, height / 2f - 100f, width - 60f, 30f), T("connectionError"), centerStyle);
             GUI.Label(new Rect(30f, height / 2f - 65f, width - 60f, 90f), errorText, smallStyle);
 
-            bool dev = Application.isEditor || Debug.isDebugBuild;
+            bool dev = Application.isEditor || ServerSettings.DevTools;
             if (UiKit.SecondaryButton(new Rect(30f, height / 2f + 30f, width - 60f, 56f), T("retry"), 24))
             {
                 if (dev) ServerSettings.Host = hostInput; // yazılan adres de denenir
@@ -960,7 +960,7 @@ namespace TextRun.Game
             if (GUI.Button(card, GUIContent.none, GUIStyle.none)) OpenSettings();
 
             // Oyuncunun karakteri (giydikleriyle) ve yanında günlük reklam sandığı
-            bool devBox = Application.isEditor || Debug.isDebugBuild;
+            bool devBox = Application.isEditor || ServerSettings.DevTools;
             float stageTop = top + 170f;
             float stageHeight = Mathf.Clamp(height - stageTop - 240f - (devBox ? 104f : 20f) - 8f, 100f, 210f);
             if (!profile.guest && inventory == null && net != null && Time.realtimeSinceStartup - inventoryTriedAt > 5f) LoadInventory();
@@ -1352,7 +1352,7 @@ namespace TextRun.Game
         void SubmitLogin(bool register)
         {
             if (screen == Page.Connecting) return;
-            if (Debug.isDebugBuild || Application.isEditor) ServerSettings.Host = hostInput;
+            if (ServerSettings.DevTools || Application.isEditor) ServerSettings.Host = hostInput;
             registerMode = register;
             loginNotice = "";
             Connect(Entry.Account);
@@ -1449,7 +1449,7 @@ namespace TextRun.Game
         void ContinueAsGuest()
         {
             if (screen == Page.Connecting) return;
-            if (Debug.isDebugBuild || Application.isEditor) ServerSettings.Host = hostInput; // yazılan sunucu adresi de denenir
+            if (ServerSettings.DevTools || Application.isEditor) ServerSettings.Host = hostInput; // yazılan sunucu adresi de denenir
             Connect(Entry.Guest);
         }
 

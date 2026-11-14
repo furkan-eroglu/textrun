@@ -379,8 +379,9 @@ namespace TextRun.Characters
             c.Lathe(c.head, 0f, 0f, -0.012f, hair, 0.2f, 0.262f, 0.175f, 0.232f, 0.22f, 0.178f, 0.268f, 0.105f, 0.305f, 0f, 0.325f);
             if (female)
             {
-                c.Box(c.head, 0f, -0.07f, -0.15f, 0.62f, 0.56f, 0.34f, 0.15f, hair, 0f, 0f, 0f, 0.2f);
-                c.BothSides((s, i) => c.Box(c.head, s * 0.29f, -0.05f, -0.03f, 0.1f, 0.5f, 0.3f, 0.045f, hair, 0f, 0f, 0f, 0.2f));
+                // Omuza inen saç: tepeden kulaklara kadar kafayı sarar, sonra omuzlara doğru düz iner (yüz tarafı açık);
+                // önde yana taranmış kâkül
+                c.Put(MeshKit.Lathe(new[] { 0.275f, -0.345f, 0.305f, -0.33f, 0.326f, -0.2f, 0.326f, 0f, 0.316f, 0.06f, 0.292f, 0.12f, 0.258f, 0.19f, 0.236f, 0.19f, 0.27f, 0.12f, 0.29f, 0.05f, 0.292f, -0.2f, 0.27f, -0.33f }, 20, 150f, 240f), c.head, 0f, 0f, -0.012f, hair, 0f, 0f, 0f, 0.2f);
                 c.Box(c.head, 0.08f, 0.2f, 0.225f, 0.34f, 0.08f, 0.1f, 0.036f, hair, 0f, 0f, -14f, 0.2f);
             }
             else

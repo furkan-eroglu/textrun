@@ -14,9 +14,12 @@ namespace TextRun.Online
 
         // Geliştirme bilgisayarının yerel ağ adresi: telefona kurulan geliştirme sürümü varsayılan olarak buna bağlanır.
         // Başka bir ağa geçilirse oyun içindeki "Sunucu adresi" kutusundan değiştirilir.
-        const string DevLanHost = "192.168.1.121";
+        const string DevLanHost = "192.168.1.114";
 
-        static string DefaultHost => !Application.isEditor && Debug.isDebugBuild ? DevLanHost : "127.0.0.1";
+        // Geliştirme araçları: menüdeki "Sunucu adresi" kutusu. Canlı sunucuya geçilince false yapılacak.
+        public const bool DevTools = true;
+
+        static string DefaultHost => Application.isMobilePlatform && DevTools ? DevLanHost : "127.0.0.1";
 
         public static string Host
         {
