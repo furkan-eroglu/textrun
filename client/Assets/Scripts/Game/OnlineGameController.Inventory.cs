@@ -603,7 +603,7 @@ namespace TextRun.Game
             {
                 items = new[]
                 {
-                    DevItem("hat_cap", "common", "Spor Şapka"), DevItem("hair_afro", "uncommon", "Afro"), DevItem("glasses_sun", "uncommon", "Güneş Gözlüğü"),
+                    DevItem("hat_cap", "common", "Spor Şapka"), DevItem("hair_afro", "uncommon", "Afro"), DevItem("hat_bucket", "uncommon", "Balıkçı Şapkası"),
                     DevItem("hat_pop", "rare", "Popstar Şapkası"), DevItem("hat_pirate", "epic", "Korsan Şapkası"), DevItem("hat_crown", "legendary", "Kral Tacı"),
                     DevItem("top_hawaii", "rare", "Hawaii Gömleği"), DevItem("top_ninja", "epic", "Ninja Kıyafeti"),
                     DevItem("bottom_jeans", "common", "Mavi Kot"), DevItem("bottom_flame", "epic", "Alevli Pantolon"),

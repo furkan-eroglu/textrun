@@ -117,18 +117,18 @@ test("ad: çok kısa, çok uzun, yasak karakter ve yalnızca simge reddedilir", 
 
 test("esya takma: yalnizca sahip olunan esya takilir, ayni kategoride yenisi eskisini cikarir", () => {
   const profile = emptyProfile();
-  profile.items = ["hat_cap", "hair_afro", "glasses_sun"];
+  profile.items = ["hat_cap", "hair_afro", "hat_cowboy"];
   assert.equal(equipItem(profile, "hat_crown"), false, "sahip olunmayan esya takilmaz");
   assert.equal(equipItem(profile, "yok_boyle_esya"), false);
   assert.equal(equipItem(profile, 5), false);
   assert.equal(equipItem(profile, "hat_cap"), true);
   assert.equal(equipItem(profile, "hair_afro"), true, "sapka ve sac ayni kategori: yenisi eskisini cikarir");
   assert.equal(profile.equipped.head, "hair_afro");
-  assert.equal(equipItem(profile, "glasses_sun"), true, "gozluk de kafa kategorisinde: saci cikarir");
-  assert.deepEqual(lookOf(profile), ["glasses_sun"]);
+  assert.equal(equipItem(profile, "hat_cowboy"), true, "sapka saci cikarir");
+  assert.deepEqual(lookOf(profile), ["hat_cowboy"]);
   profile.items.push("cape_red");
   assert.equal(equipItem(profile, "cape_red"), true);
-  assert.deepEqual(lookOf(profile), ["cape_red", "glasses_sun"]);
+  assert.deepEqual(lookOf(profile), ["cape_red", "hat_cowboy"]);
   assert.equal(unequipCategory(profile, "head"), true);
   assert.deepEqual(lookOf(profile), ["cape_red"]);
   assert.equal(unequipCategory(profile, "bilinmeyen"), false);

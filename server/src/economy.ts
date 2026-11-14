@@ -29,12 +29,12 @@ function item(id: string, category: Category, rarity: Rarity, tr: string, en: st
 const DIAMOND = { diamond: true };
 
 export const CATALOG: Item[] = [
-  // Kafa (şapka, saç ve gözlük aynı kategori: aynı anda yalnızca biri takılır)
+  // Kafa (şapka ve saç aynı kategori: aynı anda yalnızca biri takılır; takılınca temel saçın yerini alır)
   item("hat_cap", "head", "common", "Spor Şapka", "Sporty Cap"),
   item("hat_beanie", "head", "common", "Kışlık Bere", "Winter Beanie"),
   item("hair_afro", "head", "uncommon", "Afro", "Afro"),
   item("hat_cowboy", "head", "uncommon", "Kovboy Şapkası", "Cowboy Hat"),
-  item("glasses_sun", "head", "uncommon", "Güneş Gözlüğü", "Sunglasses"),
+  item("hat_bucket", "head", "uncommon", "Balıkçı Şapkası", "Bucket Hat"),
   item("hat_street", "head", "rare", "Serseri Şapkası", "Street Cap"),
   item("hat_pop", "head", "rare", "Popstar Şapkası", "Popstar Hat"),
   item("hair_mohawk", "head", "rare", "Mohawk", "Mohawk"),
