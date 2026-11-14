@@ -349,6 +349,10 @@ namespace TextRun.EditorTools
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
 
+            // Açılıştaki "Made with Unity" ekranı gösterilmez (Unity 6'da ücretsiz sürümde de kapatılabiliyor)
+            PlayerSettings.SplashScreen.show = false;
+            PlayerSettings.SplashScreen.showUnityLogo = false;
+
             // Uygulama simgesi (Assets/Icon/app_icon.png, tools ile üretilir)
             var icon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Icon/app_icon.png");
             if (icon != null) PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
