@@ -59,8 +59,8 @@ namespace TextRun.Game
 
             var camObject = new GameObject("PreviewCamera");
             camObject.transform.SetParent(root.transform, false);
-            camObject.transform.localPosition = new Vector3(0f, 1.38f, 5.6f);
-            camObject.transform.localRotation = Quaternion.Euler(3f, 180f, 0f);
+            camObject.transform.localPosition = new Vector3(0f, 1.36f, 6.0f);
+            camObject.transform.localRotation = Quaternion.Euler(1.5f, 180f, 0f);
             cam = camObject.AddComponent<Camera>();
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0f, 0f, 0f, 0f);

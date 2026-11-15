@@ -77,7 +77,7 @@ namespace TextRun.Game
             float centerY, halfSize, yaw, pitch = 6f;
             switch (Outfits.CategoryOf(id))
             {
-                case "head": centerY = 1.9f; halfSize = 0.66f; yaw = 24f; break;
+                case "head": centerY = 2.0f; halfSize = 0.74f; yaw = 24f; break;
                 case "top": centerY = 1.12f; halfSize = 0.6f; yaw = 24f; break;
                 case "bottom": centerY = 0.44f; halfSize = 0.58f; yaw = 24f; break;
                 case "shoes": centerY = 0.12f; halfSize = 0.36f; yaw = 42f; pitch = 16f; break;

@@ -17,8 +17,8 @@ namespace TextRun.Game
         static readonly float[] StepHeight = { 0.95f, 0.62f, 0.4f };
         static readonly Color[] StepColor = { new Color(1f, 0.80f, 0.24f), new Color(0.78f, 0.82f, 0.88f), new Color(0.82f, 0.54f, 0.30f) };
 
-        const float ViewCenterY = 1.88f;
-        const float ViewHalfHeight = 1.92f;
+        const float ViewCenterY = 1.97f;
+        const float ViewHalfHeight = 2.08f;
         public const float Aspect = 2f;
 
         GameObject root;
@@ -64,7 +64,7 @@ namespace TextRun.Game
         {
             float halfWidth = ViewHalfHeight * Aspect;
             float x = 0.5f - StepX[place] / (2f * halfWidth); // +X ekranda solda
-            float y = 0.5f - (StepHeight[place] + 2.95f - ViewCenterY) / (2f * ViewHalfHeight);
+            float y = 0.5f - (StepHeight[place] + 2.78f - ViewCenterY) / (2f * ViewHalfHeight);
             return new Vector2(x, y);
         }
 
