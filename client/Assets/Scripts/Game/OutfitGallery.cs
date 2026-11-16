@@ -9,7 +9,7 @@ namespace TextRun.Game
     {
         GameObject root;
 
-        public void Show(IList<string> ids)
+        public void Show(IList<string> ids, bool run = false)
         {
             Clear();
             root = new GameObject("OutfitGallery");
@@ -24,6 +24,7 @@ namespace TextRun.Game
                 character.transform.localPosition = new Vector3((i % 3 - 1) * 1.35f, -(i / 3) * 2.8f, 0f);
                 character.transform.localRotation = Quaternion.Euler(0f, 18f, 0f);
                 Outfits.Apply(character, new[] { ids[i] });
+                if (run) { character.state = CharacterState.Run; character.runSpeed = 1f; character.Pose(i * 0.9f); }
             }
 
             var camObject = new GameObject("GalleryCamera");

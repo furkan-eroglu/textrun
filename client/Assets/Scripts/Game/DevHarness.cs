@@ -205,6 +205,10 @@ namespace TextRun.Game
                 yield return Shot("1n-gallery-" + page);
             }
             gallery.Clear();
+            gallery.Show(new[] { "cape_red", "cape_hero", "cape_wings", "cape_night", "cape_striped", "cape_fire", "cape_gold", "hat_pirate", "shoes_wing" }, true);
+            yield return new WaitForSeconds(0.6f);
+            yield return Shot("1n-gallery-run");
+            gallery.Clear();
             controller.DevSuppressGui = false;
 
             controller.DevShowError();

@@ -143,7 +143,7 @@ namespace TextRun.Characters
             { "hat_street", c => { CapCrown(c, C(0x1E2026)); c.Prism(c.head, 0f, 0.12f, 0.2f, 0.022f, C(0x1E2026), 91f, 0f, 0f, 0.1f, MeshKit.Arc(0.24f, 0.3f, 0f, 180f)); c.Prism(c.head, 0f, 0.108f, 0.2f, 0.01f, C(0x35E060), 91f, 0f, 0f, 0.1f, MeshKit.Arc(0.235f, 0.295f, 0f, 180f)); c.Box(c.head, 0f, 0.23f, 0.285f, 0.12f, 0.08f, 0.02f, 0.02f, C(0x35E060), -18f); c.Add(Ball, c.head, 0f, 0.392f, 0f, 0.07f, 0.035f, 0.07f, C(0x35E060)); } },
             { "hat_pop", c => { c.Lathe(c.head, 0f, 0f, 0f, C(0xFF4FA3), 0.1f, 0.29f, 0.17f, 0.43f, 0.16f, 0.45f, 0.175f, 0.43f, 0.19f, 0.29f, 0.195f); c.Lathe(c.head, 0f, 0f, 0f, C(0xFF6FB5), 0.1f, 0.29f, 0.18f, 0.295f, 0.2f, 0.265f, 0.38f, 0.2f, 0.425f, 0.1f, 0.39f, 0f, 0.38f); c.Lathe(c.head, 0f, 0f, 0f, C(0xFFD23C), 0.6f, 0.296f, 0.2f, 0.302f, 0.205f, 0.297f, 0.255f, 0.287f, 0.255f); c.Prism(c.head, 0.15f, 0.31f, 0.245f, 0.025f, C(0xFFE98A), -8f, 30f, 0f, 0.7f, MeshKit.Star(5, 0.075f)); } },
             { "hair_mohawk", c => { var fin = new List<float>(); for (int i = 0; i <= 8; i++) { float x = Mathf.Lerp(-0.26f, 0.28f, i / 8f); fin.Add(x); fin.Add(Mathf.Sqrt(0.09f - x * x) - 0.04f); } for (int i = 0; i < 6; i++) { float x = Mathf.Lerp(0.27f, -0.25f, i / 5f); float peak = 0.52f - Mathf.Abs(i - 2.2f) * 0.035f; fin.Add(x); fin.Add(peak); if (i < 5) { fin.Add(x - 0.052f); fin.Add(peak - 0.12f); } } c.Prism(c.head, 0f, 0f, 0f, 0.075f, C(0x3BE070), 0f, 90f, 0f, 0.1f, fin.ToArray()); c.Box(c.head, 0f, 0.268f, 0f, 0.1f, 0.05f, 0.5f, 0.02f, C(0xFF4FA3)); } },
-            { "hat_pirate", c => { var black = C(0x1A1A22); float[] flap = { -0.52f, 0.14f, -0.47f, 0.27f, -0.3f, 0.4f, 0f, 0.47f, 0.3f, 0.4f, 0.47f, 0.27f, 0.52f, 0.14f, 0.25f, 0.11f, 0f, 0.1f, -0.25f, 0.11f }; float[] trim = { -0.5f, 0.165f, -0.3f, 0.385f, 0f, 0.452f, 0.3f, 0.385f, 0.5f, 0.165f, 0.47f, 0.25f, 0.3f, 0.36f, 0f, 0.425f, -0.3f, 0.36f, -0.47f, 0.25f }; c.Lathe(c.head, 0f, 0f, 0f, black, 0.1f, 0.3f, 0.12f, 0.312f, 0.16f, 0.27f, 0.3f, 0.15f, 0.37f, 0f, 0.385f); c.Prism(c.head, 0f, 0f, 0.2f, 0.035f, black, -12f, 0f, 0f, 0.1f, flap); c.Prism(c.head, 0f, 0f, -0.2f, 0.035f, black, 12f, 0f, 0f, 0.1f, flap); c.Add(Ball, c.head, 0f, 0.27f, 0.2f, 0.13f, 0.12f, 0.04f, C(0xF2F2F2)); c.Box(c.head, 0f, 0.26f, 0.21f, 0.22f, 0.028f, 0.02f, 0.01f, C(0xF2F2F2), -12f, 0f, 35f); c.Box(c.head, 0f, 0.26f, 0.21f, 0.22f, 0.028f, 0.02f, 0.01f, C(0xF2F2F2), -12f, 0f, -35f); c.BothSides((s, i) => c.Add(Ball, c.head, s * 0.025f, 0.28f, 0.222f, 0.03f, 0.035f, 0.02f, black)); } },
+            { "hat_pirate", c => { var black = C(0x7A4B22); var gold = C(0xFFCC33); float[] flap = { -0.52f, 0.14f, -0.47f, 0.27f, -0.3f, 0.4f, 0f, 0.47f, 0.3f, 0.4f, 0.47f, 0.27f, 0.52f, 0.14f, 0.25f, 0.11f, 0f, 0.1f, -0.25f, 0.11f }; float[] trim = { -0.5f, 0.165f, -0.3f, 0.385f, 0f, 0.452f, 0.3f, 0.385f, 0.5f, 0.165f, 0.47f, 0.25f, 0.3f, 0.36f, 0f, 0.425f, -0.3f, 0.36f, -0.47f, 0.25f }; c.Lathe(c.head, 0f, 0f, 0f, black, 0.1f, 0.3f, 0.12f, 0.312f, 0.16f, 0.27f, 0.3f, 0.15f, 0.37f, 0f, 0.385f); c.Prism(c.head, 0f, 0f, 0.2f, 0.035f, black, -12f, 0f, 0f, 0.1f, flap); c.Prism(c.head, 0f, 0f, -0.2f, 0.035f, black, 12f, 0f, 0f, 0.1f, flap); c.Add(Ball, c.head, 0f, 0.27f, 0.2f, 0.13f, 0.12f, 0.04f, C(0xF2F2F2)); c.Box(c.head, 0f, 0.26f, 0.21f, 0.22f, 0.028f, 0.02f, 0.01f, C(0xF2F2F2), -12f, 0f, 35f); c.Box(c.head, 0f, 0.26f, 0.21f, 0.22f, 0.028f, 0.02f, 0.01f, C(0xF2F2F2), -12f, 0f, -35f); c.BothSides((s, i) => c.Add(Ball, c.head, s * 0.025f, 0.28f, 0.222f, 0.03f, 0.035f, 0.02f, C(0x2A1A10))); c.Lathe(c.head, 0f, 0f, 0f, gold, 0.8f, 0.3f, 0.2f, 0.318f, 0.205f, 0.3f, 0.23f, 0.285f, 0.225f); c.BothSides((s, i) => { c.Prism(c.head, s * 0.3f, 0.3f, 0.02f, 0.05f, gold, 0f, 0f, s * -20f, 0.8f, new[] { -0.07f, -0.1f, 0.07f, -0.1f, 0.09f, 0.1f, -0.09f, 0.1f }); }); } },
             { "hat_kavuk", c => { var white = C(0xF6F3EA); var fold = C(0xDDD8C8); var gold = C(0xFFCC33); c.Lathe(c.head, 0f, 0f, 0f, C(0xB81E2C), 0.2f, 0.2f, 0.3f, 0.245f, 0.48f, 0.2f, 0.58f, 0.1f, 0.62f, 0f, 0.63f); c.Lathe(c.head, 0f, 0f, 0f, white, 0.15f, 0.29f, 0.1f, 0.4f, 0.14f, 0.475f, 0.27f, 0.46f, 0.4f, 0.36f, 0.5f, 0.24f, 0.53f, 0.22f, 0.5f, 0.22f, 0.2f); foreach (float y in new[] { 0.19f, 0.29f, 0.39f }) { float r = y < 0.25f ? 0.44f : y < 0.35f ? 0.482f : 0.468f; c.Lathe(c.head, 0f, 0f, 0f, fold, 0.15f, r - 0.02f, y - 0.012f, r, y, r - 0.02f, y + 0.012f); } c.Lathe(c.head, 0f, 0f, 0f, gold, 0.8f, 0.2f, 0.575f, 0.215f, 0.585f, 0.205f, 0.612f, 0.11f, 0.626f); c.Add(Ball, c.head, 0f, 0.645f, 0f, 0.065f, 0.065f, 0.065f, gold, 0f, 0f, 0f, 0.8f); c.Add(Ball, c.head, 0f, 0.31f, 0.47f, 0.13f, 0.15f, 0.07f, gold, 0f, 0f, 0f, 0.8f); c.Add(Ball, c.head, 0f, 0.31f, 0.495f, 0.08f, 0.1f, 0.05f, C(0xD62828), 0f, 0f, 0f, 0.9f); c.Prism(c.head, 0f, 0.38f, 0.46f, 0.02f, white, -14f, 0f, 0f, 0.3f, new[] { 0f, 0f, 0.05f, 0.07f, 0.04f, 0.2f, 0f, 0.27f, -0.04f, 0.2f, -0.05f, 0.07f }); c.Prism(c.head, 0f, 0.38f, 0.468f, 0.012f, C(0x3BD0B0), -14f, 0f, 0f, 0.6f, new[] { 0f, 0.02f, 0.022f, 0.07f, 0.016f, 0.15f, 0f, 0.2f, -0.016f, 0.15f, -0.022f, 0.07f }); } },
             { "hat_crown", c => { var gold = C(0xFFCC33); c.Lathe(c.head, 0f, 0f, 0f, gold, 0.7f, 0.285f, 0.19f, 0.302f, 0.195f, 0.312f, 0.3f, 0.296f, 0.3f, 0.285f, 0.2f); c.Lathe(c.head, 0f, 0f, 0f, C(0xB81E3C), 0.1f, 0.29f, 0.24f, 0.25f, 0.34f, 0.12f, 0.39f, 0f, 0.4f); for (int i = 0; i < 6; i++) { float a = i * 60f; float sin = Mathf.Sin(a * Mathf.Deg2Rad), cos = Mathf.Cos(a * Mathf.Deg2Rad); c.Prism(c.head, sin * 0.3f, 0.295f, cos * 0.3f, 0.03f, gold, 0f, a, 0f, 0.7f, new[] { -0.078f, 0f, 0.078f, 0f, 0f, 0.17f }); c.Add(Ball, c.head, sin * 0.3f, 0.47f, cos * 0.3f, 0.055f, 0.055f, 0.055f, i % 2 == 0 ? C(0xE23B3B) : C(0x3B7BE2), 0f, 0f, 0f, 0.7f); c.Add(Ball, c.head, Mathf.Sin((a + 30f) * Mathf.Deg2Rad) * 0.31f, 0.245f, Mathf.Cos((a + 30f) * Mathf.Deg2Rad) * 0.31f, 0.05f, 0.05f, 0.05f, i % 2 == 0 ? C(0x3BD070) : C(0xE23B3B), 0f, 0f, 0f, 0.7f); } } },
 
@@ -182,7 +182,7 @@ namespace TextRun.Characters
             { "shoes_cowboy", c => { var brown = C(0x8A5A2B); c.Shoes(brown, C(0x2A1A0C)); c.BothSides((s, i) => { c.LimbBand(c.legs[i], LegProfile, -0.72f, -0.38f, 0.028f, brown); c.LimbBand(c.legs[i], LegProfile, -0.41f, -0.36f, 0.04f, C(0xE0CFA0)); c.Box(c.legs[i], 0f, -0.79f, -0.07f, 0.15f, 0.07f, 0.09f, 0.014f, C(0x2A1A0C)); c.Add(Ball, c.legs[i], 0f, -0.75f, 0.24f, 0.13f, 0.09f, 0.12f, brown); c.Prism(c.legs[i], 0f, -0.76f, -0.14f, 0.012f, C(0xFFCC33), 0f, 90f, 0f, 0.8f, MeshKit.Star(6, 0.045f)); c.Prism(c.legs[i], s * 0.125f, -0.5f, 0f, 0.012f, C(0xE0CFA0), 0f, s * 90f, 0f, 0.1f, MeshKit.Star(5, 0.045f)); }); } },
             { "shoes_rocket", c => { c.Shoes(C(0x8C93A5), C(0x4A4F5E), 0.75f); c.BothSides((s, i) => { c.Put(MeshKit.Lathe(new[] { 0.04f, 0f, 0.075f, 0.11f, 0.06f, 0.11f, 0.03f, 0.01f }), c.legs[i], 0f, -0.735f, -0.1f, C(0x3A3F4E), -90f, 0f, 0f, 0.7f); c.Put(MeshKit.Lathe(new[] { 0f, 0.05f, 0.05f, 0.08f, 0.035f, 0.2f, 0f, 0.31f }), c.legs[i], 0f, -0.735f, -0.1f, C(0xFF7A1A), -90f); c.Put(MeshKit.Lathe(new[] { 0f, 0.07f, 0.028f, 0.1f, 0.018f, 0.17f, 0f, 0.23f }), c.legs[i], 0f, -0.735f, -0.11f, C(0xFFE03C), -90f); c.Prism(c.legs[i], s * 0.105f, -0.72f, -0.02f, 0.014f, C(0xD62828), 0f, s * 90f, 0f, 0.6f, new[] { -0.09f, -0.05f, 0.06f, -0.05f, -0.09f, 0.07f }); c.Box(c.legs[i], 0f, -0.69f, 0.12f, 0.12f, 0.02f, 0.12f, 0.008f, C(0x35C8FF), 0f, 0f, 0f, 0.9f); }); } },
             { "shoes_skate", c => { var pink = C(0xFF6FB5); c.Shoes(pink, C(0xF4F4F4)); c.BothSides((s, i) => { c.LimbBand(c.legs[i], LegProfile, -0.72f, -0.58f, 0.022f, pink); c.LimbBand(c.legs[i], LegProfile, -0.61f, -0.58f, 0.028f, C(0xF4F4F4)); foreach (float z in new[] { -0.045f, 0.2f }) foreach (float x in new[] { -0.118f, 0.118f }) { c.Add(Tube, c.legs[i], x, -0.762f, z, 0.08f, 0.016f, 0.08f, C(0xFFD23C), 0f, 0f, 90f); c.Add(Tube, c.legs[i], x, -0.762f, z, 0.035f, 0.02f, 0.035f, C(0xF4F4F4), 0f, 0f, 90f); } c.Add(Ball, c.legs[i], 0f, -0.77f, 0.28f, 0.07f, 0.07f, 0.07f, C(0x35C8FF)); }); } },
-            { "shoes_wing", c => { c.Shoes(C(0xFFFFFF), C(0xFFCC33), 0.7f); float[] feather = { 0f, 0f, 0.032f, 0.06f, 0.024f, 0.17f, 0f, 0.23f, -0.024f, 0.17f, -0.032f, 0.06f }; c.BothSides((s, i) => { for (int k = 0; k < 3; k++) { var go = c.Prism(c.legs[i], s * (0.11f + k * 0.006f), -0.7f, -0.03f, 0.012f, k == 1 ? C(0xFFE9A0) : C(0xFFFFFF), 0f, 90f, -28f - k * 26f, 0.4f, feather); go.transform.localScale = new Vector3(1f, 1f - k * 0.18f, 1f); } c.Add(Ball, c.legs[i], s * 0.11f, -0.7f, -0.03f, 0.03f, 0.06f, 0.06f, C(0xFFCC33), 0f, 0f, 0f, 0.7f); }); } },
+            { "shoes_wing", c => { c.Shoes(C(0xFFFFFF), C(0xFFCC33), 0.7f); float[] feather = { 0f, 0f, 0.048f, 0.09f, 0.036f, 0.26f, 0f, 0.35f, -0.036f, 0.26f, -0.048f, 0.09f }; c.BothSides((s, i) => { for (int k = 0; k < 4; k++) { var go = c.Prism(c.legs[i], s * (0.11f + k * 0.006f), -0.7f, -0.03f, 0.014f, k % 2 == 1 ? C(0xFFE9A0) : C(0xFFFFFF), 0f, 90f, -22f - k * 24f, 0.4f, feather); go.transform.localScale = new Vector3(1f, 1f - k * 0.16f, 1f); } c.Add(Ball, c.legs[i], s * 0.11f, -0.7f, -0.03f, 0.04f, 0.08f, 0.08f, C(0xFFCC33), 0f, 0f, 0f, 0.7f); }); } },
 
             // ---------- Pelerin ----------
             { "cape_red", c => c.Cape(0.1f, C(0xD62828)) },
@@ -323,8 +323,15 @@ namespace TextRun.Characters
             SetBody(c, CharacterBuilder.SkinTones[tone], female);
 
             if (look != null)
+            {
                 foreach (var id in look)
-                    if (id != null && Registry.TryGetValue(id, out var build)) build(c);
+                {
+                    if (id == null || !Registry.TryGetValue(id, out var build)) continue;
+                    int before = c.visual.childCount;
+                    build(c);
+                    if (id.StartsWith("cape_")) AttachSway(character, c, before);
+                }
+            }
 
             if (female) FemaleFace(c);
             if (!headItem) BaseHair(c, female);
@@ -400,6 +407,24 @@ namespace TextRun.Characters
                 c.Put(MeshKit.Lathe(new[] { 0.296f, -0.035f, 0.314f, -0.03f, 0.314f, 0.05f, 0.292f, 0.12f, 0.258f, 0.19f, 0.236f, 0.19f, 0.27f, 0.12f, 0.29f, 0.05f, 0.29f, -0.03f }, 20, 148f, 244f), c.head, 0f, 0f, -0.012f, hair, 0f, 0f, 0f, 0.2f);
                 c.Put(MeshKit.Lathe(new[] { 0.172f, -0.26f, 0.192f, -0.25f, 0.262f, -0.16f, 0.3f, -0.08f, 0.314f, -0.02f, 0.29f, -0.02f, 0.28f, -0.08f, 0.244f, -0.16f, 0.176f, -0.25f }, 12, 200f, 140f), c.head, 0f, 0f, -0.012f, hair, 0f, 0f, 0f, 0.2f);
             }
+        }
+
+        // Pelerin parçalarını (build sırasında visual altına eklenenler) omuz hizasındaki bir eksene bağlar: koşarken geriye uçar
+        static void AttachSway(CharacterAnimator character, Ctx c, int firstNewChild)
+        {
+            var pivot = new GameObject(Prefix + "CapePivot").transform;
+            pivot.SetParent(c.visual, false);
+            pivot.localPosition = new Vector3(0f, 0.6f, -0.17f);
+            var sway = pivot.gameObject.AddComponent<CapeSway>();
+            sway.animator = character;
+
+            var moved = new List<Transform>();
+            for (int i = firstNewChild; i < c.visual.childCount; i++)
+            {
+                var child = c.visual.GetChild(i);
+                if (child != pivot && child.name.StartsWith(Prefix)) moved.Add(child);
+            }
+            foreach (var child in moved) child.SetParent(pivot, true);
         }
 
         public static string[] AllIds()
