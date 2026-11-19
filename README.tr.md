@@ -43,7 +43,7 @@ Unity istemcisi · **TypeScript** ile yazılmış, sunucu hakemli **Nakama** sun
 | **Dayanıklı oturum** | Saklanan yarış kimliği sayesinde bağlantı kopması, uygulamanın kapanması ya da arka plana alınması sonrası süren yarışa geri dönülüyor; yarış bittiyse sessizce menüye düşülüyor. |
 | **Ekran mimarisi** | Tek durum makinesi (`Page`), odaklı kısmi sınıflara bölünmüş: menü, envanter, mağaza, liderlik, sonuçlar. Küçük bir arayüz kiti (`UiKit`) yuvarlak kartları ve kalın düğmeleri DPI'ya göre ölçeklenmiş çiziyor. Tüm metinler merkezi bir tablodan (`Loc`) geliyor, yeni dil tek sütun. |
 | **Ağ katmanı** | `OnlineRaceClient` Nakama .NET istemcisini sarıyor: kimlik doğrulama, soket olayları, RPC'ler, geri dönüş mantığı. Mesaj biçimi sunucudakinin aynası küçük bir DTO kümesi ([`Protocol.cs`](client/Assets/Scripts/Online/Protocol.cs)). |
-| **Başarım** | Arena renge göre birleştirilip birkaç çizim çağrısına indirilmiş (`MeshBatch`), seyirciler dört ortak grup halinde zıplıyor, önizlemeler yalnızca görünürken küçük dokulara çiziliyor. Yayın APK'sı yaklaşık 20 MB ve orta seviye bir Xiaomi telefonda akıcı çalışıyor. |
+| **Başarım** | Arena renge göre birleştirilip birkaç çizim çağrısına indirilmiş (`MeshBatch`), seyirciler dört ortak grup halinde zıplıyor, önizlemeler yalnızca görünürken küçük dokulara çiziliyor. Yayın APK'sı yaklaşık 20 MB. Bu tercihler orta seviye telefonlarda akıcılığı korumak için yapıldı. |
 | **Kendini doğrulama** | `-devharness` derlemesi bütün ekranları kendi kendine gezip ekran görüntüsü alıyor; arayüz masaüstünde böyle doğrulandı, bu README'deki görseller de böyle üretildi. Çevrimiçi bir entegrasyon testi gerçek istemciyi gerçek sunucuya karşı koşturuyor. |
 
 ### Gördüğün her şey kodla üretiliyor

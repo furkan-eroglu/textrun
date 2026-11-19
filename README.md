@@ -43,7 +43,7 @@ The client is a thin, fast renderer: it shows the state the server sends and pre
 | **Resilient sessions** | A saved race identity lets the client rejoin a running race after a dropped connection, a killed app or a backgrounded phone, and drop quietly back to the menu if the race is already over. |
 | **Screen architecture** | One state machine (`Page` enum) split into focused partial classes: menu, inventory, shop, leaderboard, results. A small UI kit (`UiKit`) draws the rounded cards and chunky buttons, scaled by DPI. All strings go through a central table (`Loc`) so a language is one new column. |
 | **Network layer** | `OnlineRaceClient` wraps the Nakama .NET client: authentication, socket events, RPCs, resume logic. The wire format is a small set of DTOs ([`Protocol.cs`](client/Assets/Scripts/Online/Protocol.cs)) mirrored from the server. |
-| **Performance** | The arena is merged by colour into a handful of draw calls (`MeshBatch`), the crowd bobs in four shared groups, previews render to small textures only while visible. The release APK is about 20 MB and holds a steady frame rate on a mid-range Xiaomi phone. |
+| **Performance** | The arena is merged by colour into a handful of draw calls (`MeshBatch`), the crowd bobs in four shared groups, previews render to small textures only while visible. The release APK is about 20 MB. These choices are aimed at keeping the frame rate smooth on mid-range phones. |
 | **Self-verification** | A `-devharness` build plays through every screen and saves screenshots on its own, which is how the UI was checked on desktop and how the images in this README were made. An online integration test drives the real client against a real server. |
 
 ### Everything you see is generated in code
