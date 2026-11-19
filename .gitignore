@@ -22,3 +22,8 @@ server/build/
 # Genel
 .DS_Store
 Thumbs.db
+
+# Unity / Android derleme geçici dosyaları
+client/.utmp/
+client/Assets/Resources/Audio/match_found.wav
+client/Assets/Resources/Audio/match_found.wav.meta

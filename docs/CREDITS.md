@@ -15,3 +15,6 @@ Not: Lisans bilgisi arama sonuçlarından öğrenilmiştir; sayfadaki lisans sat
 
 ## applause.mp3
 "Fireworks With Applause Happy People" - Almitory (OpenGameArt). Sayfada CC0 secenegi de sunuluyor; atif zorunlu degil. https://opengameart.org/content/fireworks-with-applause-happy-people
+
+## Depoda bulunmayan ses
+`match_found.wav` (eşleşme bulundu sesi) lisansı kayıtlı olmadığı için herkese açık depodan çıkarıldı (yerelde `.gitignore` ile tutuluyor). Dosya yokken oyun kodla üretilen sesi çalar. Lisansı belgelenmiş bir sesle değiştirilmeli ya da kaynağı eklenmelidir.
